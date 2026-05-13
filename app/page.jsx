@@ -1,15 +1,1 @@
-import Hero from "../components/Hero";
-import About from "../components/About";
-import Services from "../components/Services";
-import CTA from "../components/CTA";
-
-export default function HomePage() {
-  return (
-    <main>
-      <Hero />
-      <Services />
-      <About />
-      <CTA />
-    </main>
-  );
-}
+import Hero from "../components/Hero";import Services from "../components/Services";import Testimonials from "../components/Testimonials";import Pricing from "../components/Pricing";import About from "../components/About";export default function Home(){return(<main><Hero/><Services/><Testimonials/><Pricing/><About/></main>)}

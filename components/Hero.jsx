@@ -1,57 +1,122 @@
 export default function Hero() {
   return (
-    <section style={{ padding: "100px 60px", background: "#111" }}>
-      <p style={{ color: "#facc15" }}>
-        ONLINE & HYBRID COACHING
-      </p>
-
-      <h1 style={{ fontSize: "72px" }}>
-        MOVE BETTER.
-        <br />
-        BUILD STRENGTH.
-        <br />
-        TRANSFORM YOUR LIFE.
-      </h1>
-
-      <p style={{ maxWidth: "650px", color: "#ccc" }}>
-        Personalized coaching for strength, mobility,
-        fat loss, and corrective exercise.
-      </p>
-
-      <div style={{ display: "flex", gap: "16px" }}>
+    <section
+      style={{
+        padding: "100px 60px",
+        background: "#111",
+        minHeight: "70vh",
+        display: "flex",
+        alignItems: "center"
+      }}
+    >
+      <div style={{ maxWidth: "950px" }}>
         
-        <a
-          href="https://buy.stripe.com/00w8wOa6X4Qc8JJ49u2sM04"
-          target="_blank"
+        <p
+          style={{
+            color: "#facc15",
+            fontWeight: "bold",
+            letterSpacing: "2px"
+          }}
         >
-          <button
-            style={{
-              background: "#facc15",
-              border: "none",
-              padding: "16px 24px",
-              cursor: "pointer"
-            }}
-          >
-            Start Your Transformation
-          </button>
-        </a>
+          PERSONAL TRAINING FOR SEDENTARY PROFESSIONALS
+        </p>
 
-        <a
-          href="https://calendly.com/getcharighttransformations22/free-15-minute-assessment"
-          target="_blank"
+        <h1
+          style={{
+            fontSize: "clamp(42px, 7vw, 76px)",
+            lineHeight: "1",
+            margin: "20px 0"
+          }}
         >
-          <button
-            style={{
-              background: "transparent",
-              border: "1px solid white",
-              color: "white",
-              padding: "16px 24px",
-              cursor: "pointer"
-            }}
+          YOU SIT FOR WORK.
+          <br />
+          YOUR BODY
+          <br />
+          DOESN&apos;T HAVE TO.
+        </h1>
+
+        <p
+          style={{
+            maxWidth: "700px",
+            color: "#ccc",
+            fontSize: "20px",
+            lineHeight: "1.6"
+          }}
+        >
+          Get stronger, move better, and take control of your fitness
+          with simple training designed for people who spend most of
+          their workday sitting.
+        </p>
+
+        <p
+          style={{
+            color: "#fff",
+            fontSize: "18px",
+            fontWeight: "bold"
+          }}
+        >
+          No gym membership required.
+        </p>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "16px",
+            flexWrap: "wrap",
+            marginTop: "30px"
+          }}
+        >
+
+          <a
+            href="/starter-kit"
+            style={{ textDecoration: "none" }}
           >
-            Book Free Assessment
-          </button>
-        </a>
+            <button
+              style={{
+                background: "#facc15",
+                border: "none",
+                padding: "17px 26px",
+                cursor: "pointer",
+                fontWeight: "bold",
+                fontSize: "16px"
+              }}
+            >
+              Get My Free 3-Day Starter Kit
+            </button>
+          </a>
+
+          <a
+            href="https://calendly.com/getcharighttransformations22/free-15-minute-assessment"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ textDecoration: "none" }}
+          >
+            <button
+              style={{
+                background: "transparent",
+                border: "1px solid white",
+                color: "white",
+                padding: "16px 24px",
+                cursor: "pointer",
+                fontWeight: "bold",
+                fontSize: "16px"
+              }}
+            >
+              Book Free Assessment
+            </button>
+          </a>
+
+        </div>
+
+        <p
+          style={{
+            color: "#888",
+            marginTop: "20px",
+            fontSize: "14px"
+          }}
+        >
+          Beginner-friendly • Home workouts • Minimal equipment
+        </p>
 
       </div>
     </section>

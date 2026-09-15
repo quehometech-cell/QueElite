@@ -1,7 +1,7 @@
 export const metadata = {
   title: "Free 3-Day Sedentary Reset | Get Cha Right Fitness",
   description:
-    "A free 3-day beginner-friendly workout starter kit for sedentary professionals. No gym membership required.",
+    "A free 3-day beginner-friendly workout starter kit for sedentary professionals. Start moving, building strength, and improving mobility without a gym membership.",
 };
 
 const Exercise = ({ name, prescription, description }) => (
@@ -48,7 +48,7 @@ const Day = ({ number, title, subtitle, children }) => (
       background: "#111",
       border: "1px solid #262626",
       borderRadius: "14px",
-      padding: "30px",
+      padding: "clamp(20px, 5vw, 30px)",
       marginBottom: "28px",
     }}
   >
@@ -65,7 +65,7 @@ const Day = ({ number, title, subtitle, children }) => (
 
     <h2
       style={{
-        fontSize: "32px",
+        fontSize: "clamp(26px, 5vw, 32px)",
         margin: "10px 0",
       }}
     >
@@ -98,7 +98,7 @@ export default function StarterKit() {
       {/* HERO */}
       <section
         style={{
-          padding: "80px 24px 60px",
+          padding: "80px 20px 60px",
           textAlign: "center",
           background: "#111",
         }}
@@ -121,7 +121,7 @@ export default function StarterKit() {
 
           <h1
             style={{
-              fontSize: "clamp(42px, 7vw, 72px)",
+              fontSize: "clamp(40px, 7vw, 72px)",
               lineHeight: "1",
               margin: "20px 0",
             }}
@@ -134,7 +134,7 @@ export default function StarterKit() {
           <p
             style={{
               color: "#ccc",
-              fontSize: "20px",
+              fontSize: "clamp(17px, 3vw, 20px)",
               lineHeight: "1.6",
               maxWidth: "700px",
               margin: "0 auto",
@@ -145,6 +145,7 @@ export default function StarterKit() {
             and creating a fitness routine without needing a gym membership.
           </p>
 
+          {/* BADGES */}
           <div
             style={{
               marginTop: "30px",
@@ -184,6 +185,47 @@ export default function StarterKit() {
               ✓ Minimal Equipment
             </span>
           </div>
+
+          {/* DOWNLOAD BUTTON */}
+          <div
+            style={{
+              marginTop: "32px",
+              textAlign: "center",
+            }}
+          >
+            <a
+              href="/Get_Cha_Right_3_Day_Sedentary_Reset.pdf"
+              download
+              style={{
+                textDecoration: "none",
+              }}
+            >
+              <button
+                style={{
+                  background: "#facc15",
+                  color: "#050505",
+                  border: "none",
+                  padding: "18px 28px",
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  borderRadius: "6px",
+                }}
+              >
+                ↓ Download My Free Starter Kit
+              </button>
+            </a>
+
+            <p
+              style={{
+                color: "#888",
+                fontSize: "13px",
+                marginTop: "12px",
+              }}
+            >
+              Save it to your phone or print it and follow along.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -195,14 +237,25 @@ export default function StarterKit() {
           padding: "60px 20px",
         }}
       >
+        {/* INTRO */}
         <div
           style={{
             marginBottom: "45px",
           }}
         >
+          <p
+            style={{
+              color: "#facc15",
+              fontWeight: "bold",
+              letterSpacing: "2px",
+            }}
+          >
+            START HERE
+          </p>
+
           <h2
             style={{
-              fontSize: "34px",
+              fontSize: "clamp(28px, 5vw, 36px)",
               marginBottom: "10px",
             }}
           >
@@ -218,9 +271,18 @@ export default function StarterKit() {
             Move at a comfortable pace and focus on good form. Rest
             approximately 45–90 seconds between sets when needed.
             Stop if an exercise causes sharp pain, dizziness, chest pain,
-            or unusual shortness of breath. If you have medical concerns
-            or have been advised to limit exercise, speak with a qualified
-            healthcare professional before starting.
+            or unusual shortness of breath.
+          </p>
+
+          <p
+            style={{
+              color: "#bbb",
+              lineHeight: "1.7",
+            }}
+          >
+            If you have medical concerns or have been advised to limit
+            exercise, speak with a qualified healthcare professional before
+            starting.
           </p>
         </div>
 
@@ -245,7 +307,7 @@ export default function StarterKit() {
           <Exercise
             name="Wall or Incline Push-Up"
             prescription="3 sets × 8–12 reps"
-            description="Use a wall or sturdy elevated surface. Keep your body controlled as you lower and press away."
+            description="Use a wall or sturdy elevated surface. Keep your body controlled as you lower yourself and press away."
           />
 
           <Exercise
@@ -269,7 +331,7 @@ export default function StarterKit() {
           <Exercise
             name="Easy Walk"
             prescription="5 minutes"
-            description="Finish with another relaxed walk."
+            description="Finish your first day with another relaxed walk."
           />
         </Day>
 
@@ -318,7 +380,7 @@ export default function StarterKit() {
           <Exercise
             name="Chest & Shoulder Stretch"
             prescription="30 seconds each side"
-            description="Use a doorway or wall and gently open the chest and shoulder."
+            description="Use a doorway or wall and gently open your chest and shoulder."
           />
         </Day>
 
@@ -371,10 +433,10 @@ export default function StarterKit() {
           />
         </Day>
 
-        {/* COMPLETION */}
+        {/* COMPLETION CTA */}
         <section
           style={{
-            padding: "45px 30px",
+            padding: "clamp(30px, 6vw, 50px) 24px",
             background: "#facc15",
             color: "#050505",
             borderRadius: "14px",
@@ -394,7 +456,7 @@ export default function StarterKit() {
 
           <h2
             style={{
-              fontSize: "38px",
+              fontSize: "clamp(30px, 6vw, 42px)",
               margin: "12px 0",
             }}
           >
@@ -404,56 +466,113 @@ export default function StarterKit() {
           <p
             style={{
               maxWidth: "620px",
-              margin: "0 auto 25px",
+              margin: "0 auto 28px",
               lineHeight: "1.6",
             }}
           >
-            The starter kit gets you moving. Your full program gives you
-            the structure, progression, accountability, and coaching needed
-            to keep building from here.
+            The starter kit gets you moving. Personalized coaching gives you
+            the structure, progression, accountability, and support to keep
+            building from here.
+          </p>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: "12px",
+              flexWrap: "wrap",
+            }}
+          >
+            <a
+              href="https://calendly.com/getcharighttransformations22/free-15-minute-assessment"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ textDecoration: "none" }}
+            >
+              <button
+                style={{
+                  background: "#050505",
+                  color: "#fff",
+                  border: "2px solid #050505",
+                  padding: "17px 28px",
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                }}
+              >
+                Book My Free Assessment
+              </button>
+            </a>
+
+            <a
+              href="https://buy.stripe.com/00w8wOa6X4Qc8JJ49u2sM04"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ textDecoration: "none" }}
+            >
+              <button
+                style={{
+                  background: "transparent",
+                  color: "#050505",
+                  border: "2px solid #050505",
+                  padding: "17px 28px",
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                }}
+              >
+                Start Coaching
+              </button>
+            </a>
+          </div>
+        </section>
+
+        {/* SECOND DOWNLOAD */}
+        <section
+          style={{
+            textAlign: "center",
+            marginTop: "50px",
+            padding: "30px 20px",
+            border: "1px solid #262626",
+            borderRadius: "14px",
+          }}
+        >
+          <h2
+            style={{
+              marginTop: 0,
+            }}
+          >
+            Want to Keep the Program?
+          </h2>
+
+          <p
+            style={{
+              color: "#aaa",
+              lineHeight: "1.6",
+            }}
+          >
+            Download the complete 3-Day Sedentary Reset and keep it on your
+            phone for easy access.
           </p>
 
           <a
-            href="https://calendly.com/getcharighttransformations22/free-15-minute-assessment"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/Get_Cha_Right_3_Day_Sedentary_Reset.pdf"
+            download
             style={{ textDecoration: "none" }}
           >
             <button
               style={{
-                background: "#050505",
-                color: "#fff",
+                background: "#facc15",
+                color: "#050505",
                 border: "none",
                 padding: "17px 28px",
                 fontSize: "16px",
                 fontWeight: "bold",
                 cursor: "pointer",
-                margin: "6px",
+                borderRadius: "6px",
               }}
             >
-              Book My Free Assessment
-            </button>
-          </a>
-
-          <a
-            href="https://buy.stripe.com/00w8wOa6X4Qc8JJ49u2sM04"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ textDecoration: "none" }}
-          >
-            <button
-              style={{
-                background: "transparent",
-                color: "#050505",
-                border: "2px solid #050505",
-                padding: "15px 28px",
-                fontSize: "16px",
-                fontWeight: "bold",
-                cursor: "pointer",
-                margin: "6px",
-              }}
-            >
-              Start Coaching
+              ↓ Download Starter Kit
             </button>
           </a>
         </section>
@@ -464,16 +583,17 @@ export default function StarterKit() {
             color: "#777",
             fontSize: "12px",
             lineHeight: "1.6",
-            marginTop: "30px",
+            marginTop: "35px",
             textAlign: "center",
           }}
         >
-          This starter program provides general fitness information and
-          is not medical advice. Exercise carries inherent risk. Choose
-          movements appropriate for your current ability and consult an
-          appropriate healthcare professional when necessary.
+          This starter program provides general fitness information and is
+          not medical advice. Exercise carries inherent risk. Choose movements
+          appropriate for your current ability and consult an appropriate
+          healthcare professional when necessary.
         </p>
 
+        {/* HOME LINK */}
         <div
           style={{
             textAlign: "center",
@@ -485,6 +605,7 @@ export default function StarterKit() {
             style={{
               color: "#facc15",
               textDecoration: "none",
+              fontWeight: "bold",
             }}
           >
             ← Back to Get Cha Right Fitness

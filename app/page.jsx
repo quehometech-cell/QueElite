@@ -1,1 +1,19 @@
-import Hero from "../components/Hero";import Services from "../components/Services";import Testimonials from "../components/Testimonials";import Pricing from "../components/Pricing";import About from "../components/About";export default function Home(){return(<main><Hero/><Services/><Testimonials/><Pricing/><About/></main>)}
+import Hero from "../components/Hero";
+import SedentaryProblem from "../components/SedentaryProblem";
+import Services from "../components/Services";
+import Testimonials from "../components/Testimonials";
+import Pricing from "../components/Pricing";
+import About from "../components/About";
+
+export default function Home() {
+  return (
+    <main>
+      <Hero />
+      <SedentaryProblem />
+      <Services />
+      <Testimonials />
+      <Pricing />
+      <About />
+    </main>
+  );
+}

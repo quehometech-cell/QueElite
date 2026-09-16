@@ -10,7 +10,7 @@ export default function Hero() {
       }}
     >
       <div style={{ maxWidth: "950px" }}>
-        
+
         <p
           style={{
             color: "#facc15",
@@ -66,7 +66,7 @@ export default function Hero() {
             marginTop: "30px"
           }}
         >
-
+          {/* FREE STARTER KIT */}
           <a
             href="/starter-kit"
             style={{ textDecoration: "none" }}
@@ -75,6 +75,7 @@ export default function Hero() {
               style={{
                 background: "#facc15",
                 border: "none",
+                color: "#111",
                 padding: "17px 26px",
                 cursor: "pointer",
                 fontWeight: "bold",
@@ -85,6 +86,7 @@ export default function Hero() {
             </button>
           </a>
 
+          {/* FREE ASSESSMENT */}
           <a
             href="https://calendly.com/getcharighttransformations22/free-15-minute-assessment"
             target="_blank"
@@ -106,6 +108,25 @@ export default function Hero() {
             </button>
           </a>
 
+          {/* MEMBER PORTAL */}
+          <a
+            href="/members"
+            style={{ textDecoration: "none" }}
+          >
+            <button
+              style={{
+                background: "#111111",
+                border: "1px solid #facc15",
+                color: "#facc15",
+                padding: "16px 24px",
+                cursor: "pointer",
+                fontWeight: "bold",
+                fontSize: "16px"
+              }}
+            >
+              Member Portal
+            </button>
+          </a>
         </div>
 
         <p

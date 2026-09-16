@@ -4,230 +4,580 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
+import Dashboard from "../../components/member/Dashboard";
+import Workouts from "../../components/member/Workouts";
+import CorrectiveMobility from "../../components/member/CorrectiveMobility";
+import Nutrition from "../../components/member/Nutrition";
+import Progress from "../../components/member/Progress";
+import CheckIn from "../../components/member/CheckIn";
+import ExerciseLibrary from "../../components/member/ExerciseLibrary";
+
+const CALENDLY_URL =
+  "https://calendly.com/getcharighttransformations22/free-15-minute-assessment";
+
 export default function MembersPage() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+
   const [activeTab, setActiveTab] = useState("dashboard");
 
   const [program, setProgram] = useState(null);
-  const [exercises, setExercises] = useState([]);
-  const [workoutLoading, setWorkoutLoading] = useState(true);
-  const [workoutError, setWorkoutError] = useState("");
+  const [workoutExercises, setWorkoutExercises] =
+    useState([]);
+  const [libraryExercises, setLibraryExercises] =
+    useState([]);
+
+  const [nutritionPlan, setNutritionPlan] =
+    useState(null);
+
+  const [correctiveRoutine, setCorrectiveRoutine] =
+    useState(null);
+  const [
+    correctiveExercises,
+    setCorrectiveExercises,
+  ] = useState([]);
+
+  const [weeklyCompleted, setWeeklyCompleted] =
+    useState(0);
+  const [latestWeight, setLatestWeight] =
+    useState(null);
+  const [latestCheckIn, setLatestCheckIn] =
+    useState(null);
 
   useEffect(() => {
-    let mounted = true;
+    initializePortal();
+  }, []);
 
-    async function initializeMember() {
-      setLoading(true);
+  async function initializePortal() {
+    setLoading(true);
+    setLoadError("");
 
-      // CHECK LOGIN
+    try {
+      // 1. AUTHENTICATION
+
       const {
         data: { session },
         error: sessionError,
       } = await supabase.auth.getSession();
 
-      if (sessionError || !session) {
+      if (sessionError) {
+        throw sessionError;
+      }
+
+      if (!session?.user) {
         router.replace("/login");
         return;
       }
 
       const currentUser = session.user;
 
-      // CHECK MEMBERSHIP
-      const { data: profile, error: profileError } = await supabase
+      setUser(currentUser);
+
+      // 2. PROFILE + MEMBERSHIP
+
+      const {
+        data: profileData,
+        error: profileError,
+      } = await supabase
         .from("profiles")
-        .select("membership_status")
+        .select(
+          "id, full_name, email, membership_status, role"
+        )
         .eq("id", currentUser.id)
         .single();
 
+      if (profileError) {
+        throw profileError;
+      }
+
+      setProfile(profileData);
+
       if (
-        profileError ||
-        !profile ||
-        profile.membership_status !== "active"
+        profileData.membership_status !== "active"
       ) {
         router.replace("/membership-required");
         return;
       }
 
-      // CHECK ONBOARDING
-      const { data: assessment, error: assessmentError } = await supabase
+      // 3. ONBOARDING
+
+      const {
+        data: onboardingData,
+        error: onboardingError,
+      } = await supabase
         .from("onboarding_assessments")
         .select("id, completed")
         .eq("user_id", currentUser.id)
         .eq("completed", true)
-        .order("created_at", { ascending: false })
+        .order("created_at", {
+          ascending: false,
+        })
         .limit(1)
         .maybeSingle();
 
-      if (assessmentError) {
-        console.error("Assessment check error:", assessmentError);
+      if (onboardingError) {
+        throw onboardingError;
       }
 
-      if (!assessment) {
+      if (!onboardingData) {
         router.replace("/onboarding");
         return;
       }
 
-      // LOAD MEMBER WORKOUT
-      await loadMemberWorkout(currentUser.id);
+      // 4. LOAD PORTAL DATA
 
-      if (mounted) {
-        setLoading(false);
-      }
-    }
-
-    initializeMember();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT" || !session) {
-        router.replace("/login");
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, [router]);
-
-  async function loadMemberWorkout(userId) {
-    setWorkoutLoading(true);
-    setWorkoutError("");
-
-    try {
-      // GET MEMBER PROGRAM ASSIGNMENT
-      const { data: assignment, error: assignmentError } = await supabase
-        .from("member_programs")
-        .select("program_id, assigned_at")
-        .eq("user_id", userId)
-        .order("assigned_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (assignmentError) {
-        throw assignmentError;
-      }
-
-      if (!assignment) {
-        setWorkoutError("No workout program has been assigned yet.");
-        return;
-      }
-
-      // GET PROGRAM
-      const { data: programData, error: programError } = await supabase
-        .from("programs")
-        .select(
-          "id, name, goal, experience_level, equipment, days_per_week, session_minutes, location, description"
-        )
-        .eq("id", assignment.program_id)
-        .single();
-
-      if (programError) {
-        throw programError;
-      }
-
-      setProgram(programData);
-
-      // GET PROGRAM EXERCISES + WORKOUT PRESCRIPTION
-      const { data: programExercises, error: programExercisesError } =
-        await supabase
-          .from("program_exercises")
-          .select(
-            "exercise_id, exercise_order, workout_day, sets, reps, rest_seconds, notes"
-          )
-          .eq("program_id", assignment.program_id)
-          .order("workout_day", { ascending: true })
-          .order("exercise_order", { ascending: true });
-
-      if (programExercisesError) {
-        throw programExercisesError;
-      }
-
-      if (!programExercises || programExercises.length === 0) {
-        setExercises([]);
-        return;
-      }
-
-      const exerciseIds = programExercises.map(
-        (item) => item.exercise_id
+      await Promise.all([
+        loadMemberWorkout(currentUser.id),
+        loadExerciseLibrary(),
+        loadNutrition(currentUser.id),
+        loadCorrectiveRoutine(currentUser.id),
+        loadWeeklyCompletions(currentUser.id),
+        loadLatestProgress(currentUser.id),
+        loadLatestCheckIn(currentUser.id),
+      ]);
+    } catch (error) {
+      console.error(
+        "Member portal initialization error:",
+        error
       );
 
-      // GET EXERCISE INFORMATION
-      const { data: exerciseData, error: exerciseError } = await supabase
-        .from("exercises")
-        .select(
-          "id, name, category, equipment, difficulty, instructions, video_url, muscle_group"
+      setLoadError(
+        "We couldn't load your member portal. Please refresh and try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadMemberWorkout(userId) {
+    const {
+      data: assignment,
+      error: assignmentError,
+    } = await supabase
+      .from("member_programs")
+      .select("program_id, assigned_at")
+      .eq("user_id", userId)
+      .order("assigned_at", {
+        ascending: false,
+      })
+      .limit(1)
+      .maybeSingle();
+
+    if (assignmentError) {
+      throw assignmentError;
+    }
+
+    if (!assignment?.program_id) {
+      setProgram(null);
+      setWorkoutExercises([]);
+      return;
+    }
+
+    const {
+      data: programData,
+      error: programError,
+    } = await supabase
+      .from("programs")
+      .select(
+        "id, name, goal, experience_level, equipment, days_per_week, session_minutes, location, description"
+      )
+      .eq("id", assignment.program_id)
+      .single();
+
+    if (programError) {
+      throw programError;
+    }
+
+    setProgram(programData);
+
+    const {
+      data: programExerciseRows,
+      error: programExerciseError,
+    } = await supabase
+      .from("program_exercises")
+      .select(
+        "id, exercise_id, exercise_order, workout_day, sets, reps, rest_seconds, notes"
+      )
+      .eq("program_id", assignment.program_id)
+      .order("workout_day", {
+        ascending: true,
+      })
+      .order("exercise_order", {
+        ascending: true,
+      });
+
+    if (programExerciseError) {
+      throw programExerciseError;
+    }
+
+    if (!programExerciseRows?.length) {
+      setWorkoutExercises([]);
+      return;
+    }
+
+    const exerciseIds = [
+      ...new Set(
+        programExerciseRows.map(
+          (row) => row.exercise_id
         )
-        .in("id", exerciseIds)
-        .eq("is_active", true);
+      ),
+    ];
 
-      if (exerciseError) {
-        throw exerciseError;
-      }
+    const {
+      data: exerciseRows,
+      error: exerciseError,
+    } = await supabase
+      .from("exercises")
+      .select(
+        "id, name, category, equipment, difficulty, instructions, video_url, muscle_group"
+      )
+      .in("id", exerciseIds);
 
-      // MERGE EXERCISE + PRESCRIPTION DATA
-      const orderedExercises = programExercises
-        .map((programExercise) => {
-          const exercise = exerciseData?.find(
-            (item) => item.id === programExercise.exercise_id
+    if (exerciseError) {
+      throw exerciseError;
+    }
+
+    const exerciseMap = new Map(
+      (exerciseRows || []).map((exercise) => [
+        exercise.id,
+        exercise,
+      ])
+    );
+
+    const mergedExercises =
+      programExerciseRows
+        .map((row) => {
+          const exercise = exerciseMap.get(
+            row.exercise_id
           );
 
-          if (!exercise) return null;
+          if (!exercise) {
+            return null;
+          }
 
           return {
             ...exercise,
-            exercise_order: programExercise.exercise_order,
-            workout_day: programExercise.workout_day,
-            sets: programExercise.sets,
-            reps: programExercise.reps,
-            rest_seconds: programExercise.rest_seconds,
-            notes: programExercise.notes,
+
+            program_exercise_id: row.id,
+
+            exercise_order:
+              row.exercise_order,
+
+            workout_day:
+              row.workout_day,
+
+            sets: row.sets,
+
+            reps: row.reps,
+
+            rest_seconds:
+              row.rest_seconds,
+
+            notes: row.notes,
           };
         })
         .filter(Boolean);
 
-      setExercises(orderedExercises);
-    } catch (error) {
-      console.error("Workout loading error:", error);
+    setWorkoutExercises(mergedExercises);
+  }
 
-      setWorkoutError(
-        "We couldn't load your workout right now. Please try again."
-      );
-    } finally {
-      setWorkoutLoading(false);
+  async function loadExerciseLibrary() {
+    const { data, error } = await supabase
+      .from("exercises")
+      .select(
+        "id, name, category, equipment, difficulty, instructions, video_url, muscle_group"
+      )
+      .eq("is_active", true)
+      .order("name", {
+        ascending: true,
+      });
+
+    if (error) {
+      throw error;
     }
+
+    setLibraryExercises(data || []);
+  }
+
+  async function loadNutrition(userId) {
+    const { data, error } = await supabase
+      .from("nutrition_plans")
+      .select(
+        "id, calorie_target, protein_grams, carb_grams, fat_grams, water_ounces, nutrition_goal, meal_guidance, coach_notes, updated_at"
+      )
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    setNutritionPlan(data || null);
+  }
+
+  async function loadCorrectiveRoutine(userId) {
+    const {
+      data: assignment,
+      error: assignmentError,
+    } = await supabase
+      .from("member_corrective_routines")
+      .select(
+        "id, routine_id, coach_notes, assigned_at"
+      )
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .order("assigned_at", {
+        ascending: false,
+      })
+      .limit(1)
+      .maybeSingle();
+
+    if (assignmentError) {
+      throw assignmentError;
+    }
+
+    if (!assignment?.routine_id) {
+      setCorrectiveRoutine(null);
+      setCorrectiveExercises([]);
+      return;
+    }
+
+    const {
+      data: routineData,
+      error: routineError,
+    } = await supabase
+      .from("corrective_routines")
+      .select(
+        "id, name, focus_area, description, days_per_week, session_minutes"
+      )
+      .eq("id", assignment.routine_id)
+      .single();
+
+    if (routineError) {
+      throw routineError;
+    }
+
+    setCorrectiveRoutine({
+      ...routineData,
+      coach_notes:
+        assignment.coach_notes,
+    });
+
+    const {
+      data: routineRows,
+      error: routineRowsError,
+    } = await supabase
+      .from("corrective_routine_exercises")
+      .select(
+        "id, exercise_id, exercise_order, sets, reps, duration_seconds, rest_seconds, notes"
+      )
+      .eq(
+        "routine_id",
+        assignment.routine_id
+      )
+      .order("exercise_order", {
+        ascending: true,
+      });
+
+    if (routineRowsError) {
+      throw routineRowsError;
+    }
+
+    if (!routineRows?.length) {
+      setCorrectiveExercises([]);
+      return;
+    }
+
+    const exerciseIds = [
+      ...new Set(
+        routineRows.map(
+          (row) => row.exercise_id
+        )
+      ),
+    ];
+
+    const {
+      data: exerciseRows,
+      error: exerciseError,
+    } = await supabase
+      .from("exercises")
+      .select(
+        "id, name, category, equipment, difficulty, instructions, video_url, muscle_group"
+      )
+      .in("id", exerciseIds);
+
+    if (exerciseError) {
+      throw exerciseError;
+    }
+
+    const exerciseMap = new Map(
+      (exerciseRows || []).map((exercise) => [
+        exercise.id,
+        exercise,
+      ])
+    );
+
+    const mergedExercises =
+      routineRows
+        .map((row) => {
+          const exercise = exerciseMap.get(
+            row.exercise_id
+          );
+
+          if (!exercise) {
+            return null;
+          }
+
+          return {
+            ...exercise,
+
+            corrective_exercise_id:
+              row.id,
+
+            exercise_order:
+              row.exercise_order,
+
+            sets: row.sets,
+
+            reps: row.reps,
+
+            duration_seconds:
+              row.duration_seconds,
+
+            rest_seconds:
+              row.rest_seconds,
+
+            notes: row.notes,
+          };
+        })
+        .filter(Boolean);
+
+    setCorrectiveExercises(mergedExercises);
+  }
+
+  async function loadWeeklyCompletions(userId) {
+    const start = getStartOfWeek();
+
+    const { data, error } = await supabase
+      .from("workout_completions")
+      .select(
+        "id, workout_day, completed_at"
+      )
+      .eq("user_id", userId)
+      .gte(
+        "completed_at",
+        start.toISOString()
+      );
+
+    if (error) {
+      throw error;
+    }
+
+    setWeeklyCompleted(
+      (data || []).length
+    );
+  }
+
+  async function loadLatestProgress(userId) {
+    const { data, error } = await supabase
+      .from("progress_entries")
+      .select(
+        "id, weight_lbs, recorded_at"
+      )
+      .eq("user_id", userId)
+      .order("recorded_at", {
+        ascending: false,
+      })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    setLatestWeight(
+      data?.weight_lbs ?? null
+    );
+  }
+
+  async function loadLatestCheckIn(userId) {
+    const { data, error } = await supabase
+      .from("weekly_checkins")
+      .select(
+        "id, energy_level, sleep_quality, stress_level, workouts_completed, nutrition_adherence, current_weight, wins, challenges, questions, coach_response, submitted_at"
+      )
+      .eq("user_id", userId)
+      .order("submitted_at", {
+        ascending: false,
+      })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    setLatestCheckIn(data || null);
+  }
+
+  async function handleWorkoutCompletion() {
+    if (!user?.id) return;
+
+    await loadWeeklyCompletions(user.id);
   }
 
   async function handleLogout() {
     await supabase.auth.signOut();
+
     router.replace("/login");
-  }
-
-  function formatText(value) {
-    if (!value) return "";
-
-    return value
-      .replaceAll("_", " ")
-      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    router.refresh();
   }
 
   if (loading) {
     return (
       <main style={styles.loadingPage}>
-        <div style={styles.loadingBox}>
-          <div style={styles.goldLabel}>GET CHA RIGHT FITNESS</div>
-
-          <h1 style={styles.loadingTitle}>
-            CHECKING MEMBERSHIP...
-          </h1>
-
-          <p style={styles.muted}>
-            Loading your coaching portal.
-          </p>
+        <div style={styles.loadingLogo}>
+          GCR
         </div>
+
+        <h1 style={styles.loadingTitle}>
+          GET CHA RIGHT
+        </h1>
+
+        <p style={styles.loadingText}>
+          Loading your coaching portal...
+        </p>
+      </main>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <main style={styles.loadingPage}>
+        <div style={styles.loadingLogo}>
+          GCR
+        </div>
+
+        <h1 style={styles.loadingTitle}>
+          SOMETHING WENT WRONG
+        </h1>
+
+        <p style={styles.loadingText}>
+          {loadError}
+        </p>
+
+        <button
+          type="button"
+          onClick={initializePortal}
+          style={styles.retryButton}
+        >
+          TRY AGAIN
+        </button>
       </main>
     );
   }
@@ -235,750 +585,311 @@ export default function MembersPage() {
   return (
     <main style={styles.page}>
       <header style={styles.header}>
-        <div>
-          <div style={styles.goldLabel}>
-            GET CHA RIGHT FITNESS
+        <button
+          type="button"
+          onClick={() =>
+            setActiveTab("dashboard")
+          }
+          style={styles.brandButton}
+        >
+          <div style={styles.logo}>
+            GCR
           </div>
 
-          <h1 style={styles.logo}>MEMBER PORTAL</h1>
-        </div>
+          <div>
+            <strong style={styles.brand}>
+              GET CHA RIGHT
+            </strong>
 
-        <button
-          onClick={handleLogout}
-          style={styles.logoutButton}
-        >
-          LOG OUT
+            <span style={styles.brandSub}>
+              MEMBER PORTAL
+            </span>
+          </div>
         </button>
+
+        <div style={styles.headerActions}>
+          {profile?.role &&
+            ["coach", "admin"].includes(
+              profile.role
+            ) && (
+              <button
+                type="button"
+                onClick={() =>
+                  router.push("/coach")
+                }
+                style={styles.coachButton}
+              >
+                COACH DASHBOARD
+              </button>
+            )}
+
+          <a
+            href={CALENDLY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={styles.bookButton}
+          >
+            BOOK WITH QUE
+          </a>
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            style={styles.logoutButton}
+          >
+            LOG OUT
+          </button>
+        </div>
       </header>
 
-      <nav style={styles.nav}>
-        <NavButton
-          label="Dashboard"
-          tab="dashboard"
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-        />
+      <div style={styles.portal}>
+        <aside style={styles.sidebar}>
+          <div style={styles.profileCard}>
+            <div style={styles.avatar}>
+              {getInitials(
+                profile?.full_name ||
+                  profile?.email ||
+                  "Member"
+              )}
+            </div>
 
-        <NavButton
-          label="My Workouts"
-          tab="workouts"
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-        />
+            <div>
+              <strong style={styles.memberName}>
+                {profile?.full_name ||
+                  "Get Cha Right Member"}
+              </strong>
 
-        <NavButton
-          label="Nutrition"
-          tab="nutrition"
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-        />
+              <span style={styles.memberStatus}>
+                ACTIVE MEMBER
+              </span>
+            </div>
+          </div>
 
-        <NavButton
-          label="Progress"
-          tab="progress"
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-        />
+          <nav style={styles.nav}>
+            <NavButton
+              label="Dashboard"
+              active={
+                activeTab === "dashboard"
+              }
+              onClick={() =>
+                setActiveTab("dashboard")
+              }
+            />
 
-        <NavButton
-          label="Check-In"
-          tab="checkin"
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-        />
+            <NavButton
+              label="My Workouts"
+              active={
+                activeTab === "workouts"
+              }
+              onClick={() =>
+                setActiveTab("workouts")
+              }
+            />
 
-        <NavButton
-          label="Exercise Library"
-          tab="library"
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-        />
-      </nav>
+            <NavButton
+              label="Corrective & Mobility"
+              active={
+                activeTab === "corrective"
+              }
+              onClick={() =>
+                setActiveTab("corrective")
+              }
+            />
 
-      <section style={styles.content}>
-        {activeTab === "dashboard" && (
-          <Dashboard
-            program={program}
-            exercises={exercises}
-            setActiveTab={setActiveTab}
-          />
-        )}
+            <NavButton
+              label="Nutrition"
+              active={
+                activeTab === "nutrition"
+              }
+              onClick={() =>
+                setActiveTab("nutrition")
+              }
+            />
 
-        {activeTab === "workouts" && (
-          <Workouts
-            program={program}
-            exercises={exercises}
-            loading={workoutLoading}
-            error={workoutError}
-            formatText={formatText}
-          />
-        )}
+            <NavButton
+              label="Progress"
+              active={
+                activeTab === "progress"
+              }
+              onClick={() =>
+                setActiveTab("progress")
+              }
+            />
 
-        {activeTab === "nutrition" && <Nutrition />}
+            <NavButton
+              label="Check-In"
+              active={
+                activeTab === "checkin"
+              }
+              onClick={() =>
+                setActiveTab("checkin")
+              }
+            />
 
-        {activeTab === "progress" && <Progress />}
+            <NavButton
+              label="Exercise Library"
+              active={
+                activeTab === "library"
+              }
+              onClick={() =>
+                setActiveTab("library")
+              }
+            />
+          </nav>
 
-        {activeTab === "checkin" && <CheckIn />}
+          <div style={styles.sidebarBottom}>
+            <p style={styles.sidebarText}>
+              Need help with your plan?
+            </p>
 
-        {activeTab === "library" && (
-          <ExerciseLibrary
-            exercises={exercises}
-            formatText={formatText}
-          />
-        )}
-      </section>
+            <a
+              href={CALENDLY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={styles.sidebarBookButton}
+            >
+              BOOK WITH QUE
+            </a>
+          </div>
+        </aside>
+
+        <section style={styles.content}>
+          {activeTab === "dashboard" && (
+            <Dashboard
+              program={program}
+              exercises={workoutExercises}
+              weeklyCompleted={
+                weeklyCompleted
+              }
+              latestWeight={latestWeight}
+              nutritionPlan={nutritionPlan}
+              latestCheckIn={latestCheckIn}
+              hasCorrectiveRoutine={
+                Boolean(correctiveRoutine)
+              }
+              setActiveTab={setActiveTab}
+            />
+          )}
+
+          {activeTab === "workouts" && (
+            <Workouts
+              user={user}
+              program={program}
+              exercises={
+                workoutExercises
+              }
+              onCompletionChange={
+                handleWorkoutCompletion
+              }
+            />
+          )}
+
+          {activeTab === "corrective" && (
+            <CorrectiveMobility
+              routine={
+                correctiveRoutine
+              }
+              exercises={
+                correctiveExercises
+              }
+            />
+          )}
+
+          {activeTab === "nutrition" && (
+            <Nutrition
+              nutritionPlan={
+                nutritionPlan
+              }
+            />
+          )}
+
+          {activeTab === "progress" && (
+            <Progress user={user} />
+          )}
+
+          {activeTab === "checkin" && (
+            <CheckIn user={user} />
+          )}
+
+          {activeTab === "library" && (
+            <ExerciseLibrary
+              exercises={
+                libraryExercises
+              }
+            />
+          )}
+        </section>
+      </div>
     </main>
   );
 }
 
 function NavButton({
   label,
-  tab,
-  activeTab,
-  setActiveTab,
+  active,
+  onClick,
 }) {
   return (
     <button
-      onClick={() => setActiveTab(tab)}
-      style={
-        activeTab === tab
-          ? styles.activeNavButton
-          : styles.navButton
-      }
+      type="button"
+      onClick={onClick}
+      style={{
+        ...styles.navButton,
+        ...(active
+          ? styles.navButtonActive
+          : {}),
+      }}
     >
+      <span
+        style={{
+          ...styles.navIndicator,
+          ...(active
+            ? styles.navIndicatorActive
+            : {}),
+        }}
+      />
+
       {label}
     </button>
   );
 }
 
-function Dashboard({
-  program,
-  exercises,
-  setActiveTab,
-}) {
-  return (
-    <>
-      <div style={styles.heroCard}>
-        <div style={styles.goldLabel}>
-          WELCOME BACK
-        </div>
+function getInitials(value) {
+  if (!value) return "GCR";
 
-        <h2 style={styles.heroTitle}>
-          YOUR PLAN. YOUR PROGRESS.
-        </h2>
+  const parts = value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
 
-        <p style={styles.heroText}>
-          Stay consistent, complete your workouts, and keep
-          building.
-        </p>
-      </div>
-
-      <div style={styles.grid}>
-        <div style={styles.card}>
-          <div style={styles.cardLabel}>
-            MY WORKOUT PLAN
-          </div>
-
-          <h3 style={styles.cardTitle}>
-            {program
-              ? program.name
-              : "Your Training Plan"}
-          </h3>
-
-          <p style={styles.cardText}>
-            {program?.description ||
-              "Your personalized training program will appear here."}
-          </p>
-
-          {program && (
-            <div style={styles.miniStats}>
-              <span>
-                {program.days_per_week} Days / Week
-              </span>
-
-              <span>
-                {program.session_minutes} Min
-              </span>
-
-              <span>
-                {exercises.length} Exercises
-              </span>
-            </div>
-          )}
-
-          <button
-            onClick={() => setActiveTab("workouts")}
-            style={styles.goldButton}
-          >
-            VIEW MY WORKOUT
-          </button>
-        </div>
-
-        <div style={styles.card}>
-          <div style={styles.cardLabel}>
-            NUTRITION
-          </div>
-
-          <h3 style={styles.cardTitle}>
-            Nutrition Plan
-          </h3>
-
-          <p style={styles.cardText}>
-            View your nutrition targets, meal ideas, and
-            practical guidance.
-          </p>
-
-          <button
-            onClick={() => setActiveTab("nutrition")}
-            style={styles.outlineButton}
-          >
-            VIEW NUTRITION
-          </button>
-        </div>
-
-        <div style={styles.card}>
-          <div style={styles.cardLabel}>
-            PROGRESS
-          </div>
-
-          <h3 style={styles.cardTitle}>
-            Track Your Results
-          </h3>
-
-          <p style={styles.cardText}>
-            Keep track of your body weight, measurements,
-            workouts, and progress.
-          </p>
-
-          <button
-            onClick={() => setActiveTab("progress")}
-            style={styles.outlineButton}
-          >
-            VIEW PROGRESS
-          </button>
-        </div>
-
-        <div style={styles.card}>
-          <div style={styles.cardLabel}>
-            WEEKLY CHECK-IN
-          </div>
-
-          <h3 style={styles.cardTitle}>
-            Check In With Que
-          </h3>
-
-          <p style={styles.cardText}>
-            Let Que know how training is going so your coaching
-            can stay on track.
-          </p>
-
-          <button
-            onClick={() => setActiveTab("checkin")}
-            style={styles.outlineButton}
-          >
-            START CHECK-IN
-          </button>
-        </div>
-
-        <div style={styles.card}>
-          <div style={styles.cardLabel}>
-            COACHING
-          </div>
-
-          <h3 style={styles.cardTitle}>
-            Book With Que
-          </h3>
-
-          <p style={styles.cardText}>
-            Need help with your plan? Schedule your coaching
-            session.
-          </p>
-
-          <a
-            href="https://calendly.com/getcharighttransformations22/free-15-minute-assessment"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={styles.linkButton}
-          >
-            BOOK WITH QUE
-          </a>
-        </div>
-
-        <div style={styles.card}>
-          <div style={styles.cardLabel}>
-            EXERCISE LIBRARY
-          </div>
-
-          <h3 style={styles.cardTitle}>
-            Learn The Movements
-          </h3>
-
-          <p style={styles.cardText}>
-            Review exercise instructions and movement details.
-          </p>
-
-          <button
-            onClick={() => setActiveTab("library")}
-            style={styles.outlineButton}
-          >
-            OPEN LIBRARY
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
-
-function Workouts({
-  program,
-  exercises,
-  loading,
-  error,
-  formatText,
-}) {
-  if (loading) {
-    return (
-      <div style={styles.section}>
-        <div style={styles.goldLabel}>
-          MY WORKOUTS
-        </div>
-
-        <h2 style={styles.sectionTitle}>
-          LOADING YOUR PLAN...
-        </h2>
-      </div>
-    );
+  if (parts.length === 1) {
+    return parts[0]
+      .slice(0, 2)
+      .toUpperCase();
   }
 
-  if (error) {
-    return (
-      <div style={styles.section}>
-        <div style={styles.goldLabel}>
-          MY WORKOUTS
-        </div>
-
-        <h2 style={styles.sectionTitle}>
-          YOUR TRAINING PLAN
-        </h2>
-
-        <div style={styles.errorBox}>
-          {error}
-        </div>
-      </div>
-    );
-  }
-
-  if (!program) {
-    return (
-      <div style={styles.section}>
-        <div style={styles.goldLabel}>
-          MY WORKOUTS
-        </div>
-
-        <h2 style={styles.sectionTitle}>
-          NO PROGRAM ASSIGNED
-        </h2>
-
-        <p style={styles.muted}>
-          Complete your onboarding assessment to receive your
-          starting program.
-        </p>
-      </div>
-    );
-  }
-
-  const workoutDays = [
-    ...new Set(
-      exercises
-        .map((exercise) => exercise.workout_day)
-        .filter((day) => day !== null && day !== undefined)
-    ),
-  ].sort((a, b) => a - b);
-
-  return (
-    <div style={styles.section}>
-      <div style={styles.goldLabel}>
-        MY WORKOUTS
-      </div>
-
-      <h2 style={styles.sectionTitle}>
-        {program.name}
-      </h2>
-
-      <p style={styles.sectionDescription}>
-        {program.description}
-      </p>
-
-      <div style={styles.programStats}>
-        <div style={styles.statCard}>
-          <span style={styles.statNumber}>
-            {program.days_per_week || "-"}
-          </span>
-
-          <span style={styles.statLabel}>
-            DAYS / WEEK
-          </span>
-        </div>
-
-        <div style={styles.statCard}>
-          <span style={styles.statNumber}>
-            {program.session_minutes || "-"}
-          </span>
-
-          <span style={styles.statLabel}>
-            MINUTES
-          </span>
-        </div>
-
-        <div style={styles.statCard}>
-          <span style={styles.statNumber}>
-            {exercises.length}
-          </span>
-
-          <span style={styles.statLabel}>
-            EXERCISES
-          </span>
-        </div>
-      </div>
-
-      <div style={styles.programDetails}>
-        <span>
-          <strong>Goal:</strong>{" "}
-          {formatText(program.goal)}
-        </span>
-
-        <span>
-          <strong>Level:</strong>{" "}
-          {formatText(program.experience_level)}
-        </span>
-
-        <span>
-          <strong>Equipment:</strong>{" "}
-          {formatText(program.equipment)}
-        </span>
-
-        <span>
-          <strong>Location:</strong>{" "}
-          {formatText(program.location)}
-        </span>
-      </div>
-
-      {workoutDays.length === 0 ? (
-        <div style={styles.card}>
-          <p style={styles.cardText}>
-            Your workout schedule has not been configured yet.
-          </p>
-        </div>
-      ) : (
-        workoutDays.map((day) => {
-          const dayExercises = exercises.filter(
-            (exercise) =>
-              exercise.workout_day === day
-          );
-
-          return (
-            <div
-              key={day}
-              style={styles.workoutDay}
-            >
-              <div style={styles.dayHeader}>
-                <div>
-                  <div style={styles.goldLabel}>
-                    TRAINING DAY
-                  </div>
-
-                  <h3 style={styles.dayTitle}>
-                    DAY {day}
-                  </h3>
-                </div>
-
-                <div style={styles.dayExerciseCount}>
-                  {dayExercises.length} EXERCISES
-                </div>
-              </div>
-
-              <div style={styles.exerciseList}>
-                {dayExercises.map(
-                  (exercise, index) => (
-                    <ExerciseCard
-                      key={exercise.id}
-                      exercise={exercise}
-                      number={index + 1}
-                      formatText={formatText}
-                    />
-                  )
-                )}
-              </div>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
+  return `${parts[0][0]}${
+    parts[parts.length - 1][0]
+  }`.toUpperCase();
 }
 
-function ExerciseCard({
-  exercise,
-  number,
-  formatText,
-}) {
-  return (
-    <div style={styles.exerciseCard}>
-      <div style={styles.exerciseNumber}>
-        {number}
-      </div>
+function getStartOfWeek() {
+  const now = new Date();
 
-      <div style={styles.exerciseContent}>
-        <h3 style={styles.exerciseTitle}>
-          {exercise.name}
-        </h3>
+  const day = now.getDay();
 
-        <div style={styles.prescription}>
-          <div style={styles.prescriptionItem}>
-            <span style={styles.prescriptionValue}>
-              {exercise.sets || "-"}
-            </span>
+  const difference =
+    day === 0 ? -6 : 1 - day;
 
-            <span style={styles.prescriptionLabel}>
-              SETS
-            </span>
-          </div>
+  const monday = new Date(now);
 
-          <div style={styles.prescriptionItem}>
-            <span style={styles.prescriptionValue}>
-              {exercise.reps || "-"}
-            </span>
-
-            <span style={styles.prescriptionLabel}>
-              REPS
-            </span>
-          </div>
-
-          <div style={styles.prescriptionItem}>
-            <span style={styles.prescriptionValue}>
-              {exercise.rest_seconds
-                ? `${exercise.rest_seconds}s`
-                : "-"}
-            </span>
-
-            <span style={styles.prescriptionLabel}>
-              REST
-            </span>
-          </div>
-        </div>
-
-        <div style={styles.exerciseTags}>
-          {exercise.muscle_group && (
-            <span style={styles.tag}>
-              {formatText(
-                exercise.muscle_group
-              )}
-            </span>
-          )}
-
-          {exercise.equipment && (
-            <span style={styles.tag}>
-              {formatText(exercise.equipment)}
-            </span>
-          )}
-
-          {exercise.difficulty && (
-            <span style={styles.tag}>
-              {formatText(exercise.difficulty)}
-            </span>
-          )}
-        </div>
-
-        {exercise.instructions && (
-          <div style={styles.instructionBox}>
-            <strong style={styles.instructionTitle}>
-              HOW TO
-            </strong>
-
-            <p style={styles.exerciseInstructions}>
-              {exercise.instructions}
-            </p>
-          </div>
-        )}
-
-        {exercise.notes && (
-          <div style={styles.coachNote}>
-            <strong style={styles.coachNoteTitle}>
-              QUE'S COACHING NOTE
-            </strong>
-
-            <p style={styles.coachNoteText}>
-              {exercise.notes}
-            </p>
-          </div>
-        )}
-
-        {exercise.video_url && (
-          <a
-            href={exercise.video_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={styles.videoLink}
-          >
-            WATCH EXERCISE VIDEO
-          </a>
-        )}
-      </div>
-    </div>
+  monday.setDate(
+    now.getDate() + difference
   );
-}
 
-function Nutrition() {
-  return (
-    <div style={styles.section}>
-      <div style={styles.goldLabel}>
-        NUTRITION
-      </div>
+  monday.setHours(0, 0, 0, 0);
 
-      <h2 style={styles.sectionTitle}>
-        YOUR NUTRITION PLAN
-      </h2>
-
-      <div style={styles.card}>
-        <h3 style={styles.cardTitle}>
-          Coming Next
-        </h3>
-
-        <p style={styles.cardText}>
-          Your nutrition targets, meal ideas, grocery guidance,
-          and coaching recommendations will appear here.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function Progress() {
-  return (
-    <div style={styles.section}>
-      <div style={styles.goldLabel}>
-        PROGRESS
-      </div>
-
-      <h2 style={styles.sectionTitle}>
-        TRACK YOUR RESULTS
-      </h2>
-
-      <div style={styles.card}>
-        <h3 style={styles.cardTitle}>
-          Progress Tracking
-        </h3>
-
-        <p style={styles.cardText}>
-          Weight, measurements, workout progress, and other
-          check-in data will appear here.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function CheckIn() {
-  return (
-    <div style={styles.section}>
-      <div style={styles.goldLabel}>
-        WEEKLY CHECK-IN
-      </div>
-
-      <h2 style={styles.sectionTitle}>
-        CHECK IN WITH QUE
-      </h2>
-
-      <div style={styles.card}>
-        <h3 style={styles.cardTitle}>
-          Weekly Coaching Check-In
-        </h3>
-
-        <p style={styles.cardText}>
-          Your weekly check-in form will be added here so Que can
-          review your progress and adjust your coaching.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function ExerciseLibrary({
-  exercises,
-  formatText,
-}) {
-  return (
-    <div style={styles.section}>
-      <div style={styles.goldLabel}>
-        EXERCISE LIBRARY
-      </div>
-
-      <h2 style={styles.sectionTitle}>
-        YOUR EXERCISES
-      </h2>
-
-      <p style={styles.sectionDescription}>
-        Exercises currently included in your assigned training
-        plan.
-      </p>
-
-      {exercises.length === 0 ? (
-        <div style={styles.card}>
-          <p style={styles.cardText}>
-            Your exercise library will populate when a workout
-            program is assigned.
-          </p>
-        </div>
-      ) : (
-        <div style={styles.exerciseList}>
-          {exercises.map((exercise) => (
-            <div
-              key={exercise.id}
-              style={styles.exerciseCard}
-            >
-              <div style={styles.exerciseContent}>
-                <h3 style={styles.exerciseTitle}>
-                  {exercise.name}
-                </h3>
-
-                <div style={styles.exerciseTags}>
-                  {exercise.category && (
-                    <span style={styles.tag}>
-                      {formatText(
-                        exercise.category
-                      )}
-                    </span>
-                  )}
-
-                  {exercise.muscle_group && (
-                    <span style={styles.tag}>
-                      {formatText(
-                        exercise.muscle_group
-                      )}
-                    </span>
-                  )}
-
-                  {exercise.equipment && (
-                    <span style={styles.tag}>
-                      {formatText(
-                        exercise.equipment
-                      )}
-                    </span>
-                  )}
-                </div>
-
-                {exercise.instructions && (
-                  <p style={styles.exerciseInstructions}>
-                    {exercise.instructions}
-                  </p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  return monday;
 }
 
 const styles = {
@@ -986,7 +897,6 @@ const styles = {
     minHeight: "100vh",
     background: "#050505",
     color: "#FFFFFF",
-    fontFamily: "Arial, sans-serif",
   },
 
   loadingPage: {
@@ -994,289 +904,168 @@ const styles = {
     background: "#050505",
     color: "#FFFFFF",
     display: "flex",
+    flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
-    padding: "20px",
-    fontFamily: "Arial, sans-serif",
-  },
-
-  loadingBox: {
+    padding: "25px",
     textAlign: "center",
   },
 
+  loadingLogo: {
+    width: "70px",
+    height: "70px",
+    borderRadius: "16px",
+    background: "#F4C20D",
+    color: "#050505",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    fontWeight: "900",
+    fontSize: "20px",
+    marginBottom: "18px",
+  },
+
   loadingTitle: {
+    margin: 0,
     fontSize: "30px",
-    marginTop: "10px",
+  },
+
+  loadingText: {
+    color: "#BDBDBD",
+  },
+
+  retryButton: {
+    marginTop: "15px",
+    background: "#F4C20D",
+    color: "#050505",
+    border: "none",
+    borderRadius: "9px",
+    padding: "14px 20px",
+    fontWeight: "900",
+    cursor: "pointer",
   },
 
   header: {
-    padding: "24px clamp(20px, 5vw, 70px)",
-    borderBottom: "1px solid #2A2A2A",
+    minHeight: "72px",
+    borderBottom:
+      "1px solid #2A2A2A",
+    background: "#0B0B0B",
     display: "flex",
-    justifyContent: "space-between",
     alignItems: "center",
-    gap: "20px",
+    justifyContent:
+      "space-between",
+    gap: "15px",
+    padding: "12px 24px",
+    position: "sticky",
+    top: 0,
+    zIndex: 20,
     flexWrap: "wrap",
   },
 
-  goldLabel: {
-    color: "#F4C20D",
-    fontWeight: "900",
-    letterSpacing: "2px",
-    fontSize: "12px",
+  brandButton: {
+    border: "none",
+    background: "transparent",
+    padding: 0,
+    display: "flex",
+    alignItems: "center",
+    gap: "11px",
+    cursor: "pointer",
+    textAlign: "left",
   },
 
   logo: {
-    margin: "5px 0 0",
-    fontSize: "24px",
+    width: "42px",
+    height: "42px",
+    borderRadius: "10px",
+    background: "#F4C20D",
+    color: "#050505",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "11px",
+    fontWeight: "900",
+  },
+
+  brand: {
+    color: "#FFFFFF",
+    display: "block",
+    fontSize: "14px",
+    letterSpacing: "1px",
+  },
+
+  brandSub: {
+    color: "#777777",
+    display: "block",
+    fontSize: "9px",
+    marginTop: "2px",
+    letterSpacing: "1px",
+  },
+
+  headerActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    flexWrap: "wrap",
+  },
+
+  bookButton: {
+    background: "#F4C20D",
+    color: "#050505",
+    textDecoration: "none",
+    borderRadius: "8px",
+    padding: "10px 13px",
+    fontSize: "10px",
+    fontWeight: "900",
+  },
+
+  coachButton: {
+    background: "#FFFFFF",
+    color: "#050505",
+    border: "none",
+    borderRadius: "8px",
+    padding: "10px 13px",
+    fontSize: "10px",
+    fontWeight: "900",
+    cursor: "pointer",
   },
 
   logoutButton: {
     background: "transparent",
-    color: "#FFFFFF",
-    border: "1px solid #F4C20D",
+    color: "#BDBDBD",
+    border: "1px solid #2A2A2A",
     borderRadius: "8px",
-    padding: "11px 18px",
-    fontWeight: "800",
+    padding: "10px 13px",
+    fontSize: "10px",
+    fontWeight: "900",
     cursor: "pointer",
   },
 
-  nav: {
-    padding: "15px clamp(20px, 5vw, 70px)",
+  portal: {
     display: "flex",
-    gap: "10px",
-    overflowX: "auto",
-    borderBottom: "1px solid #2A2A2A",
-  },
-
-  navButton: {
-    background: "#111111",
-    color: "#BDBDBD",
-    border: "1px solid #2A2A2A",
-    padding: "11px 16px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-    fontWeight: "700",
-  },
-
-  activeNavButton: {
-    background: "#F4C20D",
-    color: "#050505",
-    border: "1px solid #F4C20D",
-    padding: "11px 16px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-    fontWeight: "900",
-  },
-
-  content: {
-    maxWidth: "1200px",
-    margin: "0 auto",
-    padding: "40px 20px 80px",
-  },
-
-  heroCard: {
-    background: "#111111",
-    border: "1px solid #2A2A2A",
-    borderRadius: "18px",
-    padding: "40px",
-    marginBottom: "25px",
-  },
-
-  heroTitle: {
-    fontSize: "clamp(32px, 6vw, 58px)",
-    lineHeight: "1",
-    margin: "10px 0 15px",
-  },
-
-  heroText: {
-    color: "#BDBDBD",
-    fontSize: "18px",
-    maxWidth: "700px",
-    lineHeight: "1.6",
-  },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: "20px",
-  },
-
-  card: {
-    background: "#111111",
-    border: "1px solid #2A2A2A",
-    borderRadius: "14px",
-    padding: "25px",
-  },
-
-  cardLabel: {
-    color: "#F4C20D",
-    fontSize: "11px",
-    fontWeight: "900",
-    letterSpacing: "1.5px",
-    marginBottom: "10px",
-  },
-
-  cardTitle: {
-    fontSize: "23px",
-    margin: "0 0 12px",
-  },
-
-  cardText: {
-    color: "#BDBDBD",
-    lineHeight: "1.6",
-    marginBottom: "20px",
-  },
-
-  miniStats: {
-    display: "flex",
-    gap: "12px",
-    flexWrap: "wrap",
-    marginBottom: "20px",
-    color: "#FFFFFF",
-    fontSize: "13px",
-  },
-
-  goldButton: {
     width: "100%",
-    background: "#F4C20D",
-    color: "#050505",
-    border: "none",
-    borderRadius: "8px",
-    padding: "14px",
-    fontWeight: "900",
-    cursor: "pointer",
+    minHeight: "calc(100vh - 72px)",
   },
 
-  outlineButton: {
-    width: "100%",
-    background: "transparent",
-    color: "#FFFFFF",
-    border: "1px solid #F4C20D",
-    borderRadius: "8px",
-    padding: "14px",
-    fontWeight: "800",
-    cursor: "pointer",
-  },
-
-  linkButton: {
-    display: "block",
-    textAlign: "center",
-    background: "transparent",
-    color: "#FFFFFF",
-    border: "1px solid #F4C20D",
-    borderRadius: "8px",
-    padding: "14px",
-    fontWeight: "800",
-    textDecoration: "none",
-  },
-
-  section: {
-    width: "100%",
-  },
-
-  sectionTitle: {
-    fontSize: "clamp(32px, 6vw, 52px)",
-    margin: "8px 0 12px",
-  },
-
-  sectionDescription: {
-    color: "#BDBDBD",
-    lineHeight: "1.6",
-    maxWidth: "750px",
-    marginBottom: "25px",
-  },
-
-  programStats: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(auto-fit, minmax(150px, 1fr))",
-    gap: "12px",
-    margin: "25px 0",
-  },
-
-  statCard: {
-    background: "#111111",
-    border: "1px solid #2A2A2A",
-    borderRadius: "12px",
-    padding: "20px",
+  sidebar: {
+    width: "245px",
+    minWidth: "245px",
+    borderRight:
+      "1px solid #2A2A2A",
+    background: "#0B0B0B",
+    padding: "22px 14px",
     display: "flex",
     flexDirection: "column",
   },
 
-  statNumber: {
-    color: "#F4C20D",
-    fontSize: "32px",
-    fontWeight: "900",
-  },
-
-  statLabel: {
-    color: "#BDBDBD",
-    fontSize: "11px",
-    letterSpacing: "1px",
-    fontWeight: "800",
-    marginTop: "4px",
-  },
-
-  programDetails: {
+  profileCard: {
     display: "flex",
-    gap: "15px",
-    flexWrap: "wrap",
-    background: "#111111",
-    border: "1px solid #2A2A2A",
-    borderRadius: "12px",
-    padding: "18px",
-    marginBottom: "35px",
-    color: "#BDBDBD",
-  },
-
-  workoutDay: {
-    marginBottom: "45px",
-  },
-
-  dayHeader: {
-    display: "flex",
-    justifyContent: "space-between",
     alignItems: "center",
-    gap: "20px",
-    marginBottom: "15px",
-    borderBottom: "1px solid #2A2A2A",
-    paddingBottom: "12px",
+    gap: "11px",
+    padding: "10px",
+    marginBottom: "18px",
   },
 
-  dayTitle: {
-    fontSize: "32px",
-    margin: "4px 0 0",
-  },
-
-  dayExerciseCount: {
-    background: "#F4C20D",
-    color: "#050505",
-    padding: "8px 12px",
-    borderRadius: "20px",
-    fontSize: "11px",
-    fontWeight: "900",
-  },
-
-  exerciseList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "15px",
-  },
-
-  exerciseCard: {
-    display: "flex",
-    gap: "18px",
-    background: "#111111",
-    border: "1px solid #2A2A2A",
-    borderRadius: "14px",
-    padding: "22px",
-  },
-
-  exerciseNumber: {
+  avatar: {
     width: "42px",
     height: "42px",
     minWidth: "42px",
@@ -1287,118 +1076,92 @@ const styles = {
     justifyContent: "center",
     alignItems: "center",
     fontWeight: "900",
+    fontSize: "12px",
   },
 
-  exerciseContent: {
-    flex: 1,
+  memberName: {
+    color: "#FFFFFF",
+    display: "block",
+    fontSize: "13px",
   },
 
-  exerciseTitle: {
-    margin: "3px 0 14px",
-    fontSize: "23px",
-  },
-
-  prescription: {
-    display: "flex",
-    gap: "10px",
-    flexWrap: "wrap",
-    marginBottom: "15px",
-  },
-
-  prescriptionItem: {
-    background: "#050505",
-    border: "1px solid #2A2A2A",
-    borderRadius: "8px",
-    padding: "10px 16px",
-    minWidth: "80px",
-    display: "flex",
-    flexDirection: "column",
-  },
-
-  prescriptionValue: {
+  memberStatus: {
     color: "#F4C20D",
+    display: "block",
+    fontSize: "8px",
     fontWeight: "900",
-    fontSize: "18px",
-  },
-
-  prescriptionLabel: {
-    color: "#BDBDBD",
-    fontSize: "9px",
-    fontWeight: "800",
-    letterSpacing: "1px",
     marginTop: "3px",
   },
 
-  exerciseTags: {
+  nav: {
     display: "flex",
-    flexWrap: "wrap",
-    gap: "7px",
-    marginBottom: "12px",
+    flexDirection: "column",
+    gap: "5px",
   },
 
-  tag: {
-    background: "#2A2A2A",
+  navButton: {
+    position: "relative",
+    width: "100%",
+    background: "transparent",
+    color: "#999999",
+    border: "none",
+    borderRadius: "8px",
+    padding: "13px 13px 13px 18px",
+    textAlign: "left",
+    cursor: "pointer",
+    fontWeight: "800",
+    fontSize: "12px",
+  },
+
+  navButtonActive: {
+    background: "#151515",
     color: "#FFFFFF",
-    padding: "5px 9px",
-    borderRadius: "20px",
+  },
+
+  navIndicator: {
+    position: "absolute",
+    left: "6px",
+    top: "50%",
+    transform: "translateY(-50%)",
+    width: "3px",
+    height: "18px",
+    borderRadius: "5px",
+    background: "transparent",
+  },
+
+  navIndicatorActive: {
+    background: "#F4C20D",
+  },
+
+  sidebarBottom: {
+    marginTop: "auto",
+    borderTop:
+      "1px solid #2A2A2A",
+    padding: "18px 8px 0",
+  },
+
+  sidebarText: {
+    color: "#777777",
     fontSize: "11px",
-    fontWeight: "700",
   },
 
-  instructionBox: {
-    marginTop: "15px",
-  },
-
-  instructionTitle: {
-    color: "#FFFFFF",
-    fontSize: "11px",
-    letterSpacing: "1px",
-  },
-
-  exerciseInstructions: {
-    color: "#BDBDBD",
-    lineHeight: "1.6",
-    margin: "7px 0",
-  },
-
-  coachNote: {
-    background: "#050505",
-    borderLeft: "3px solid #F4C20D",
-    padding: "14px",
-    marginTop: "15px",
-  },
-
-  coachNoteTitle: {
-    color: "#F4C20D",
-    fontSize: "11px",
-    letterSpacing: "1px",
-  },
-
-  coachNoteText: {
-    color: "#BDBDBD",
-    lineHeight: "1.5",
-    margin: "6px 0 0",
-  },
-
-  videoLink: {
-    display: "inline-block",
-    marginTop: "15px",
-    color: "#F4C20D",
-    fontWeight: "900",
+  sidebarBookButton: {
+    display: "block",
+    textAlign: "center",
+    background: "#F4C20D",
+    color: "#050505",
+    borderRadius: "8px",
+    padding: "11px",
     textDecoration: "none",
+    fontWeight: "900",
+    fontSize: "10px",
   },
 
-  errorBox: {
-    background: "#111111",
-    border: "1px solid #2A2A2A",
-    padding: "20px",
-    borderRadius: "12px",
-    color: "#FFFFFF",
-    marginTop: "20px",
-  },
-
-  muted: {
-    color: "#BDBDBD",
-    lineHeight: "1.6",
+  content: {
+    flex: 1,
+    minWidth: 0,
+    padding:
+      "clamp(22px, 4vw, 48px)",
+    overflow: "hidden",
   },
 };

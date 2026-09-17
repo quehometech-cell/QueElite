@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
 export default function Workouts({
@@ -9,750 +9,779 @@ export default function Workouts({
   exercises = [],
   onCompletionChange,
 }) {
-  const [completions, setCompletions] = useState([]);
-  const [exerciseChecks, setExerciseChecks] = useState({});
-  const [savingDay, setSavingDay] = useState(null);
+  const [exerciseCompletions, setExerciseCompletions] = useState([]);
+  const [workoutCompletions, setWorkoutCompletions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [savingExerciseId, setSavingExerciseId] = useState(null);
+  const [finishingDay, setFinishingDay] = useState(null);
   const [message, setMessage] = useState("");
 
-  const workoutDays = useMemo(() => {
-    return [
-      ...new Set(
-        exercises
-          .map((exercise) => exercise.workout_day)
-          .filter(
-            (day) => day !== null && day !== undefined
-          )
-      ),
-    ].sort((a, b) => a - b);
-  }, [exercises]);
+  const groupedWorkouts = useMemo(() => {
+    const grouped = {};
 
-  useEffect(() => {
-    if (!user?.id || !program?.id) {
-      setLoading(false);
-      return;
-    }
+    exercises.forEach((item) => {
+      const day = Number(item.workout_day || 1);
 
-    loadCompletions();
-  }, [user?.id, program?.id]);
-
-  async function loadCompletions() {
-    setLoading(true);
-
-    const { data, error } = await supabase
-      .from("workout_completions")
-      .select("id, workout_day, completed_at")
-      .eq("user_id", user.id)
-      .eq("program_id", program.id)
-      .order("completed_at", { ascending: false });
-
-    if (error) {
-      console.error("Completion load error:", error);
-      setMessage("We couldn't load your workout history.");
-      setLoading(false);
-      return;
-    }
-
-    setCompletions(data || []);
-    setLoading(false);
-  }
-
-  function localDateString(value = new Date()) {
-    const date = new Date(value);
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(
-      2,
-      "0"
-    );
-    const day = String(date.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
-  }
-
-  function completedToday(workoutDay) {
-    const today = localDateString();
-
-    return completions.some(
-      (completion) =>
-        completion.workout_day === workoutDay &&
-        localDateString(completion.completed_at) === today
-    );
-  }
-
-  function exerciseKey(workoutDay, exerciseId) {
-    return `${workoutDay}-${exerciseId}`;
-  }
-
-  function toggleExercise(workoutDay, exerciseId) {
-    const key = exerciseKey(workoutDay, exerciseId);
-
-    setExerciseChecks((current) => ({
-      ...current,
-      [key]: !current[key],
-    }));
-  }
-
-  function dayExercisesCompleted(workoutDay) {
-    const dayExercises = exercises.filter(
-      (exercise) => exercise.workout_day === workoutDay
-    );
-
-    if (!dayExercises.length) return false;
-
-    return dayExercises.every(
-      (exercise) =>
-        exerciseChecks[
-          exerciseKey(workoutDay, exercise.id)
-        ]
-    );
-  }
-
-  async function finishWorkout(workoutDay) {
-    if (!user?.id || !program?.id) return;
-
-    if (completedToday(workoutDay)) return;
-
-    setSavingDay(workoutDay);
-    setMessage("");
-
-    const { data, error } = await supabase
-      .from("workout_completions")
-      .insert({
-        user_id: user.id,
-        program_id: program.id,
-        workout_day: workoutDay,
-      })
-      .select("id, workout_day, completed_at")
-      .single();
-
-    if (error) {
-      console.error("Workout completion error:", error);
-
-      if (error.code === "23505") {
-        await loadCompletions();
-        setMessage("This workout is already recorded today.");
-      } else {
-        setMessage(
-          "We couldn't save this workout. Please try again."
-        );
+      if (!grouped[day]) {
+        grouped[day] = [];
       }
 
-      setSavingDay(null);
+      grouped[day].push(item);
+    });
+
+    Object.keys(grouped).forEach((day) => {
+      grouped[day].sort(
+        (a, b) =>
+          Number(a.exercise_order || 0) -
+          Number(b.exercise_order || 0)
+      );
+    });
+
+    return grouped;
+  }, [exercises]);
+
+  const weekStart = useMemo(() => getStartOfWeekISO(), []);
+
+  const loadCompletions = useCallback(async () => {
+    if (!user?.id || !program?.id) {
+      setExerciseCompletions([]);
+      setWorkoutCompletions([]);
+      setLoading(false);
       return;
     }
 
-    const updated = [data, ...completions];
+    setLoading(true);
 
-    setCompletions(updated);
-    setSavingDay(null);
+    try {
+      const [exerciseResult, workoutResult] = await Promise.all([
+        supabase
+          .from("exercise_completions")
+          .select(
+            "id, exercise_id, workout_day, completed_at"
+          )
+          .eq("user_id", user.id)
+          .eq("program_id", program.id)
+          .gte("completed_at", weekStart),
 
-    setMessage(
-      `Day ${workoutDay} complete. Great work.`
+        supabase
+          .from("workout_completions")
+          .select(
+            "id, workout_day, completed_at"
+          )
+          .eq("user_id", user.id)
+          .eq("program_id", program.id)
+          .gte("completed_at", weekStart),
+      ]);
+
+      if (exerciseResult.error) {
+        throw exerciseResult.error;
+      }
+
+      if (workoutResult.error) {
+        throw workoutResult.error;
+      }
+
+      setExerciseCompletions(
+        exerciseResult.data || []
+      );
+
+      setWorkoutCompletions(
+        workoutResult.data || []
+      );
+    } catch (error) {
+      console.error(
+        "Workout completion load error:",
+        error
+      );
+
+      setMessage(
+        error?.message ||
+          "Unable to load workout progress."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id, program?.id, weekStart]);
+
+  useEffect(() => {
+    loadCompletions();
+  }, [loadCompletions]);
+
+  function isExerciseComplete(item) {
+    return exerciseCompletions.some(
+      (completion) =>
+        Number(completion.exercise_id) ===
+          Number(item.exercise_id) &&
+        Number(completion.workout_day) ===
+          Number(item.workout_day)
     );
+  }
 
-    if (onCompletionChange) {
-      onCompletionChange(updated);
+  function isWorkoutComplete(day) {
+    return workoutCompletions.some(
+      (completion) =>
+        Number(completion.workout_day) === Number(day)
+    );
+  }
+
+  function isDayReady(day) {
+    const dayExercises = groupedWorkouts[day] || [];
+
+    return (
+      dayExercises.length > 0 &&
+      dayExercises.every((item) =>
+        isExerciseComplete(item)
+      )
+    );
+  }
+
+  async function toggleExercise(item) {
+    if (!user?.id || !program?.id) return;
+
+    const exerciseId = Number(item.exercise_id);
+    const workoutDay = Number(item.workout_day || 1);
+
+    setSavingExerciseId(item.id);
+    setMessage("");
+
+    try {
+      const existing = exerciseCompletions.find(
+        (completion) =>
+          Number(completion.exercise_id) === exerciseId &&
+          Number(completion.workout_day) === workoutDay
+      );
+
+      if (existing) {
+        const { error } = await supabase
+          .from("exercise_completions")
+          .delete()
+          .eq("id", existing.id)
+          .eq("user_id", user.id);
+
+        if (error) {
+          throw error;
+        }
+
+        setExerciseCompletions((current) =>
+          current.filter(
+            (completion) =>
+              completion.id !== existing.id
+          )
+        );
+
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("exercise_completions")
+        .insert({
+          user_id: user.id,
+          program_id: program.id,
+          exercise_id: exerciseId,
+          workout_day: workoutDay,
+        })
+        .select(
+          "id, exercise_id, workout_day, completed_at"
+        )
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      setExerciseCompletions((current) => [
+        ...current,
+        data,
+      ]);
+    } catch (error) {
+      console.error(
+        "Exercise completion error:",
+        error
+      );
+
+      setMessage(
+        error?.message ||
+          "Unable to update exercise."
+      );
+    } finally {
+      setSavingExerciseId(null);
     }
   }
 
-  function formatText(value) {
-    if (!value) return "";
+  async function finishWorkout(day) {
+    if (!user?.id || !program?.id) return;
 
-    return value
-      .replaceAll("_", " ")
-      .replace(/\b\w/g, (letter) =>
-        letter.toUpperCase()
+    const workoutDay = Number(day);
+
+    if (isWorkoutComplete(workoutDay)) {
+      setMessage(
+        `Workout Day ${workoutDay} is already complete for this week.`
       );
+      return;
+    }
+
+    if (!isDayReady(workoutDay)) {
+      setMessage(
+        "Complete every exercise before finishing this workout."
+      );
+      return;
+    }
+
+    setFinishingDay(workoutDay);
+    setMessage("");
+
+    try {
+      const { data, error } = await supabase
+        .from("workout_completions")
+        .insert({
+          user_id: user.id,
+          program_id: program.id,
+          workout_day: workoutDay,
+        })
+        .select(
+          "id, workout_day, completed_at"
+        )
+        .single();
+
+      if (error) {
+        if (error.code === "23505") {
+          await loadCompletions();
+
+          setMessage(
+            `Workout Day ${workoutDay} is already complete for this week.`
+          );
+
+          return;
+        }
+
+        throw error;
+      }
+
+      setWorkoutCompletions((current) => [
+        ...current,
+        data,
+      ]);
+
+      setMessage(
+        `Workout Day ${workoutDay} completed. Great work.`
+      );
+
+      if (onCompletionChange) {
+        await onCompletionChange();
+      }
+    } catch (error) {
+      console.error(
+        "Workout completion error:",
+        error
+      );
+
+      setMessage(
+        error?.message ||
+          "Unable to complete workout."
+      );
+    } finally {
+      setFinishingDay(null);
+    }
   }
 
   if (!program) {
     return (
-      <section>
-        <p style={styles.goldLabel}>MY WORKOUTS</p>
+      <div style={styles.empty}>
+        <h2 style={styles.emptyTitle}>
+          No Program Assigned
+        </h2>
 
-        <h2 style={styles.title}>YOUR TRAINING PLAN</h2>
-
-        <div style={styles.empty}>
-          No workout program has been assigned yet.
-        </div>
-      </section>
+        <p style={styles.emptyText}>
+          Your coach has not assigned a training
+          program yet.
+        </p>
+      </div>
     );
   }
 
   if (loading) {
     return (
-      <section>
-        <p style={styles.goldLabel}>MY WORKOUTS</p>
-
-        <h2 style={styles.title}>LOADING YOUR WORKOUT...</h2>
-      </section>
+      <div style={styles.empty}>
+        <div style={styles.emptyText}>
+          Loading your workouts...
+        </div>
+      </div>
     );
   }
 
   return (
-    <section>
-      <p style={styles.goldLabel}>MY WORKOUTS</p>
+    <div style={styles.page}>
+      <div style={styles.header}>
+        <div style={styles.eyebrow}>
+          MY TRAINING PROGRAM
+        </div>
 
-      <h2 style={styles.title}>{program.name}</h2>
+        <h2 style={styles.title}>
+          {program.name}
+        </h2>
 
-      <p style={styles.description}>
-        {program.description}
-      </p>
+        {program.description && (
+          <p style={styles.subtitle}>
+            {program.description}
+          </p>
+        )}
 
-      <div style={styles.programStats}>
-        <Stat
-          value={program.days_per_week}
-          label="DAYS / WEEK"
-        />
+        <div style={styles.stats}>
+          <Stat
+            label="Days / Week"
+            value={program.days_per_week || "—"}
+          />
 
-        <Stat
-          value={program.session_minutes}
-          label="MINUTES"
-        />
+          <Stat
+            label="Session"
+            value={
+              program.session_minutes
+                ? `${program.session_minutes} min`
+                : "—"
+            }
+          />
 
-        <Stat
-          value={exercises.length}
-          label="EXERCISES"
-        />
+          <Stat
+            label="Completed"
+            value={`${workoutCompletions.length}/${
+              program.days_per_week ||
+              Object.keys(groupedWorkouts).length
+            }`}
+          />
+        </div>
       </div>
 
       {message && (
-        <div style={styles.message}>{message}</div>
+        <div style={styles.message}>
+          {message}
+        </div>
       )}
 
-      {workoutDays.length === 0 && (
+      {Object.keys(groupedWorkouts).length === 0 ? (
         <div style={styles.empty}>
-          Your workout schedule is being prepared.
+          <p style={styles.emptyText}>
+            Your program does not have any workouts
+            assigned yet.
+          </p>
         </div>
-      )}
+      ) : (
+        Object.keys(groupedWorkouts)
+          .sort((a, b) => Number(a) - Number(b))
+          .map((day) => {
+            const workoutDay = Number(day);
+            const dayComplete =
+              isWorkoutComplete(workoutDay);
+            const ready = isDayReady(workoutDay);
 
-      {workoutDays.map((workoutDay) => {
-        const dayExercises = exercises.filter(
-          (exercise) =>
-            exercise.workout_day === workoutDay
-        );
+            return (
+              <div
+                key={day}
+                style={{
+                  ...styles.workoutCard,
+                  border: dayComplete
+                    ? "1px solid #F4C20D"
+                    : "1px solid #2A2A2A",
+                }}
+              >
+                <div style={styles.dayHeader}>
+                  <div>
+                    <div style={styles.dayLabel}>
+                      WORKOUT DAY {day}
+                    </div>
 
-        const isComplete =
-          completedToday(workoutDay);
+                    <div style={styles.dayStatus}>
+                      {dayComplete
+                        ? "Completed this week"
+                        : ready
+                        ? "Ready to finish"
+                        : "In progress"}
+                    </div>
+                  </div>
 
-        const allExercisesChecked =
-          dayExercisesCompleted(workoutDay);
+                  {dayComplete && (
+                    <div style={styles.completeBadge}>
+                      ✓ COMPLETE
+                    </div>
+                  )}
+                </div>
 
-        return (
-          <div
-            key={workoutDay}
-            style={styles.workoutDay}
-          >
-            <div style={styles.dayHeader}>
-              <div>
-                <p style={styles.goldLabel}>
-                  TRAINING DAY
-                </p>
+                <div>
+                  {groupedWorkouts[day].map(
+                    (item, index) => {
+                      const exercise =
+                        item.exercise || {};
 
-                <h3 style={styles.dayTitle}>
-                  DAY {workoutDay}
-                </h3>
+                      const complete =
+                        isExerciseComplete(item);
+
+                      const saving =
+                        savingExerciseId === item.id;
+
+                      return (
+                        <div
+                          key={
+                            item.id ||
+                            `${day}-${item.exercise_id}-${index}`
+                          }
+                          style={{
+                            ...styles.exerciseRow,
+                            borderBottom:
+                              index ===
+                              groupedWorkouts[day]
+                                .length -
+                                1
+                                ? "none"
+                                : "1px solid #2A2A2A",
+                          }}
+                        >
+                          <button
+                            type="button"
+                            disabled={
+                              saving || dayComplete
+                            }
+                            onClick={() =>
+                              toggleExercise(item)
+                            }
+                            aria-label={
+                              complete
+                                ? `Mark ${
+                                    exercise.name ||
+                                    "exercise"
+                                  } incomplete`
+                                : `Mark ${
+                                    exercise.name ||
+                                    "exercise"
+                                  } complete`
+                            }
+                            style={{
+                              ...styles.checkbox,
+                              background: complete
+                                ? "#F4C20D"
+                                : "#050505",
+                              color: complete
+                                ? "#050505"
+                                : "#FFFFFF",
+                              cursor:
+                                saving ||
+                                dayComplete
+                                  ? "not-allowed"
+                                  : "pointer",
+                              opacity: saving
+                                ? 0.6
+                                : 1,
+                            }}
+                          >
+                            {complete ? "✓" : ""}
+                          </button>
+
+                          <div
+                            style={
+                              styles.exerciseContent
+                            }
+                          >
+                            <div
+                              style={
+                                styles.exerciseName
+                              }
+                            >
+                              {exercise.name ||
+                                item.name ||
+                                "Exercise"}
+                            </div>
+
+                            <div
+                              style={
+                                styles.prescription
+                              }
+                            >
+                              {item.sets
+                                ? `${item.sets} sets`
+                                : ""}
+
+                              {item.sets && item.reps
+                                ? " × "
+                                : ""}
+
+                              {item.reps || ""}
+
+                              {item.rest_seconds
+                                ? ` • ${item.rest_seconds}s rest`
+                                : ""}
+                            </div>
+
+                            {item.notes && (
+                              <div
+                                style={
+                                  styles.exerciseNotes
+                                }
+                              >
+                                {item.notes}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
+
+                <div style={styles.footer}>
+                  <button
+                    type="button"
+                    disabled={
+                      dayComplete ||
+                      !ready ||
+                      finishingDay === workoutDay
+                    }
+                    onClick={() =>
+                      finishWorkout(workoutDay)
+                    }
+                    style={
+                      dayComplete ||
+                      !ready ||
+                      finishingDay === workoutDay
+                        ? styles.disabledButton
+                        : styles.finishButton
+                    }
+                  >
+                    {dayComplete
+                      ? "Workout Complete"
+                      : finishingDay === workoutDay
+                      ? "Saving..."
+                      : ready
+                      ? "Finish Workout"
+                      : "Complete All Exercises"}
+                  </button>
+                </div>
               </div>
-
-              {isComplete && (
-                <span style={styles.completedBadge}>
-                  ✓ COMPLETED TODAY
-                </span>
-              )}
-            </div>
-
-            <div style={styles.exerciseList}>
-              {dayExercises.map(
-                (exercise, index) => {
-                  const key = exerciseKey(
-                    workoutDay,
-                    exercise.id
-                  );
-
-                  const checked =
-                    Boolean(exerciseChecks[key]) ||
-                    isComplete;
-
-                  return (
-                    <ExerciseCard
-                      key={exercise.id}
-                      exercise={exercise}
-                      number={index + 1}
-                      checked={checked}
-                      disabled={isComplete}
-                      onToggle={() =>
-                        toggleExercise(
-                          workoutDay,
-                          exercise.id
-                        )
-                      }
-                      formatText={formatText}
-                    />
-                  );
-                }
-              )}
-            </div>
-
-            {!isComplete && (
-              <p style={styles.finishHint}>
-                {allExercisesChecked
-                  ? "All exercises checked. You're ready to finish this workout."
-                  : "Check off each exercise as you complete it."}
-              </p>
-            )}
-
-            <button
-              onClick={() =>
-                finishWorkout(workoutDay)
-              }
-              disabled={
-                isComplete ||
-                savingDay === workoutDay ||
-                !allExercisesChecked
-              }
-              style={
-                isComplete
-                  ? styles.completedButton
-                  : allExercisesChecked
-                  ? styles.finishButton
-                  : styles.disabledButton
-              }
-            >
-              {isComplete
-                ? "✓ WORKOUT COMPLETED"
-                : savingDay === workoutDay
-                ? "SAVING WORKOUT..."
-                : `FINISH DAY ${workoutDay} WORKOUT`}
-            </button>
-          </div>
-        );
-      })}
-    </section>
-  );
-}
-
-function ExerciseCard({
-  exercise,
-  number,
-  checked,
-  disabled,
-  onToggle,
-  formatText,
-}) {
-  return (
-    <article
-      style={{
-        ...styles.exerciseCard,
-        ...(checked ? styles.checkedExercise : {}),
-      }}
-    >
-      <div style={styles.exerciseTop}>
-        <div style={styles.exerciseNumber}>
-          {number}
-        </div>
-
-        <div style={styles.exerciseHeading}>
-          <h4 style={styles.exerciseName}>
-            {exercise.name}
-          </h4>
-
-          <div style={styles.tags}>
-            {exercise.muscle_group && (
-              <span style={styles.tag}>
-                {formatText(exercise.muscle_group)}
-              </span>
-            )}
-
-            {exercise.equipment && (
-              <span style={styles.tag}>
-                {formatText(exercise.equipment)}
-              </span>
-            )}
-
-            {exercise.difficulty && (
-              <span style={styles.tag}>
-                {formatText(exercise.difficulty)}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={onToggle}
-          disabled={disabled}
-          aria-label={`Mark ${exercise.name} complete`}
-          style={{
-            ...styles.checkButton,
-            ...(checked
-              ? styles.checkButtonActive
-              : {}),
-          }}
-        >
-          {checked ? "✓" : ""}
-        </button>
-      </div>
-
-      <div style={styles.prescription}>
-        <Prescription
-          value={exercise.sets || "-"}
-          label="SETS"
-        />
-
-        <Prescription
-          value={exercise.reps || "-"}
-          label="REPS"
-        />
-
-        <Prescription
-          value={
-            exercise.rest_seconds
-              ? `${exercise.rest_seconds}s`
-              : "-"
-          }
-          label="REST"
-        />
-      </div>
-
-      {exercise.instructions && (
-        <div style={styles.instructions}>
-          <strong style={styles.smallHeading}>
-            HOW TO
-          </strong>
-
-          <p style={styles.bodyText}>
-            {exercise.instructions}
-          </p>
-        </div>
+            );
+          })
       )}
-
-      {exercise.notes && (
-        <div style={styles.coachNote}>
-          <strong style={styles.coachHeading}>
-            QUE&apos;S COACHING NOTE
-          </strong>
-
-          <p style={styles.bodyText}>
-            {exercise.notes}
-          </p>
-        </div>
-      )}
-
-      {exercise.video_url && (
-        <a
-          href={exercise.video_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={styles.videoButton}
-        >
-          WATCH EXERCISE VIDEO
-        </a>
-      )}
-    </article>
-  );
-}
-
-function Prescription({ value, label }) {
-  return (
-    <div style={styles.prescriptionItem}>
-      <strong style={styles.prescriptionValue}>
-        {value}
-      </strong>
-
-      <span style={styles.prescriptionLabel}>
-        {label}
-      </span>
     </div>
   );
 }
 
-function Stat({ value, label }) {
+function Stat({ label, value }) {
   return (
     <div style={styles.stat}>
-      <strong style={styles.statValue}>
-        {value || "-"}
-      </strong>
-
-      <span style={styles.statLabel}>
+      <div style={styles.statLabel}>
         {label}
-      </span>
+      </div>
+
+      <div style={styles.statValue}>
+        {value}
+      </div>
     </div>
   );
+}
+
+function getStartOfWeekISO() {
+  const now = new Date();
+  const day = now.getDay();
+
+  const difference =
+    now.getDate() - day + (day === 0 ? -6 : 1);
+
+  const monday = new Date(now);
+  monday.setDate(difference);
+  monday.setHours(0, 0, 0, 0);
+
+  return monday.toISOString();
 }
 
 const styles = {
-  goldLabel: {
+  page: {
+    display: "grid",
+    gap: "20px",
+  },
+
+  header: {
+    background: "#111111",
+    border: "1px solid #2A2A2A",
+    borderRadius: "16px",
+    padding: "22px",
+  },
+
+  eyebrow: {
     color: "#F4C20D",
+    fontSize: "12px",
     fontWeight: "900",
-    letterSpacing: "1.5px",
-    fontSize: "11px",
-    margin: 0,
+    letterSpacing: "1px",
   },
 
   title: {
     color: "#FFFFFF",
-    fontSize: "clamp(32px, 6vw, 52px)",
-    margin: "8px 0 10px",
+    margin: "7px 0 0",
+    fontSize: "26px",
+    fontWeight: "900",
   },
 
-  description: {
+  subtitle: {
     color: "#BDBDBD",
-    lineHeight: 1.6,
-    maxWidth: "800px",
+    lineHeight: "1.6",
+    marginTop: "8px",
   },
 
-  programStats: {
+  stats: {
     display: "grid",
     gridTemplateColumns:
-      "repeat(auto-fit, minmax(140px, 1fr))",
-    gap: "12px",
-    margin: "25px 0 35px",
+      "repeat(auto-fit, minmax(130px, 1fr))",
+    gap: "10px",
+    marginTop: "18px",
   },
 
   stat: {
-    background: "#111111",
+    background: "#050505",
     border: "1px solid #2A2A2A",
     borderRadius: "12px",
-    padding: "18px",
-    display: "flex",
-    flexDirection: "column",
-  },
-
-  statValue: {
-    color: "#F4C20D",
-    fontSize: "30px",
+    padding: "14px",
   },
 
   statLabel: {
     color: "#BDBDBD",
-    fontSize: "10px",
+    fontSize: "12px",
+  },
+
+  statValue: {
+    color: "#FFFFFF",
+    fontSize: "20px",
+    fontWeight: "900",
     marginTop: "4px",
   },
 
   message: {
     background: "#111111",
     border: "1px solid #F4C20D",
-    color: "#FFFFFF",
-    padding: "15px",
-    borderRadius: "10px",
-    marginBottom: "25px",
+    borderRadius: "12px",
+    padding: "13px 16px",
+    color: "#F4C20D",
+    fontWeight: "700",
   },
 
-  empty: {
+  workoutCard: {
     background: "#111111",
-    border: "1px solid #2A2A2A",
-    color: "#BDBDBD",
-    padding: "25px",
-    borderRadius: "14px",
-  },
-
-  workoutDay: {
-    marginBottom: "55px",
+    borderRadius: "16px",
+    overflow: "hidden",
   },
 
   dayHeader: {
+    background: "#050505",
+    padding: "18px 20px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: "15px",
-    marginBottom: "15px",
+    gap: "12px",
     flexWrap: "wrap",
+    borderBottom: "1px solid #2A2A2A",
   },
 
-  dayTitle: {
-    color: "#FFFFFF",
-    fontSize: "32px",
-    margin: "4px 0",
+  dayLabel: {
+    color: "#F4C20D",
+    fontSize: "17px",
+    fontWeight: "900",
   },
 
-  completedBadge: {
+  dayStatus: {
+    color: "#BDBDBD",
+    fontSize: "12px",
+    marginTop: "4px",
+  },
+
+  completeBadge: {
     background: "#F4C20D",
     color: "#050505",
-    borderRadius: "30px",
-    padding: "8px 12px",
+    borderRadius: "999px",
+    padding: "7px 11px",
     fontSize: "11px",
     fontWeight: "900",
   },
 
-  exerciseList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "15px",
-  },
-
-  exerciseCard: {
-    background: "#111111",
-    border: "1px solid #2A2A2A",
-    borderRadius: "15px",
-    padding: "22px",
-    transition: "0.2s ease",
-  },
-
-  checkedExercise: {
-    border: "1px solid #F4C20D",
-  },
-
-  exerciseTop: {
+  exerciseRow: {
     display: "flex",
     alignItems: "flex-start",
-    gap: "15px",
+    gap: "14px",
+    padding: "18px 20px",
   },
 
-  exerciseNumber: {
-    width: "40px",
-    height: "40px",
-    minWidth: "40px",
-    background: "#F4C20D",
-    color: "#050505",
-    borderRadius: "50%",
+  checkbox: {
+    width: "28px",
+    height: "28px",
+    minWidth: "28px",
+    borderRadius: "7px",
+    border: "1px solid #F4C20D",
+    fontWeight: "900",
+    fontSize: "16px",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    fontWeight: "900",
   },
 
-  exerciseHeading: {
+  exerciseContent: {
     flex: 1,
   },
 
   exerciseName: {
     color: "#FFFFFF",
-    fontSize: "21px",
-    margin: "5px 0 10px",
-  },
-
-  checkButton: {
-    width: "38px",
-    height: "38px",
-    minWidth: "38px",
-    borderRadius: "8px",
-    border: "2px solid #F4C20D",
-    background: "transparent",
-    color: "#050505",
-    fontSize: "20px",
-    fontWeight: "900",
-    cursor: "pointer",
-  },
-
-  checkButtonActive: {
-    background: "#F4C20D",
-  },
-
-  tags: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "6px",
-  },
-
-  tag: {
-    background: "#2A2A2A",
-    color: "#FFFFFF",
-    borderRadius: "20px",
-    padding: "5px 9px",
-    fontSize: "10px",
+    fontSize: "16px",
+    fontWeight: "800",
   },
 
   prescription: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(3, minmax(80px, 1fr))",
-    gap: "10px",
-    margin: "20px 0",
-  },
-
-  prescriptionItem: {
-    background: "#050505",
-    border: "1px solid #2A2A2A",
-    borderRadius: "10px",
-    padding: "12px",
-    display: "flex",
-    flexDirection: "column",
-  },
-
-  prescriptionValue: {
     color: "#F4C20D",
-    fontSize: "18px",
+    fontSize: "13px",
+    fontWeight: "700",
+    marginTop: "5px",
   },
 
-  prescriptionLabel: {
+  exerciseNotes: {
     color: "#BDBDBD",
-    fontSize: "9px",
-    marginTop: "3px",
+    fontSize: "13px",
+    lineHeight: "1.5",
+    marginTop: "7px",
   },
 
-  instructions: {
-    marginTop: "15px",
-  },
-
-  smallHeading: {
-    color: "#FFFFFF",
-    fontSize: "11px",
-  },
-
-  bodyText: {
-    color: "#BDBDBD",
-    lineHeight: 1.6,
-  },
-
-  coachNote: {
-    background: "#050505",
-    borderLeft: "3px solid #F4C20D",
-    padding: "14px",
-    marginTop: "15px",
-  },
-
-  coachHeading: {
-    color: "#F4C20D",
-    fontSize: "11px",
-  },
-
-  videoButton: {
-    display: "inline-block",
-    color: "#F4C20D",
-    fontWeight: "900",
-    marginTop: "15px",
-    textDecoration: "none",
-  },
-
-  finishHint: {
-    color: "#BDBDBD",
-    fontSize: "12px",
-    marginTop: "16px",
+  footer: {
+    padding: "18px 20px",
+    borderTop: "1px solid #2A2A2A",
   },
 
   finishButton: {
     width: "100%",
-    marginTop: "8px",
-    background: "#F4C20D",
-    color: "#050505",
+    padding: "13px",
     border: "none",
     borderRadius: "10px",
-    padding: "17px",
+    background: "#F4C20D",
+    color: "#050505",
     fontWeight: "900",
     cursor: "pointer",
   },
 
   disabledButton: {
     width: "100%",
-    marginTop: "8px",
-    background: "#2A2A2A",
-    color: "#777777",
-    border: "1px solid #333333",
+    padding: "13px",
+    border: "none",
     borderRadius: "10px",
-    padding: "17px",
+    background: "#2A2A2A",
+    color: "#BDBDBD",
     fontWeight: "900",
     cursor: "not-allowed",
   },
 
-  completedButton: {
-    width: "100%",
-    marginTop: "8px",
-    background: "#2A2A2A",
-    color: "#F4C20D",
-    border: "1px solid #F4C20D",
-    borderRadius: "10px",
-    padding: "17px",
-    fontWeight: "900",
+  empty: {
+    background: "#111111",
+    border: "1px solid #2A2A2A",
+    borderRadius: "16px",
+    padding: "30px",
+    textAlign: "center",
+  },
+
+  emptyTitle: {
+    color: "#FFFFFF",
+    margin: 0,
+  },
+
+  emptyText: {
+    color: "#BDBDBD",
+    lineHeight: "1.6",
   },
 };

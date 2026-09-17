@@ -1,418 +1,696 @@
+"use client";
+
 export default function Dashboard({
   program,
   exercises = [],
   weeklyCompleted = 0,
-  latestWeight = null,
-  nutritionPlan = null,
-  latestCheckIn = null,
+  weeklyCorrectiveCompleted = 0,
+  weeklyNutritionDays = 0,
+  latestWeight,
+  nutritionPlan,
+  latestCheckIn,
   hasCorrectiveRoutine = false,
+  correctiveTarget = 0,
   setActiveTab,
 }) {
-  const weeklyTarget = program?.days_per_week || 0;
+  const workoutTarget =
+    Number(program?.days_per_week) ||
+    getWorkoutDayCount(exercises);
 
-  const progressPercent =
-    weeklyTarget > 0
-      ? Math.min((weeklyCompleted / weeklyTarget) * 100, 100)
-      : 0;
+  const correctiveTargetNumber =
+    Number(correctiveTarget) || 0;
+
+  const workoutPercent =
+    getPercent(
+      weeklyCompleted,
+      workoutTarget
+    );
+
+  const correctivePercent =
+    getPercent(
+      weeklyCorrectiveCompleted,
+      correctiveTargetNumber
+    );
+
+  const nutritionPercent =
+    getPercent(
+      weeklyNutritionDays,
+      7
+    );
 
   return (
-    <div>
-      {/* WELCOME */}
-      <section style={styles.hero}>
-        <p style={styles.goldLabel}>MEMBER DASHBOARD</p>
+    <section>
+      <p style={styles.goldLabel}>
+        MEMBER DASHBOARD
+      </p>
 
-        <h1 style={styles.heroTitle}>
-          YOUR PLAN. YOUR PROGRESS.
-        </h1>
+      <h2 style={styles.title}>
+        YOUR WEEK AT A GLANCE
+      </h2>
 
-        <p style={styles.heroText}>
-          Stay consistent, complete your workouts, and keep
-          building.
-        </p>
-      </section>
+      <p style={styles.description}>
+        Stay focused on the work that
+        moves you forward. Your training,
+        mobility, nutrition, progress,
+        and weekly check-in all live here.
+      </p>
 
-      {/* WEEKLY PROGRESS */}
-      <section style={styles.progressCard}>
-        <div style={styles.progressTop}>
-          <div>
-            <p style={styles.goldLabel}>THIS WEEK</p>
+      <div style={styles.summaryGrid}>
+        <SummaryCard
+          label="WORKOUTS"
+          value={`${weeklyCompleted}/${workoutTarget || "-"}`}
+          text="completed this week"
+          percent={workoutPercent}
+          onClick={() =>
+            setActiveTab?.("workouts")
+          }
+        />
 
-            <h2 style={styles.progressNumber}>
-              {weeklyCompleted} / {weeklyTarget}
-            </h2>
+        <SummaryCard
+          label="CORRECTIVE"
+          value={
+            hasCorrectiveRoutine
+              ? `${weeklyCorrectiveCompleted}/${correctiveTargetNumber || "-"}`
+              : "-"
+          }
+          text={
+            hasCorrectiveRoutine
+              ? "sessions this week"
+              : "no routine assigned"
+          }
+          percent={
+            hasCorrectiveRoutine
+              ? correctivePercent
+              : 0
+          }
+          onClick={() =>
+            setActiveTab?.("corrective")
+          }
+        />
 
-            <p style={styles.muted}>workouts completed</p>
-          </div>
+        <SummaryCard
+          label="NUTRITION"
+          value={
+            nutritionPlan
+              ? `${weeklyNutritionDays}/7`
+              : "-"
+          }
+          text={
+            nutritionPlan
+              ? "days logged this week"
+              : "plan not assigned"
+          }
+          percent={
+            nutritionPlan
+              ? nutritionPercent
+              : 0
+          }
+          onClick={() =>
+            setActiveTab?.("nutrition")
+          }
+        />
 
-          <div style={styles.percent}>
-            {Math.round(progressPercent)}%
-          </div>
-        </div>
+        <SummaryCard
+          label="LATEST WEIGHT"
+          value={
+            latestWeight !== null &&
+            latestWeight !== undefined
+              ? `${latestWeight} lb`
+              : "-"
+          }
+          text="latest progress entry"
+          onClick={() =>
+            setActiveTab?.("progress")
+          }
+        />
+      </div>
 
-        <div style={styles.progressBackground}>
-          <div
-            style={{
-              ...styles.progressFill,
-              width: `${progressPercent}%`,
-            }}
-          />
-        </div>
-      </section>
-
-      {/* DASHBOARD CARDS */}
-      <section style={styles.grid}>
-        {/* WORKOUT */}
-        <Card label="MY WORKOUT PLAN">
-          <h3 style={styles.cardTitle}>
-            {program?.name || "Training Plan"}
-          </h3>
-
-          <p style={styles.cardText}>
-            {program?.description ||
-              "Your assigned training program will appear here."}
+      <div style={styles.mainGrid}>
+        <div style={styles.card}>
+          <p style={styles.goldLabel}>
+            CURRENT PROGRAM
           </p>
 
-          {program && (
-            <div style={styles.stats}>
-              <span>{program.days_per_week} Days / Week</span>
-
-              <span>{program.session_minutes} Min</span>
-
-              <span>{exercises.length} Exercises</span>
-            </div>
-          )}
-
-          <ActionButton
-            text="VIEW MY WORKOUT"
-            onClick={() => setActiveTab("workouts")}
-            primary
-          />
-        </Card>
-
-        {/* CORRECTIVE */}
-        <Card label="CORRECTIVE & MOBILITY">
           <h3 style={styles.cardTitle}>
-            {hasCorrectiveRoutine
-              ? "Your Corrective Routine"
-              : "Movement & Mobility"}
+            {program?.name ||
+              "No Program Assigned"}
           </h3>
 
-          <p style={styles.cardText}>
-            {hasCorrectiveRoutine
-              ? "You have corrective or mobility work assigned by Que."
-              : "Corrective and mobility work assigned by your coach will appear here."}
-          </p>
-
-          <ActionButton
-            text={
-              hasCorrectiveRoutine
-                ? "VIEW MY ROUTINE"
-                : "VIEW CORRECTIVE"
-            }
-            onClick={() => setActiveTab("corrective")}
-          />
-        </Card>
-
-        {/* NUTRITION */}
-        <Card label="NUTRITION">
-          <h3 style={styles.cardTitle}>
-            {nutritionPlan
-              ? "Your Nutrition Targets"
-              : "Nutrition Plan"}
-          </h3>
-
-          {nutritionPlan ? (
-            <div style={styles.nutritionStats}>
-              <MiniStat
-                value={nutritionPlan.calorie_target || "-"}
-                label="CALORIES"
-              />
-
-              <MiniStat
-                value={
-                  nutritionPlan.protein_grams
-                    ? `${nutritionPlan.protein_grams}g`
-                    : "-"
-                }
-                label="PROTEIN"
-              />
-            </div>
-          ) : (
-            <p style={styles.cardText}>
-              Your nutrition targets and coaching guidance will
-              appear here.
-            </p>
-          )}
-
-          <ActionButton
-            text="VIEW NUTRITION"
-            onClick={() => setActiveTab("nutrition")}
-          />
-        </Card>
-
-        {/* PROGRESS */}
-        <Card label="PROGRESS">
-          <h3 style={styles.cardTitle}>Track Your Results</h3>
-
-          {latestWeight ? (
+          {program ? (
             <>
-              <div style={styles.bigValue}>
-                {latestWeight} lb
+              {program.description && (
+                <p style={styles.bodyText}>
+                  {program.description}
+                </p>
+              )}
+
+              <div style={styles.programStats}>
+                <MiniStat
+                  label="DAYS / WEEK"
+                  value={
+                    program.days_per_week ||
+                    workoutTarget ||
+                    "-"
+                  }
+                />
+
+                <MiniStat
+                  label="SESSION"
+                  value={
+                    program.session_minutes
+                      ? `${program.session_minutes} min`
+                      : "-"
+                  }
+                />
+
+                <MiniStat
+                  label="THIS WEEK"
+                  value={`${weeklyCompleted}/${workoutTarget || "-"}`}
+                />
               </div>
 
-              <p style={styles.cardText}>
-                Latest recorded weight
+              <button
+                type="button"
+                style={styles.goldButton}
+                onClick={() =>
+                  setActiveTab?.(
+                    "workouts"
+                  )
+                }
+              >
+                VIEW MY WORKOUTS
+              </button>
+            </>
+          ) : (
+            <p style={styles.bodyText}>
+              Your training program will
+              appear here after Que
+              assigns it.
+            </p>
+          )}
+        </div>
+
+        <div style={styles.card}>
+          <p style={styles.goldLabel}>
+            WEEKLY CHECK-IN
+          </p>
+
+          <h3 style={styles.cardTitle}>
+            {latestCheckIn
+              ? "Latest Check-In"
+              : "Check In With Que"}
+          </h3>
+
+          {latestCheckIn ? (
+            <>
+              <div
+                style={
+                  styles.checkInStatus
+                }
+              >
+                <div>
+                  <span
+                    style={
+                      styles.statusLabel
+                    }
+                  >
+                    LAST SUBMITTED
+                  </span>
+
+                  <strong
+                    style={
+                      styles.statusValue
+                    }
+                  >
+                    {formatDate(
+                      latestCheckIn.submitted_at
+                    )}
+                  </strong>
+                </div>
+
+                <div
+                  style={{
+                    ...styles.responseBadge,
+                    borderColor:
+                      latestCheckIn.coach_response
+                        ? "#F4C20D"
+                        : "#2A2A2A",
+                    color:
+                      latestCheckIn.coach_response
+                        ? "#F4C20D"
+                        : "#BDBDBD",
+                  }}
+                >
+                  {latestCheckIn.coach_response
+                    ? "QUE RESPONDED"
+                    : "AWAITING RESPONSE"}
+                </div>
+              </div>
+
+              <p style={styles.bodyText}>
+                Keep Que updated on your
+                training, recovery,
+                nutrition, and schedule.
               </p>
             </>
           ) : (
-            <p style={styles.cardText}>
-              Log your weight and measurements to track your
-              progress over time.
+            <p style={styles.bodyText}>
+              You have not submitted a
+              weekly check-in yet.
             </p>
           )}
 
-          <ActionButton
-            text="VIEW PROGRESS"
-            onClick={() => setActiveTab("progress")}
-          />
-        </Card>
-
-        {/* CHECK IN */}
-        <Card label="WEEKLY CHECK-IN">
-          <h3 style={styles.cardTitle}>Check In With Que</h3>
-
-          {latestCheckIn ? (
-            <p style={styles.cardText}>
-              Your latest check-in has been submitted. Check here
-              for coaching feedback.
-            </p>
-          ) : (
-            <p style={styles.cardText}>
-              Tell Que how your training, recovery, nutrition,
-              and week are going.
-            </p>
-          )}
-
-          <ActionButton
-            text="START CHECK-IN"
-            onClick={() => setActiveTab("checkin")}
-          />
-        </Card>
-
-        {/* EXERCISE LIBRARY */}
-        <Card label="EXERCISE LIBRARY">
-          <h3 style={styles.cardTitle}>Learn The Movements</h3>
-
-          <p style={styles.cardText}>
-            Review exercise instructions, equipment, coaching
-            cues, and available videos.
-          </p>
-
-          <ActionButton
-            text="OPEN LIBRARY"
-            onClick={() => setActiveTab("library")}
-          />
-        </Card>
-
-        {/* BOOK QUE */}
-        <Card label="COACHING">
-          <h3 style={styles.cardTitle}>Book With Que</h3>
-
-          <p style={styles.cardText}>
-            Need help with your program, technique, nutrition, or
-            progress? Schedule time with Que.
-          </p>
-
-          <a
-            href="https://calendly.com/getcharighttransformations22/free-15-minute-assessment"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={styles.goldLink}
+          <button
+            type="button"
+            style={styles.secondaryButton}
+            onClick={() =>
+              setActiveTab?.("checkin")
+            }
           >
-            BOOK WITH QUE
-          </a>
-        </Card>
-      </section>
-    </div>
+            {latestCheckIn
+              ? "VIEW CHECK-INS"
+              : "SUBMIT CHECK-IN"}
+          </button>
+        </div>
+      </div>
+
+      <div style={styles.sectionHeader}>
+        <p style={styles.goldLabel}>
+          YOUR COACHING SYSTEM
+        </p>
+
+        <h3 style={styles.sectionTitle}>
+          Keep Everything Moving
+        </h3>
+      </div>
+
+      <div style={styles.actionGrid}>
+        <ActionCard
+          number="01"
+          title="Training"
+          text={
+            program
+              ? `${weeklyCompleted} of ${
+                  workoutTarget || "-"
+                } workouts completed this week.`
+              : "Your program has not been assigned yet."
+          }
+          button="OPEN WORKOUTS"
+          onClick={() =>
+            setActiveTab?.("workouts")
+          }
+        />
+
+        <ActionCard
+          number="02"
+          title="Corrective & Mobility"
+          text={
+            hasCorrectiveRoutine
+              ? `${weeklyCorrectiveCompleted} of ${
+                  correctiveTargetNumber ||
+                  "-"
+                } sessions completed this week.`
+              : "No corrective routine is currently assigned."
+          }
+          button="OPEN MOBILITY"
+          onClick={() =>
+            setActiveTab?.("corrective")
+          }
+        />
+
+        <ActionCard
+          number="03"
+          title="Nutrition"
+          text={
+            nutritionPlan
+              ? `${weeklyNutritionDays} of 7 days logged this week.`
+              : "Your nutrition plan has not been assigned yet."
+          }
+          button="TRACK NUTRITION"
+          onClick={() =>
+            setActiveTab?.("nutrition")
+          }
+        />
+
+        <ActionCard
+          number="04"
+          title="Progress"
+          text={
+            latestWeight !== null &&
+            latestWeight !== undefined
+              ? `Your latest recorded weight is ${latestWeight} lb.`
+              : "Add your first progress entry to start tracking."
+          }
+          button="VIEW PROGRESS"
+          onClick={() =>
+            setActiveTab?.("progress")
+          }
+        />
+
+        <ActionCard
+          number="05"
+          title="Weekly Check-In"
+          text={
+            latestCheckIn
+              ? `Last submitted ${formatDate(
+                  latestCheckIn.submitted_at
+                )}.`
+              : "Send Que your first weekly update."
+          }
+          button="OPEN CHECK-IN"
+          onClick={() =>
+            setActiveTab?.("checkin")
+          }
+        />
+      </div>
+
+      <div style={styles.coachCard}>
+        <div>
+          <p style={styles.goldLabel}>
+            GET CHA RIGHT FITNESS
+          </p>
+
+          <h3 style={styles.coachTitle}>
+            Your plan works when you
+            work the plan.
+          </h3>
+
+          <p style={styles.bodyText}>
+            Focus on consistency. Log
+            your work, complete your
+            assigned sessions, and use
+            your weekly check-in to keep
+            Que informed.
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 
-function Card({ label, children }) {
-  return (
-    <div style={styles.card}>
-      <p style={styles.goldLabel}>{label}</p>
-      {children}
-    </div>
-  );
-}
+function SummaryCard({
+  label,
+  value,
+  text,
+  percent,
+  onClick,
+}) {
+  const showProgress =
+    percent !== undefined &&
+    percent !== null;
 
-function ActionButton({ text, onClick, primary = false }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      style={primary ? styles.goldButton : styles.outlineButton}
+      style={styles.summaryCard}
     >
-      {text}
+      <span style={styles.summaryLabel}>
+        {label}
+      </span>
+
+      <strong
+        style={styles.summaryValue}
+      >
+        {value}
+      </strong>
+
+      <span style={styles.summaryText}>
+        {text}
+      </span>
+
+      {showProgress && (
+        <div
+          style={
+            styles.progressBackground
+          }
+        >
+          <div
+            style={{
+              ...styles.progressFill,
+              width: `${percent}%`,
+            }}
+          />
+        </div>
+      )}
     </button>
   );
 }
 
-function MiniStat({ value, label }) {
+function ActionCard({
+  number,
+  title,
+  text,
+  button,
+  onClick,
+}) {
   return (
-    <div style={styles.miniStat}>
-      <strong style={styles.miniValue}>{value}</strong>
-      <span style={styles.miniLabel}>{label}</span>
+    <div style={styles.actionCard}>
+      <div style={styles.actionNumber}>
+        {number}
+      </div>
+
+      <h4 style={styles.actionTitle}>
+        {title}
+      </h4>
+
+      <p style={styles.actionText}>
+        {text}
+      </p>
+
+      <button
+        type="button"
+        onClick={onClick}
+        style={styles.actionButton}
+      >
+        {button}
+      </button>
     </div>
   );
 }
 
-const styles = {
-  hero: {
-    background: "#111111",
-    border: "1px solid #2A2A2A",
-    borderRadius: "18px",
-    padding: "clamp(25px, 5vw, 45px)",
-    marginBottom: "20px",
-  },
+function MiniStat({
+  label,
+  value,
+}) {
+  return (
+    <div style={styles.miniStat}>
+      <span
+        style={styles.miniStatLabel}
+      >
+        {label}
+      </span>
 
+      <strong
+        style={styles.miniStatValue}
+      >
+        {value}
+      </strong>
+    </div>
+  );
+}
+
+function getWorkoutDayCount(
+  exercises
+) {
+  if (!Array.isArray(exercises)) {
+    return 0;
+  }
+
+  const days = new Set();
+
+  exercises.forEach((exercise) => {
+    if (
+      exercise?.workout_day !==
+        null &&
+      exercise?.workout_day !==
+        undefined
+    ) {
+      days.add(
+        Number(
+          exercise.workout_day
+        )
+      );
+    }
+  });
+
+  return days.size;
+}
+
+function getPercent(
+  completed,
+  target
+) {
+  const completedNumber =
+    Number(completed) || 0;
+
+  const targetNumber =
+    Number(target) || 0;
+
+  if (targetNumber <= 0) {
+    return 0;
+  }
+
+  return Math.min(
+    (completedNumber /
+      targetNumber) *
+      100,
+    100
+  );
+}
+
+function formatDate(value) {
+  if (!value) {
+    return "Not submitted";
+  }
+
+  return new Date(
+    value
+  ).toLocaleDateString(
+    undefined,
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }
+  );
+}
+
+const styles = {
   goldLabel: {
     color: "#F4C20D",
     fontWeight: "900",
     letterSpacing: "1.5px",
     fontSize: "11px",
-    marginTop: 0,
+    margin: 0,
   },
 
-  heroTitle: {
+  title: {
     color: "#FFFFFF",
-    fontSize: "clamp(32px, 6vw, 58px)",
-    margin: "10px 0",
-    lineHeight: 1,
+    fontSize:
+      "clamp(32px, 6vw, 52px)",
+    margin: "8px 0 10px",
   },
 
-  heroText: {
+  description: {
     color: "#BDBDBD",
     lineHeight: 1.6,
+    maxWidth: "800px",
+    marginBottom: "25px",
   },
 
-  progressCard: {
+  summaryGrid: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: "12px",
+    marginBottom: "22px",
+  },
+
+  summaryCard: {
+    appearance: "none",
+    textAlign: "left",
     background: "#111111",
-    border: "1px solid #2A2A2A",
-    borderRadius: "16px",
-    padding: "25px",
-    marginBottom: "20px",
+    border:
+      "1px solid #2A2A2A",
+    borderRadius: "14px",
+    padding: "18px",
+    cursor: "pointer",
+    fontFamily: "inherit",
   },
 
-  progressTop: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "20px",
-  },
-
-  progressNumber: {
+  summaryLabel: {
+    display: "block",
     color: "#F4C20D",
-    fontSize: "42px",
-    margin: "4px 0",
-  },
-
-  percent: {
-    color: "#F4C20D",
-    fontSize: "28px",
+    fontSize: "10px",
     fontWeight: "900",
+    letterSpacing: "1px",
+  },
+
+  summaryValue: {
+    display: "block",
+    color: "#FFFFFF",
+    fontSize: "28px",
+    marginTop: "8px",
+  },
+
+  summaryText: {
+    display: "block",
+    color: "#888888",
+    fontSize: "11px",
+    marginTop: "4px",
   },
 
   progressBackground: {
-    width: "100%",
-    height: "10px",
+    height: "6px",
     background: "#2A2A2A",
-    borderRadius: "20px",
+    borderRadius: "999px",
     overflow: "hidden",
-    marginTop: "15px",
+    marginTop: "13px",
   },
 
   progressFill: {
     height: "100%",
     background: "#F4C20D",
-    borderRadius: "20px",
-    transition: "width 0.3s ease",
+    borderRadius: "999px",
+    transition:
+      "width 0.25s ease",
   },
 
-  muted: {
-    color: "#BDBDBD",
-    margin: 0,
-  },
-
-  grid: {
+  mainGrid: {
     display: "grid",
     gridTemplateColumns:
       "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: "20px",
+    gap: "15px",
   },
 
   card: {
     background: "#111111",
-    border: "1px solid #2A2A2A",
-    borderRadius: "16px",
-    padding: "25px",
-    display: "flex",
-    flexDirection: "column",
+    border:
+      "1px solid #2A2A2A",
+    borderRadius: "15px",
+    padding: "22px",
   },
 
   cardTitle: {
     color: "#FFFFFF",
     fontSize: "23px",
-    margin: "5px 0 10px",
+    margin: "7px 0 12px",
   },
 
-  cardText: {
+  bodyText: {
     color: "#BDBDBD",
     lineHeight: 1.6,
-    flex: 1,
   },
 
-  stats: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "8px",
-    color: "#FFFFFF",
-    fontSize: "12px",
-    fontWeight: "700",
-    marginBottom: "18px",
-  },
-
-  nutritionStats: {
+  programStats: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "10px",
-    margin: "12px 0 20px",
+    gridTemplateColumns:
+      "repeat(3, 1fr)",
+    gap: "8px",
+    margin: "20px 0",
   },
 
   miniStat: {
     background: "#050505",
-    border: "1px solid #2A2A2A",
+    border:
+      "1px solid #2A2A2A",
     borderRadius: "10px",
-    padding: "14px",
-    display: "flex",
-    flexDirection: "column",
+    padding: "12px",
   },
 
-  miniValue: {
-    color: "#F4C20D",
-    fontSize: "20px",
-  },
-
-  miniLabel: {
-    color: "#BDBDBD",
+  miniStatLabel: {
+    display: "block",
+    color: "#888888",
     fontSize: "9px",
-    marginTop: "4px",
+    fontWeight: "800",
   },
 
-  bigValue: {
-    color: "#F4C20D",
-    fontSize: "35px",
-    fontWeight: "900",
-    margin: "10px 0 0",
+  miniStatValue: {
+    display: "block",
+    color: "#FFFFFF",
+    fontSize: "17px",
+    marginTop: "5px",
   },
 
   goldButton: {
@@ -420,34 +698,135 @@ const styles = {
     background: "#F4C20D",
     color: "#050505",
     border: "none",
-    borderRadius: "8px",
+    borderRadius: "9px",
     padding: "14px",
     fontWeight: "900",
     cursor: "pointer",
-    marginTop: "auto",
   },
 
-  outlineButton: {
+  secondaryButton: {
     width: "100%",
-    background: "transparent",
-    color: "#FFFFFF",
-    border: "1px solid #F4C20D",
-    borderRadius: "8px",
+    background: "#050505",
+    color: "#F4C20D",
+    border:
+      "1px solid #F4C20D",
+    borderRadius: "9px",
     padding: "14px",
     fontWeight: "900",
     cursor: "pointer",
-    marginTop: "auto",
+    marginTop: "10px",
   },
 
-  goldLink: {
-    display: "block",
-    background: "#F4C20D",
-    color: "#050505",
-    borderRadius: "8px",
+  checkInStatus: {
+    display: "flex",
+    justifyContent:
+      "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+    background: "#050505",
+    border:
+      "1px solid #2A2A2A",
+    borderRadius: "10px",
     padding: "14px",
-    textAlign: "center",
+    marginBottom: "15px",
+  },
+
+  statusLabel: {
+    display: "block",
+    color: "#888888",
+    fontSize: "9px",
     fontWeight: "900",
-    textDecoration: "none",
-    marginTop: "auto",
+  },
+
+  statusValue: {
+    display: "block",
+    color: "#FFFFFF",
+    marginTop: "4px",
+    fontSize: "14px",
+  },
+
+  responseBadge: {
+    border: "1px solid",
+    borderRadius: "999px",
+    padding: "7px 10px",
+    fontSize: "9px",
+    fontWeight: "900",
+  },
+
+  sectionHeader: {
+    marginTop: "35px",
+    marginBottom: "15px",
+  },
+
+  sectionTitle: {
+    color: "#FFFFFF",
+    fontSize: "26px",
+    margin: "6px 0 0",
+  },
+
+  actionGrid: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(210px, 1fr))",
+    gap: "12px",
+  },
+
+  actionCard: {
+    background: "#111111",
+    border:
+      "1px solid #2A2A2A",
+    borderRadius: "14px",
+    padding: "20px",
+    display: "flex",
+    flexDirection: "column",
+  },
+
+  actionNumber: {
+    color: "#F4C20D",
+    fontSize: "11px",
+    fontWeight: "900",
+  },
+
+  actionTitle: {
+    color: "#FFFFFF",
+    fontSize: "18px",
+    margin: "8px 0",
+  },
+
+  actionText: {
+    color: "#BDBDBD",
+    fontSize: "13px",
+    lineHeight: 1.5,
+    flex: 1,
+  },
+
+  actionButton: {
+    width: "100%",
+    background: "#050505",
+    color: "#FFFFFF",
+    border:
+      "1px solid #2A2A2A",
+    borderRadius: "8px",
+    padding: "11px",
+    fontWeight: "900",
+    fontSize: "10px",
+    cursor: "pointer",
+    marginTop: "10px",
+  },
+
+  coachCard: {
+    background: "#111111",
+    borderLeft:
+      "4px solid #F4C20D",
+    borderRadius: "10px",
+    padding: "22px",
+    marginTop: "25px",
+  },
+
+  coachTitle: {
+    color: "#FFFFFF",
+    fontSize: "22px",
+    margin: "7px 0 5px",
   },
 };

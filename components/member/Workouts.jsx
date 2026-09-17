@@ -16,7 +16,8 @@ export default function Workouts({
   const [finishingDay, setFinishingDay] = useState(null);
   const [message, setMessage] = useState("");
 
-  const weekStart = useMemo(() => getStartOfWeekISO(), []);
+  const weekStart = useMemo(() => getLocalWeekStartString(), []);
+  const today = useMemo(() => getLocalDateString(), []);
 
   const groupedWorkouts = useMemo(() => {
     const grouped = {};
@@ -80,17 +81,19 @@ export default function Workouts({
       const [exerciseResult, workoutResult] = await Promise.all([
         supabase
           .from("exercise_completions")
-          .select("id, exercise_id, workout_day, completed_at")
+          .select("id, exercise_id, workout_day, completion_date, completed_at")
           .eq("user_id", user.id)
           .eq("program_id", program.id)
-          .gte("completed_at", weekStart),
+          .gte("completion_date", weekStart)
+          .lte("completion_date", today),
 
         supabase
           .from("workout_completions")
-          .select("id, workout_day, completed_at")
+          .select("id, workout_day, completion_date, completed_at")
           .eq("user_id", user.id)
           .eq("program_id", program.id)
-          .gte("completed_at", weekStart),
+          .gte("completion_date", weekStart)
+          .lte("completion_date", today),
       ]);
 
       if (exerciseResult.error) {
@@ -112,7 +115,7 @@ export default function Workouts({
     } finally {
       setLoading(false);
     }
-  }, [user?.id, program?.id, weekStart]);
+  }, [user?.id, program?.id, weekStart, today]);
 
   useEffect(() => {
     loadCompletions();
@@ -207,8 +210,9 @@ export default function Workouts({
           program_id: program.id,
           exercise_id: exerciseId,
           workout_day: workoutDay,
+          completion_date: today,
         })
-        .select("id, exercise_id, workout_day, completed_at")
+        .select("id, exercise_id, workout_day, completion_date, completed_at")
         .single();
 
       if (error) {
@@ -268,8 +272,9 @@ export default function Workouts({
           user_id: user.id,
           program_id: program.id,
           workout_day: workoutDay,
+          completion_date: today,
         })
-        .select("id, workout_day, completed_at")
+        .select("id, workout_day, completion_date, completed_at")
         .single();
 
       if (error) {
@@ -598,18 +603,30 @@ function Stat({ label, value }) {
   );
 }
 
-function getStartOfWeekISO() {
+function padNumber(value) {
+  return String(value).padStart(2, "0");
+}
+
+function formatLocalDate(date) {
+  return `${date.getFullYear()}-${padNumber(
+    date.getMonth() + 1
+  )}-${padNumber(date.getDate())}`;
+}
+
+function getLocalDateString() {
+  return formatLocalDate(new Date());
+}
+
+function getLocalWeekStartString() {
   const now = new Date();
   const day = now.getDay();
-
-  const difference =
-    now.getDate() - day + (day === 0 ? -6 : 1);
-
+  const difference = day === 0 ? -6 : 1 - day;
   const monday = new Date(now);
-  monday.setDate(difference);
+
+  monday.setDate(now.getDate() + difference);
   monday.setHours(0, 0, 0, 0);
 
-  return monday.toISOString();
+  return formatLocalDate(monday);
 }
 
 const styles = {

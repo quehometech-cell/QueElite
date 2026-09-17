@@ -16,6 +16,8 @@ export default function Workouts({
   const [finishingDay, setFinishingDay] = useState(null);
   const [message, setMessage] = useState("");
 
+  const weekStart = useMemo(() => getStartOfWeekISO(), []);
+
   const groupedWorkouts = useMemo(() => {
     const grouped = {};
 
@@ -40,7 +42,28 @@ export default function Workouts({
     return grouped;
   }, [exercises]);
 
-  const weekStart = useMemo(() => getStartOfWeekISO(), []);
+  function getExerciseId(item) {
+    const rawId =
+      item?.exercise_id ??
+      item?.exercise?.id ??
+      item?.exercises?.id;
+
+    if (
+      rawId === null ||
+      rawId === undefined ||
+      rawId === ""
+    ) {
+      return null;
+    }
+
+    const id = Number(rawId);
+
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }
+
+  function getExerciseData(item) {
+    return item?.exercise || item?.exercises || {};
+  }
 
   const loadCompletions = useCallback(async () => {
     if (!user?.id || !program?.id) {
@@ -51,23 +74,20 @@ export default function Workouts({
     }
 
     setLoading(true);
+    setMessage("");
 
     try {
       const [exerciseResult, workoutResult] = await Promise.all([
         supabase
           .from("exercise_completions")
-          .select(
-            "id, exercise_id, workout_day, completed_at"
-          )
+          .select("id, exercise_id, workout_day, completed_at")
           .eq("user_id", user.id)
           .eq("program_id", program.id)
           .gte("completed_at", weekStart),
 
         supabase
           .from("workout_completions")
-          .select(
-            "id, workout_day, completed_at"
-          )
+          .select("id, workout_day, completed_at")
           .eq("user_id", user.id)
           .eq("program_id", program.id)
           .gte("completed_at", weekStart),
@@ -81,22 +101,13 @@ export default function Workouts({
         throw workoutResult.error;
       }
 
-      setExerciseCompletions(
-        exerciseResult.data || []
-      );
-
-      setWorkoutCompletions(
-        workoutResult.data || []
-      );
+      setExerciseCompletions(exerciseResult.data || []);
+      setWorkoutCompletions(workoutResult.data || []);
     } catch (error) {
-      console.error(
-        "Workout completion load error:",
-        error
-      );
+      console.error("Workout completion load error:", error);
 
       setMessage(
-        error?.message ||
-          "Unable to load workout progress."
+        error?.message || "Unable to load workout progress."
       );
     } finally {
       setLoading(false);
@@ -108,12 +119,17 @@ export default function Workouts({
   }, [loadCompletions]);
 
   function isExerciseComplete(item) {
+    const exerciseId = getExerciseId(item);
+
+    if (!exerciseId) {
+      return false;
+    }
+
     return exerciseCompletions.some(
       (completion) =>
-        Number(completion.exercise_id) ===
-          Number(item.exercise_id) &&
+        Number(completion.exercise_id) === exerciseId &&
         Number(completion.workout_day) ===
-          Number(item.workout_day)
+          Number(item.workout_day || 1)
     );
   }
 
@@ -129,19 +145,32 @@ export default function Workouts({
 
     return (
       dayExercises.length > 0 &&
-      dayExercises.every((item) =>
-        isExerciseComplete(item)
-      )
+      dayExercises.every((item) => isExerciseComplete(item))
     );
   }
 
   async function toggleExercise(item) {
-    if (!user?.id || !program?.id) return;
+    if (!user?.id || !program?.id) {
+      return;
+    }
 
-    const exerciseId = Number(item.exercise_id);
+    const exerciseId = getExerciseId(item);
+
+    if (!exerciseId) {
+      console.error("Missing exercise ID:", item);
+
+      setMessage(
+        "Unable to identify this exercise. Please refresh and try again."
+      );
+
+      return;
+    }
+
     const workoutDay = Number(item.workout_day || 1);
 
-    setSavingExerciseId(item.id);
+    const savingKey = `${workoutDay}-${exerciseId}`;
+
+    setSavingExerciseId(savingKey);
     setMessage("");
 
     try {
@@ -164,8 +193,7 @@ export default function Workouts({
 
         setExerciseCompletions((current) =>
           current.filter(
-            (completion) =>
-              completion.id !== existing.id
+            (completion) => completion.id !== existing.id
           )
         );
 
@@ -180,12 +208,15 @@ export default function Workouts({
           exercise_id: exerciseId,
           workout_day: workoutDay,
         })
-        .select(
-          "id, exercise_id, workout_day, completed_at"
-        )
+        .select("id, exercise_id, workout_day, completed_at")
         .single();
 
       if (error) {
+        if (error.code === "23505") {
+          await loadCompletions();
+          return;
+        }
+
         throw error;
       }
 
@@ -194,14 +225,10 @@ export default function Workouts({
         data,
       ]);
     } catch (error) {
-      console.error(
-        "Exercise completion error:",
-        error
-      );
+      console.error("Exercise completion error:", error);
 
       setMessage(
-        error?.message ||
-          "Unable to update exercise."
+        error?.message || "Unable to update exercise."
       );
     } finally {
       setSavingExerciseId(null);
@@ -209,7 +236,9 @@ export default function Workouts({
   }
 
   async function finishWorkout(day) {
-    if (!user?.id || !program?.id) return;
+    if (!user?.id || !program?.id) {
+      return;
+    }
 
     const workoutDay = Number(day);
 
@@ -217,6 +246,7 @@ export default function Workouts({
       setMessage(
         `Workout Day ${workoutDay} is already complete for this week.`
       );
+
       return;
     }
 
@@ -224,6 +254,7 @@ export default function Workouts({
       setMessage(
         "Complete every exercise before finishing this workout."
       );
+
       return;
     }
 
@@ -238,9 +269,7 @@ export default function Workouts({
           program_id: program.id,
           workout_day: workoutDay,
         })
-        .select(
-          "id, workout_day, completed_at"
-        )
+        .select("id, workout_day, completed_at")
         .single();
 
       if (error) {
@@ -270,14 +299,10 @@ export default function Workouts({
         await onCompletionChange();
       }
     } catch (error) {
-      console.error(
-        "Workout completion error:",
-        error
-      );
+      console.error("Workout completion error:", error);
 
       setMessage(
-        error?.message ||
-          "Unable to complete workout."
+        error?.message || "Unable to complete workout."
       );
     } finally {
       setFinishingDay(null);
@@ -292,8 +317,7 @@ export default function Workouts({
         </h2>
 
         <p style={styles.emptyText}>
-          Your coach has not assigned a training
-          program yet.
+          Your coach has not assigned a training program yet.
         </p>
       </div>
     );
@@ -360,8 +384,7 @@ export default function Workouts({
       {Object.keys(groupedWorkouts).length === 0 ? (
         <div style={styles.empty}>
           <p style={styles.emptyText}>
-            Your program does not have any workouts
-            assigned yet.
+            Your program does not have any workouts assigned yet.
           </p>
         </div>
       ) : (
@@ -409,19 +432,25 @@ export default function Workouts({
                   {groupedWorkouts[day].map(
                     (item, index) => {
                       const exercise =
-                        item.exercise || {};
+                        getExerciseData(item);
+
+                      const exerciseId =
+                        getExerciseId(item);
 
                       const complete =
                         isExerciseComplete(item);
 
+                      const savingKey =
+                        `${workoutDay}-${exerciseId}`;
+
                       const saving =
-                        savingExerciseId === item.id;
+                        savingExerciseId === savingKey;
 
                       return (
                         <div
                           key={
                             item.id ||
-                            `${day}-${item.exercise_id}-${index}`
+                            `${day}-${exerciseId}-${index}`
                           }
                           style={{
                             ...styles.exerciseRow,
@@ -437,7 +466,9 @@ export default function Workouts({
                           <button
                             type="button"
                             disabled={
-                              saving || dayComplete
+                              saving ||
+                              dayComplete ||
+                              !exerciseId
                             }
                             onClick={() =>
                               toggleExercise(item)
@@ -463,37 +494,27 @@ export default function Workouts({
                                 : "#FFFFFF",
                               cursor:
                                 saving ||
-                                dayComplete
+                                dayComplete ||
+                                !exerciseId
                                   ? "not-allowed"
                                   : "pointer",
-                              opacity: saving
-                                ? 0.6
-                                : 1,
+                              opacity:
+                                saving || !exerciseId
+                                  ? 0.6
+                                  : 1,
                             }}
                           >
                             {complete ? "✓" : ""}
                           </button>
 
-                          <div
-                            style={
-                              styles.exerciseContent
-                            }
-                          >
-                            <div
-                              style={
-                                styles.exerciseName
-                              }
-                            >
+                          <div style={styles.exerciseContent}>
+                            <div style={styles.exerciseName}>
                               {exercise.name ||
                                 item.name ||
                                 "Exercise"}
                             </div>
 
-                            <div
-                              style={
-                                styles.prescription
-                              }
-                            >
+                            <div style={styles.prescription}>
                               {item.sets
                                 ? `${item.sets} sets`
                                 : ""}
@@ -510,12 +531,14 @@ export default function Workouts({
                             </div>
 
                             {item.notes && (
-                              <div
-                                style={
-                                  styles.exerciseNotes
-                                }
-                              >
+                              <div style={styles.exerciseNotes}>
                                 {item.notes}
+                              </div>
+                            )}
+
+                            {!exerciseId && (
+                              <div style={styles.errorText}>
+                                Exercise ID missing
                               </div>
                             )}
                           </div>
@@ -738,6 +761,13 @@ const styles = {
     fontSize: "13px",
     lineHeight: "1.5",
     marginTop: "7px",
+  },
+
+  errorText: {
+    color: "#FF6B6B",
+    fontSize: "12px",
+    marginTop: "6px",
+    fontWeight: "700",
   },
 
   footer: {

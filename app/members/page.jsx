@@ -15,6 +15,19 @@ import ExerciseLibrary from "../../components/member/ExerciseLibrary";
 const CALENDLY_URL =
   "https://calendly.com/getcharighttransformations22/free-15-minute-assessment";
 
+const VALID_TABS = [
+  "dashboard",
+  "workouts",
+  "corrective",
+  "nutrition",
+  "progress",
+  "checkin",
+  "library",
+];
+
+const ACTIVE_TAB_STORAGE_KEY =
+  "gcr-member-active-tab";
+
 export default function MembersPage() {
   const router = useRouter();
 
@@ -24,27 +37,40 @@ export default function MembersPage() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
 
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] =
+    useState("dashboard");
 
   const [program, setProgram] = useState(null);
-  const [workoutExercises, setWorkoutExercises] =
-    useState([]);
-  const [libraryExercises, setLibraryExercises] =
-    useState([]);
 
-  const [nutritionPlan, setNutritionPlan] =
-    useState(null);
+  const [
+    workoutExercises,
+    setWorkoutExercises,
+  ] = useState([]);
 
-  const [correctiveRoutine, setCorrectiveRoutine] =
-    useState(null);
+  const [
+    libraryExercises,
+    setLibraryExercises,
+  ] = useState([]);
+
+  const [
+    nutritionPlan,
+    setNutritionPlan,
+  ] = useState(null);
+
+  const [
+    correctiveRoutine,
+    setCorrectiveRoutine,
+  ] = useState(null);
 
   const [
     correctiveExercises,
     setCorrectiveExercises,
   ] = useState([]);
 
-  const [weeklyCompleted, setWeeklyCompleted] =
-    useState(0);
+  const [
+    weeklyCompleted,
+    setWeeklyCompleted,
+  ] = useState(0);
 
   const [
     weeklyCorrectiveCompleted,
@@ -56,15 +82,48 @@ export default function MembersPage() {
     setWeeklyNutritionDays,
   ] = useState(0);
 
-  const [latestWeight, setLatestWeight] =
-    useState(null);
+  const [
+    latestWeight,
+    setLatestWeight,
+  ] = useState(null);
 
-  const [latestCheckIn, setLatestCheckIn] =
-    useState(null);
+  const [
+    latestCheckIn,
+    setLatestCheckIn,
+  ] = useState(null);
+
+  // =========================================================
+  // INITIAL LOAD
+  // =========================================================
 
   useEffect(() => {
+    const savedTab =
+      window.localStorage.getItem(
+        ACTIVE_TAB_STORAGE_KEY
+      );
+
+    if (
+      savedTab &&
+      VALID_TABS.includes(savedTab)
+    ) {
+      setActiveTab(savedTab);
+    }
+
     initializePortal();
   }, []);
+
+  function changeTab(tab) {
+    if (!VALID_TABS.includes(tab)) {
+      return;
+    }
+
+    setActiveTab(tab);
+
+    window.localStorage.setItem(
+      ACTIVE_TAB_STORAGE_KEY,
+      tab
+    );
+  }
 
   async function initializePortal() {
     setLoading(true);
@@ -115,9 +174,12 @@ export default function MembersPage() {
       setProfile(profileData);
 
       if (
-        profileData.membership_status !== "active"
+        profileData.membership_status !==
+        "active"
       ) {
-        router.replace("/membership-required");
+        router.replace(
+          "/membership-required"
+        );
         return;
       }
 
@@ -152,28 +214,42 @@ export default function MembersPage() {
       // 4. LOAD MEMBER PORTAL DATA
       // =====================================================
 
-      // Load the current program first.
-      // Weekly completion tracking needs the exact
-      // currently assigned program ID.
       const currentProgramId =
-        await loadMemberWorkout(currentUser.id);
+        await loadMemberWorkout(
+          currentUser.id
+        );
 
       await Promise.all([
         loadExerciseLibrary(),
-        loadNutrition(currentUser.id),
-        loadCorrectiveRoutine(currentUser.id),
+
+        loadNutrition(
+          currentUser.id
+        ),
+
+        loadCorrectiveRoutine(
+          currentUser.id
+        ),
+
         loadWeeklyCompletions(
           currentUser.id,
           currentProgramId
         ),
+
         loadWeeklyCorrectiveCompletions(
           currentUser.id
         ),
+
         loadWeeklyNutritionDays(
           currentUser.id
         ),
-        loadLatestProgress(currentUser.id),
-        loadLatestCheckIn(currentUser.id),
+
+        loadLatestProgress(
+          currentUser.id
+        ),
+
+        loadLatestCheckIn(
+          currentUser.id
+        ),
       ]);
     } catch (error) {
       console.error(
@@ -199,7 +275,9 @@ export default function MembersPage() {
       error: assignmentError,
     } = await supabase
       .from("member_programs")
-      .select("program_id, assigned_at")
+      .select(
+        "program_id, assigned_at"
+      )
       .eq("user_id", userId)
       .order("assigned_at", {
         ascending: false,
@@ -225,7 +303,10 @@ export default function MembersPage() {
       .select(
         "id, name, goal, experience_level, equipment, days_per_week, session_minutes, location, description"
       )
-      .eq("id", assignment.program_id)
+      .eq(
+        "id",
+        assignment.program_id
+      )
       .single();
 
     if (programError) {
@@ -233,8 +314,6 @@ export default function MembersPage() {
     }
 
     setProgram(programData);
-
-    // Load the rows connecting exercises to this program.
 
     const {
       data: programExerciseRows,
@@ -244,7 +323,10 @@ export default function MembersPage() {
       .select(
         "id, exercise_id, exercise_order, workout_day, sets, reps, rest_seconds, notes"
       )
-      .eq("program_id", assignment.program_id)
+      .eq(
+        "program_id",
+        assignment.program_id
+      )
       .order("workout_day", {
         ascending: true,
       })
@@ -256,17 +338,20 @@ export default function MembersPage() {
       throw programExerciseError;
     }
 
-    if (!programExerciseRows?.length) {
+    if (
+      !programExerciseRows?.length
+    ) {
       setWorkoutExercises([]);
       return assignment.program_id;
     }
 
-    // Get all unique exercise IDs.
-
     const exerciseIds = [
       ...new Set(
         programExerciseRows
-          .map((row) => row.exercise_id)
+          .map(
+            (row) =>
+              row.exercise_id
+          )
           .filter(
             (exerciseId) =>
               exerciseId !== null &&
@@ -282,10 +367,9 @@ export default function MembersPage() {
       );
 
       setWorkoutExercises([]);
+
       return assignment.program_id;
     }
-
-    // Load actual exercise information.
 
     const {
       data: exerciseRows,
@@ -302,25 +386,23 @@ export default function MembersPage() {
     }
 
     const exerciseMap = new Map(
-      (exerciseRows || []).map((exercise) => [
-        Number(exercise.id),
-        exercise,
-      ])
+      (exerciseRows || []).map(
+        (exercise) => [
+          Number(exercise.id),
+          exercise,
+        ]
+      )
     );
-
-    // =====================================================
-    // Preserve BOTH IDs.
-    //
-    // exercise_id = actual exercise
-    // program_exercise_id = program assignment row
-    // =====================================================
 
     const mergedExercises =
       programExerciseRows
         .map((row) => {
-          const exercise = exerciseMap.get(
-            Number(row.exercise_id)
-          );
+          const exercise =
+            exerciseMap.get(
+              Number(
+                row.exercise_id
+              )
+            );
 
           if (!exercise) {
             console.error(
@@ -334,9 +416,11 @@ export default function MembersPage() {
           return {
             ...exercise,
 
-            exercise_id: row.exercise_id,
+            exercise_id:
+              row.exercise_id,
 
-            program_exercise_id: row.id,
+            program_exercise_id:
+              row.id,
 
             exercise_order:
               row.exercise_order,
@@ -344,26 +428,22 @@ export default function MembersPage() {
             workout_day:
               row.workout_day,
 
-            sets:
-              row.sets,
+            sets: row.sets,
 
-            reps:
-              row.reps,
+            reps: row.reps,
 
             rest_seconds:
               row.rest_seconds,
 
-            notes:
-              row.notes,
+            notes: row.notes,
           };
         })
         .filter(Boolean);
 
-    setWorkoutExercises(mergedExercises);
+    setWorkoutExercises(
+      mergedExercises
+    );
 
-    // IMPORTANT:
-    // Return the current program ID so Dashboard
-    // completion tracking only counts this program.
     return assignment.program_id;
   }
 
@@ -372,21 +452,24 @@ export default function MembersPage() {
   // =========================================================
 
   async function loadExerciseLibrary() {
-    const { data, error } = await supabase
-      .from("exercises")
-      .select(
-        "id, name, category, equipment, difficulty, instructions, video_url, muscle_group"
-      )
-      .eq("is_active", true)
-      .order("name", {
-        ascending: true,
-      });
+    const { data, error } =
+      await supabase
+        .from("exercises")
+        .select(
+          "id, name, category, equipment, difficulty, instructions, video_url, muscle_group"
+        )
+        .eq("is_active", true)
+        .order("name", {
+          ascending: true,
+        });
 
     if (error) {
       throw error;
     }
 
-    setLibraryExercises(data || []);
+    setLibraryExercises(
+      data || []
+    );
   }
 
   // =========================================================
@@ -394,31 +477,38 @@ export default function MembersPage() {
   // =========================================================
 
   async function loadNutrition(userId) {
-    const { data, error } = await supabase
-      .from("nutrition_plans")
-      .select(
-        "id, calorie_target, protein_grams, carb_grams, fat_grams, water_ounces, nutrition_goal, meal_guidance, coach_notes, updated_at"
-      )
-      .eq("user_id", userId)
-      .maybeSingle();
+    const { data, error } =
+      await supabase
+        .from("nutrition_plans")
+        .select(
+          "id, calorie_target, protein_grams, carb_grams, fat_grams, water_ounces, nutrition_goal, meal_guidance, coach_notes, updated_at"
+        )
+        .eq("user_id", userId)
+        .maybeSingle();
 
     if (error) {
       throw error;
     }
 
-    setNutritionPlan(data || null);
+    setNutritionPlan(
+      data || null
+    );
   }
 
   // =========================================================
   // CORRECTIVE / MOBILITY
   // =========================================================
 
-  async function loadCorrectiveRoutine(userId) {
+  async function loadCorrectiveRoutine(
+    userId
+  ) {
     const {
       data: assignment,
       error: assignmentError,
     } = await supabase
-      .from("member_corrective_routines")
+      .from(
+        "member_corrective_routines"
+      )
       .select(
         "id, routine_id, coach_notes, assigned_at"
       )
@@ -448,7 +538,10 @@ export default function MembersPage() {
       .select(
         "id, name, focus_area, description, days_per_week, session_minutes"
       )
-      .eq("id", assignment.routine_id)
+      .eq(
+        "id",
+        assignment.routine_id
+      )
       .single();
 
     if (routineError) {
@@ -465,7 +558,9 @@ export default function MembersPage() {
       data: routineRows,
       error: routineRowsError,
     } = await supabase
-      .from("corrective_routine_exercises")
+      .from(
+        "corrective_routine_exercises"
+      )
       .select(
         "id, exercise_id, exercise_order, sets, reps, duration_seconds, rest_seconds, notes"
       )
@@ -489,7 +584,10 @@ export default function MembersPage() {
     const exerciseIds = [
       ...new Set(
         routineRows
-          .map((row) => row.exercise_id)
+          .map(
+            (row) =>
+              row.exercise_id
+          )
           .filter(
             (exerciseId) =>
               exerciseId !== null &&
@@ -497,6 +595,11 @@ export default function MembersPage() {
           )
       ),
     ];
+
+    if (!exerciseIds.length) {
+      setCorrectiveExercises([]);
+      return;
+    }
 
     const {
       data: exerciseRows,
@@ -513,18 +616,23 @@ export default function MembersPage() {
     }
 
     const exerciseMap = new Map(
-      (exerciseRows || []).map((exercise) => [
-        Number(exercise.id),
-        exercise,
-      ])
+      (exerciseRows || []).map(
+        (exercise) => [
+          Number(exercise.id),
+          exercise,
+        ]
+      )
     );
 
     const mergedExercises =
       routineRows
         .map((row) => {
-          const exercise = exerciseMap.get(
-            Number(row.exercise_id)
-          );
+          const exercise =
+            exerciseMap.get(
+              Number(
+                row.exercise_id
+              )
+            );
 
           if (!exercise) {
             return null;
@@ -542,11 +650,9 @@ export default function MembersPage() {
             exercise_order:
               row.exercise_order,
 
-            sets:
-              row.sets,
+            sets: row.sets,
 
-            reps:
-              row.reps,
+            reps: row.reps,
 
             duration_seconds:
               row.duration_seconds,
@@ -554,8 +660,7 @@ export default function MembersPage() {
             rest_seconds:
               row.rest_seconds,
 
-            notes:
-              row.notes,
+            notes: row.notes,
           };
         })
         .filter(Boolean);
@@ -573,31 +678,31 @@ export default function MembersPage() {
     userId,
     programId
   ) {
-    // No assigned program means there should be
-    // no Dashboard workout count.
     if (!programId) {
       setWeeklyCompleted(0);
       return;
     }
 
-    const start = getStartOfWeek();
+    const start =
+      getStartOfWeek();
 
-    const { data, error } = await supabase
-      .from("workout_completions")
-      .select(
-        "id, workout_day, completed_at, program_id"
-      )
-      .eq("user_id", userId)
-
-      // IMPORTANT:
-      // Only count workouts belonging to the
-      // currently assigned program.
-      .eq("program_id", programId)
-
-      .gte(
-        "completed_at",
-        start.toISOString()
-      );
+    const { data, error } =
+      await supabase
+        .from(
+          "workout_completions"
+        )
+        .select(
+          "id, workout_day, completed_at, program_id"
+        )
+        .eq("user_id", userId)
+        .eq(
+          "program_id",
+          programId
+        )
+        .gte(
+          "completed_at",
+          start.toISOString()
+        );
 
     if (error) {
       throw error;
@@ -615,15 +720,29 @@ export default function MembersPage() {
   async function loadWeeklyCorrectiveCompletions(
     userId
   ) {
-    const start = getLocalWeekStartString();
-    const today = getLocalDateString();
+    const start =
+      getLocalWeekStartString();
 
-    const { data, error } = await supabase
-      .from("corrective_routine_completions")
-      .select("id, routine_id, completion_date")
-      .eq("user_id", userId)
-      .gte("completion_date", start)
-      .lte("completion_date", today);
+    const today =
+      getLocalDateString();
+
+    const { data, error } =
+      await supabase
+        .from(
+          "corrective_routine_completions"
+        )
+        .select(
+          "id, routine_id, completion_date"
+        )
+        .eq("user_id", userId)
+        .gte(
+          "completion_date",
+          start
+        )
+        .lte(
+          "completion_date",
+          today
+        );
 
     if (error) {
       throw error;
@@ -638,23 +757,43 @@ export default function MembersPage() {
   // WEEKLY NUTRITION LOGS
   // =========================================================
 
-  async function loadWeeklyNutritionDays(userId) {
-    const start = getLocalWeekStartString();
-    const today = getLocalDateString();
+  async function loadWeeklyNutritionDays(
+    userId
+  ) {
+    const start =
+      getLocalWeekStartString();
 
-    const { data, error } = await supabase
-      .from("nutrition_logs")
-      .select("id, log_date")
-      .eq("user_id", userId)
-      .gte("log_date", start)
-      .lte("log_date", today);
+    const today =
+      getLocalDateString();
+
+    const { data, error } =
+      await supabase
+        .from("nutrition_logs")
+        .select("id, log_date")
+        .eq("user_id", userId)
+        .gte(
+          "log_date",
+          start
+        )
+        .lte(
+          "log_date",
+          today
+        );
 
     if (error) {
       throw error;
     }
 
+    const uniqueDays =
+      new Set(
+        (data || []).map(
+          (entry) =>
+            entry.log_date
+        )
+      );
+
     setWeeklyNutritionDays(
-      (data || []).length
+      uniqueDays.size
     );
   }
 
@@ -662,18 +801,23 @@ export default function MembersPage() {
   // PROGRESS
   // =========================================================
 
-  async function loadLatestProgress(userId) {
-    const { data, error } = await supabase
-      .from("progress_entries")
-      .select(
-        "id, weight_lbs, recorded_at"
-      )
-      .eq("user_id", userId)
-      .order("recorded_at", {
-        ascending: false,
-      })
-      .limit(1)
-      .maybeSingle();
+  async function loadLatestProgress(
+    userId
+  ) {
+    const { data, error } =
+      await supabase
+        .from(
+          "progress_entries"
+        )
+        .select(
+          "id, weight_lbs, recorded_at"
+        )
+        .eq("user_id", userId)
+        .order("recorded_at", {
+          ascending: false,
+        })
+        .limit(1)
+        .maybeSingle();
 
     if (error) {
       throw error;
@@ -688,18 +832,21 @@ export default function MembersPage() {
   // CHECK-IN
   // =========================================================
 
-  async function loadLatestCheckIn(userId) {
-    const { data, error } = await supabase
-      .from("weekly_checkins")
-      .select(
-        "id, energy_level, sleep_quality, stress_level, workouts_completed, nutrition_adherence, current_weight, wins, challenges, questions, coach_response, submitted_at"
-      )
-      .eq("user_id", userId)
-      .order("submitted_at", {
-        ascending: false,
-      })
-      .limit(1)
-      .maybeSingle();
+  async function loadLatestCheckIn(
+    userId
+  ) {
+    const { data, error } =
+      await supabase
+        .from("weekly_checkins")
+        .select(
+          "id, energy_level, sleep_quality, stress_level, workouts_completed, nutrition_adherence, current_weight, wins, challenges, questions, coach_response, submitted_at"
+        )
+        .eq("user_id", userId)
+        .order("submitted_at", {
+          ascending: false,
+        })
+        .limit(1)
+        .maybeSingle();
 
     if (error) {
       throw error;
@@ -711,17 +858,20 @@ export default function MembersPage() {
   }
 
   // =========================================================
-  // WORKOUT CALLBACK
+  // CALLBACKS
   // =========================================================
 
   async function handleWorkoutCompletion() {
-    if (!user?.id) {
+    if (
+      !user?.id ||
+      !program?.id
+    ) {
       return;
     }
 
     await loadWeeklyCompletions(
       user.id,
-      program?.id
+      program.id
     );
   }
 
@@ -750,6 +900,10 @@ export default function MembersPage() {
   // =========================================================
 
   async function handleLogout() {
+    window.localStorage.removeItem(
+      ACTIVE_TAB_STORAGE_KEY
+    );
+
     await supabase.auth.signOut();
 
     router.replace("/login");
@@ -762,17 +916,34 @@ export default function MembersPage() {
 
   if (loading) {
     return (
-      <main style={styles.loadingPage}>
-        <div style={styles.loadingLogo}>
+      <main
+        style={
+          styles.loadingPage
+        }
+      >
+        <div
+          style={
+            styles.loadingLogo
+          }
+        >
           GCR
         </div>
 
-        <h1 style={styles.loadingTitle}>
+        <h1
+          style={
+            styles.loadingTitle
+          }
+        >
           GET CHA RIGHT
         </h1>
 
-        <p style={styles.loadingText}>
-          Loading your coaching portal...
+        <p
+          style={
+            styles.loadingText
+          }
+        >
+          Loading your coaching
+          portal...
         </p>
       </main>
     );
@@ -784,23 +955,43 @@ export default function MembersPage() {
 
   if (loadError) {
     return (
-      <main style={styles.loadingPage}>
-        <div style={styles.loadingLogo}>
+      <main
+        style={
+          styles.loadingPage
+        }
+      >
+        <div
+          style={
+            styles.loadingLogo
+          }
+        >
           GCR
         </div>
 
-        <h1 style={styles.loadingTitle}>
+        <h1
+          style={
+            styles.loadingTitle
+          }
+        >
           SOMETHING WENT WRONG
         </h1>
 
-        <p style={styles.loadingText}>
+        <p
+          style={
+            styles.loadingText
+          }
+        >
           {loadError}
         </p>
 
         <button
           type="button"
-          onClick={initializePortal}
-          style={styles.retryButton}
+          onClick={
+            initializePortal
+          }
+          style={
+            styles.retryButton
+          }
         >
           TRY AGAIN
         </button>
@@ -814,40 +1005,67 @@ export default function MembersPage() {
 
   return (
     <main style={styles.page}>
-      <header style={styles.header}>
+      <header
+        style={styles.header}
+      >
         <button
           type="button"
           onClick={() =>
-            setActiveTab("dashboard")
+            changeTab(
+              "dashboard"
+            )
           }
-          style={styles.brandButton}
+          style={
+            styles.brandButton
+          }
         >
-          <div style={styles.logo}>
+          <div
+            style={styles.logo}
+          >
             GCR
           </div>
 
           <div>
-            <strong style={styles.brand}>
+            <strong
+              style={
+                styles.brand
+              }
+            >
               GET CHA RIGHT
             </strong>
 
-            <span style={styles.brandSub}>
+            <span
+              style={
+                styles.brandSub
+              }
+            >
               MEMBER PORTAL
             </span>
           </div>
         </button>
 
-        <div style={styles.headerActions}>
+        <div
+          style={
+            styles.headerActions
+          }
+        >
           {profile?.role &&
-            ["coach", "admin"].includes(
+            [
+              "coach",
+              "admin",
+            ].includes(
               profile.role
             ) && (
               <button
                 type="button"
                 onClick={() =>
-                  router.push("/coach")
+                  router.push(
+                    "/coach"
+                  )
                 }
-                style={styles.coachButton}
+                style={
+                  styles.coachButton
+                }
               >
                 COACH DASHBOARD
               </button>
@@ -857,25 +1075,43 @@ export default function MembersPage() {
             href={CALENDLY_URL}
             target="_blank"
             rel="noopener noreferrer"
-            style={styles.bookButton}
+            style={
+              styles.bookButton
+            }
           >
             BOOK WITH QUE
           </a>
 
           <button
             type="button"
-            onClick={handleLogout}
-            style={styles.logoutButton}
+            onClick={
+              handleLogout
+            }
+            style={
+              styles.logoutButton
+            }
           >
             LOG OUT
           </button>
         </div>
       </header>
 
-      <div style={styles.portal}>
-        <aside style={styles.sidebar}>
-          <div style={styles.profileCard}>
-            <div style={styles.avatar}>
+      <div
+        style={styles.portal}
+      >
+        <aside
+          style={styles.sidebar}
+        >
+          <div
+            style={
+              styles.profileCard
+            }
+          >
+            <div
+              style={
+                styles.avatar
+              }
+            >
               {getInitials(
                 profile?.full_name ||
                   profile?.email ||
@@ -884,110 +1120,157 @@ export default function MembersPage() {
             </div>
 
             <div>
-              <strong style={styles.memberName}>
+              <strong
+                style={
+                  styles.memberName
+                }
+              >
                 {profile?.full_name ||
                   "Get Cha Right Member"}
               </strong>
 
-              <span style={styles.memberStatus}>
+              <span
+                style={
+                  styles.memberStatus
+                }
+              >
                 ACTIVE MEMBER
               </span>
             </div>
           </div>
 
-          <nav style={styles.nav}>
+          <nav
+            style={styles.nav}
+          >
             <NavButton
               label="Dashboard"
               active={
-                activeTab === "dashboard"
+                activeTab ===
+                "dashboard"
               }
               onClick={() =>
-                setActiveTab("dashboard")
+                changeTab(
+                  "dashboard"
+                )
               }
             />
 
             <NavButton
               label="My Workouts"
               active={
-                activeTab === "workouts"
+                activeTab ===
+                "workouts"
               }
               onClick={() =>
-                setActiveTab("workouts")
+                changeTab(
+                  "workouts"
+                )
               }
             />
 
             <NavButton
               label="Corrective & Mobility"
               active={
-                activeTab === "corrective"
+                activeTab ===
+                "corrective"
               }
               onClick={() =>
-                setActiveTab("corrective")
+                changeTab(
+                  "corrective"
+                )
               }
             />
 
             <NavButton
               label="Nutrition"
               active={
-                activeTab === "nutrition"
+                activeTab ===
+                "nutrition"
               }
               onClick={() =>
-                setActiveTab("nutrition")
+                changeTab(
+                  "nutrition"
+                )
               }
             />
 
             <NavButton
               label="Progress"
               active={
-                activeTab === "progress"
+                activeTab ===
+                "progress"
               }
               onClick={() =>
-                setActiveTab("progress")
+                changeTab(
+                  "progress"
+                )
               }
             />
 
             <NavButton
               label="Check-In"
               active={
-                activeTab === "checkin"
+                activeTab ===
+                "checkin"
               }
               onClick={() =>
-                setActiveTab("checkin")
+                changeTab(
+                  "checkin"
+                )
               }
             />
 
             <NavButton
               label="Exercise Library"
               active={
-                activeTab === "library"
+                activeTab ===
+                "library"
               }
               onClick={() =>
-                setActiveTab("library")
+                changeTab(
+                  "library"
+                )
               }
             />
           </nav>
 
-          <div style={styles.sidebarBottom}>
-            <p style={styles.sidebarText}>
-              Need help with your plan?
+          <div
+            style={
+              styles.sidebarBottom
+            }
+          >
+            <p
+              style={
+                styles.sidebarText
+              }
+            >
+              Need help with your
+              plan?
             </p>
 
             <a
               href={CALENDLY_URL}
               target="_blank"
               rel="noopener noreferrer"
-              style={styles.sidebarBookButton}
+              style={
+                styles.sidebarBookButton
+              }
             >
               BOOK WITH QUE
             </a>
           </div>
         </aside>
 
-        <section style={styles.content}>
-          {activeTab === "dashboard" && (
+        <section
+          style={styles.content}
+        >
+          {activeTab ===
+            "dashboard" && (
             <Dashboard
               program={program}
-              exercises={workoutExercises}
+              exercises={
+                workoutExercises
+              }
               weeklyCompleted={
                 weeklyCompleted
               }
@@ -1012,15 +1295,17 @@ export default function MembersPage() {
                 )
               }
               correctiveTarget={
-                correctiveRoutine?.days_per_week || 0
+                correctiveRoutine?.days_per_week ||
+                0
               }
               setActiveTab={
-                setActiveTab
+                changeTab
               }
             />
           )}
 
-          {activeTab === "workouts" && (
+          {activeTab ===
+            "workouts" && (
             <Workouts
               user={user}
               program={program}
@@ -1033,7 +1318,8 @@ export default function MembersPage() {
             />
           )}
 
-          {activeTab === "corrective" && (
+          {activeTab ===
+            "corrective" && (
             <CorrectiveMobility
               user={user}
               routine={
@@ -1048,7 +1334,8 @@ export default function MembersPage() {
             />
           )}
 
-          {activeTab === "nutrition" && (
+          {activeTab ===
+            "nutrition" && (
             <Nutrition
               user={user}
               nutritionPlan={
@@ -1060,15 +1347,22 @@ export default function MembersPage() {
             />
           )}
 
-          {activeTab === "progress" && (
-            <Progress user={user} />
+          {activeTab ===
+            "progress" && (
+            <Progress
+              user={user}
+            />
           )}
 
-          {activeTab === "checkin" && (
-            <CheckIn user={user} />
+          {activeTab ===
+            "checkin" && (
+            <CheckIn
+              user={user}
+            />
           )}
 
-          {activeTab === "library" && (
+          {activeTab ===
+            "library" && (
             <ExerciseLibrary
               exercises={
                 libraryExercises
@@ -1136,52 +1430,85 @@ function getInitials(value) {
   }
 
   return `${parts[0][0]}${
-    parts[parts.length - 1][0]
+    parts[
+      parts.length - 1
+    ][0]
   }`.toUpperCase();
 }
 
 // ===========================================================
-// START OF WEEK
+// DATE HELPERS
 // ===========================================================
 
 function padNumber(value) {
-  return String(value).padStart(2, "0");
+  return String(value).padStart(
+    2,
+    "0"
+  );
 }
 
 function formatLocalDate(date) {
   return `${date.getFullYear()}-${padNumber(
     date.getMonth() + 1
-  )}-${padNumber(date.getDate())}`;
+  )}-${padNumber(
+    date.getDate()
+  )}`;
 }
 
 function getLocalDateString() {
-  return formatLocalDate(new Date());
+  return formatLocalDate(
+    new Date()
+  );
 }
 
 function getLocalWeekStartString() {
   const now = new Date();
-  const day = now.getDay();
-  const difference = day === 0 ? -6 : 1 - day;
-  const monday = new Date(now);
 
-  monday.setDate(now.getDate() + difference);
-  monday.setHours(0, 0, 0, 0);
+  const day =
+    now.getDay();
 
-  return formatLocalDate(monday);
+  const difference =
+    day === 0
+      ? -6
+      : 1 - day;
+
+  const monday =
+    new Date(now);
+
+  monday.setDate(
+    now.getDate() +
+      difference
+  );
+
+  monday.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  return formatLocalDate(
+    monday
+  );
 }
 
 function getStartOfWeek() {
   const now = new Date();
 
-  const day = now.getDay();
+  const day =
+    now.getDay();
 
   const difference =
-    day === 0 ? -6 : 1 - day;
+    day === 0
+      ? -6
+      : 1 - day;
 
-  const monday = new Date(now);
+  const monday =
+    new Date(now);
 
   monday.setDate(
-    now.getDate() + difference
+    now.getDate() +
+      difference
   );
 
   monday.setHours(

@@ -4,22 +4,28 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
+const RESET_REDIRECT_URL =
+  "https://www.getcharightfitness.com/reset-password";
+
 export default function LoginPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("error");
 
   async function handleLogin(e) {
     e.preventDefault();
 
     setLoading(true);
     setMessage("");
+    setMessageType("error");
 
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim(),
       password,
     });
 
@@ -32,8 +38,49 @@ export default function LoginPage() {
     if (data?.user) {
       router.replace("/members");
       router.refresh();
+      return;
     }
+
+    setLoading(false);
   }
+
+  async function handleForgotPassword() {
+    const cleanEmail = email.trim();
+
+    setMessage("");
+
+    if (!cleanEmail) {
+      setMessageType("error");
+      setMessage(
+        "Enter your email address above, then select Forgot Password."
+      );
+      return;
+    }
+
+    setResetLoading(true);
+    setMessageType("error");
+
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      cleanEmail,
+      {
+        redirectTo: RESET_REDIRECT_URL,
+      }
+    );
+
+    if (error) {
+      setMessage(error.message);
+      setResetLoading(false);
+      return;
+    }
+
+    setMessageType("success");
+    setMessage(
+      "Password reset email sent. Check your inbox and follow the link to create a new password."
+    );
+    setResetLoading(false);
+  }
+
+  const busy = loading || resetLoading;
 
   return (
     <main
@@ -111,6 +158,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
+              disabled={busy}
               style={{
                 background: "#050505",
                 color: "#FFFFFF",
@@ -138,6 +186,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
+              disabled={busy}
               style={{
                 background: "#050505",
                 color: "#FFFFFF",
@@ -149,11 +198,33 @@ export default function LoginPage() {
             />
           </label>
 
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            disabled={busy}
+            style={{
+              alignSelf: "flex-end",
+              background: "transparent",
+              border: "none",
+              color: "#F4C20D",
+              padding: 0,
+              fontWeight: "800",
+              cursor: busy ? "not-allowed" : "pointer",
+              fontSize: "14px",
+            }}
+          >
+            {resetLoading ? "SENDING..." : "FORGOT PASSWORD?"}
+          </button>
+
           {message && (
             <p
               style={{
-                color: "#ff6b6b",
+                color:
+                  messageType === "success"
+                    ? "#F4C20D"
+                    : "#ff6b6b",
                 margin: 0,
+                lineHeight: "1.5",
               }}
             >
               {message}
@@ -162,7 +233,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={busy}
             style={{
               background: "#F4C20D",
               color: "#050505",
@@ -171,8 +242,9 @@ export default function LoginPage() {
               padding: "16px",
               fontWeight: "900",
               fontSize: "16px",
-              cursor: "pointer",
+              cursor: busy ? "not-allowed" : "pointer",
               marginTop: "5px",
+              opacity: busy ? 0.7 : 1,
             }}
           >
             {loading ? "SIGNING IN..." : "SIGN IN"}

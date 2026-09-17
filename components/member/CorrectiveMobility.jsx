@@ -16,115 +16,161 @@ export default function CorrectiveMobility({
 }) {
   const [exerciseCompletions, setExerciseCompletions] =
     useState([]);
+
   const [routineCompletions, setRoutineCompletions] =
     useState([]);
+
   const [loading, setLoading] = useState(true);
+
   const [savingExerciseId, setSavingExerciseId] =
     useState(null);
-  const [finishing, setFinishing] = useState(false);
-  const [message, setMessage] = useState("");
 
-  const weekStart = useMemo(
-    () => getStartOfWeekISO(),
-    []
-  );
+  const [finishing, setFinishing] =
+    useState(false);
+
+  const [message, setMessage] =
+    useState("");
 
   const routineId = routine?.id || null;
 
-  const getExerciseId = useCallback((exercise) => {
-    const rawId =
-      exercise?.exercise_id ??
-      exercise?.id;
+  const today = useMemo(
+    () => getLocalDateString(),
+    []
+  );
 
-    if (
-      rawId === null ||
-      rawId === undefined ||
-      rawId === ""
-    ) {
-      return null;
-    }
+  const weekStart = useMemo(
+    () => getLocalWeekStartString(),
+    []
+  );
 
-    const id = Number(rawId);
+  const getExerciseId = useCallback(
+    (exercise) => {
+      const rawId =
+        exercise?.exercise_id ??
+        exercise?.id;
 
-    return Number.isFinite(id) && id > 0
-      ? id
-      : null;
-  }, []);
+      if (
+        rawId === null ||
+        rawId === undefined ||
+        rawId === ""
+      ) {
+        return null;
+      }
 
-  const loadCompletions = useCallback(async () => {
-    if (!user?.id || !routineId) {
-      setExerciseCompletions([]);
-      setRoutineCompletions([]);
-      setLoading(false);
-      return;
-    }
+      const id = Number(rawId);
 
-    setLoading(true);
-    setMessage("");
+      return Number.isFinite(id) &&
+        id > 0
+        ? id
+        : null;
+    },
+    []
+  );
 
-    try {
-      const [exerciseResult, routineResult] =
-        await Promise.all([
+  const loadCompletions =
+    useCallback(async () => {
+      if (!user?.id || !routineId) {
+        setExerciseCompletions([]);
+        setRoutineCompletions([]);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setMessage("");
+
+      try {
+        const [
+          exerciseResult,
+          routineResult,
+        ] = await Promise.all([
           supabase
             .from(
               "corrective_exercise_completions"
             )
             .select(
-              "id, exercise_id, completed_at"
+              "id, exercise_id, completion_date, completed_at"
             )
             .eq("user_id", user.id)
-            .eq("routine_id", routineId)
-            .gte("completed_at", weekStart),
+            .eq(
+              "routine_id",
+              routineId
+            )
+            .eq(
+              "completion_date",
+              today
+            ),
 
           supabase
             .from(
               "corrective_routine_completions"
             )
-            .select("id, completed_at")
+            .select(
+              "id, completion_date, completed_at"
+            )
             .eq("user_id", user.id)
-            .eq("routine_id", routineId)
-            .gte("completed_at", weekStart),
+            .eq(
+              "routine_id",
+              routineId
+            )
+            .gte(
+              "completion_date",
+              weekStart
+            )
+            .lte(
+              "completion_date",
+              today
+            )
+            .order(
+              "completion_date",
+              {
+                ascending: false,
+              }
+            ),
         ]);
 
-      if (exerciseResult.error) {
-        throw exerciseResult.error;
+        if (exerciseResult.error) {
+          throw exerciseResult.error;
+        }
+
+        if (routineResult.error) {
+          throw routineResult.error;
+        }
+
+        setExerciseCompletions(
+          exerciseResult.data || []
+        );
+
+        setRoutineCompletions(
+          routineResult.data || []
+        );
+      } catch (error) {
+        console.error(
+          "Corrective completion load error:",
+          error
+        );
+
+        setMessage(
+          error?.message ||
+            "Unable to load your corrective progress."
+        );
+      } finally {
+        setLoading(false);
       }
-
-      if (routineResult.error) {
-        throw routineResult.error;
-      }
-
-      setExerciseCompletions(
-        exerciseResult.data || []
-      );
-
-      setRoutineCompletions(
-        routineResult.data || []
-      );
-    } catch (error) {
-      console.error(
-        "Corrective completion load error:",
-        error
-      );
-
-      setMessage(
-        error?.message ||
-          "Unable to load your corrective progress."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    user?.id,
-    routineId,
-    weekStart,
-  ]);
+    }, [
+      user?.id,
+      routineId,
+      today,
+      weekStart,
+    ]);
 
   useEffect(() => {
     loadCompletions();
   }, [loadCompletions]);
 
-  function isExerciseComplete(exercise) {
+  function isExerciseComplete(
+    exercise
+  ) {
     const exerciseId =
       getExerciseId(exercise);
 
@@ -134,8 +180,9 @@ export default function CorrectiveMobility({
 
     return exerciseCompletions.some(
       (completion) =>
-        Number(completion.exercise_id) ===
-        exerciseId
+        Number(
+          completion.exercise_id
+        ) === exerciseId
     );
   }
 
@@ -145,8 +192,38 @@ export default function CorrectiveMobility({
       isExerciseComplete(exercise)
     );
 
-  async function toggleExercise(exercise) {
-    if (!user?.id || !routineId) {
+  const completedToday =
+    routineCompletions.some(
+      (completion) =>
+        completion.completion_date ===
+        today
+    );
+
+  const weeklyTarget =
+    Number(routine?.days_per_week) ||
+    0;
+
+  const weeklyCompleted =
+    routineCompletions.length;
+
+  const progressPercent =
+    weeklyTarget > 0
+      ? Math.min(
+          (weeklyCompleted /
+            weeklyTarget) *
+            100,
+          100
+        )
+      : 0;
+
+  async function toggleExercise(
+    exercise
+  ) {
+    if (
+      !user?.id ||
+      !routineId ||
+      completedToday
+    ) {
       return;
     }
 
@@ -160,7 +237,10 @@ export default function CorrectiveMobility({
       return;
     }
 
-    setSavingExerciseId(exerciseId);
+    setSavingExerciseId(
+      exerciseId
+    );
+
     setMessage("");
 
     try {
@@ -173,13 +253,17 @@ export default function CorrectiveMobility({
         );
 
       if (existing) {
-        const { error } = await supabase
-          .from(
-            "corrective_exercise_completions"
-          )
-          .delete()
-          .eq("id", existing.id)
-          .eq("user_id", user.id);
+        const { error } =
+          await supabase
+            .from(
+              "corrective_exercise_completions"
+            )
+            .delete()
+            .eq("id", existing.id)
+            .eq(
+              "user_id",
+              user.id
+            );
 
         if (error) {
           throw error;
@@ -206,14 +290,17 @@ export default function CorrectiveMobility({
             user_id: user.id,
             routine_id: routineId,
             exercise_id: exerciseId,
+            completion_date: today,
           })
           .select(
-            "id, exercise_id, completed_at"
+            "id, exercise_id, completion_date, completed_at"
           )
           .single();
 
       if (error) {
-        if (error.code === "23505") {
+        if (
+          error.code === "23505"
+        ) {
           await loadCompletions();
           return;
         }
@@ -243,7 +330,17 @@ export default function CorrectiveMobility({
   }
 
   async function finishRoutine() {
-    if (!user?.id || !routineId) {
+    if (
+      !user?.id ||
+      !routineId
+    ) {
+      return;
+    }
+
+    if (completedToday) {
+      setMessage(
+        "You already completed today's routine."
+      );
       return;
     }
 
@@ -266,18 +363,21 @@ export default function CorrectiveMobility({
           .insert({
             user_id: user.id,
             routine_id: routineId,
+            completion_date: today,
           })
           .select(
-            "id, completed_at"
+            "id, completion_date, completed_at"
           )
           .single();
 
       if (error) {
-        if (error.code === "23505") {
+        if (
+          error.code === "23505"
+        ) {
           await loadCompletions();
 
           setMessage(
-            "You already completed this routine today."
+            "You already completed today's routine."
           );
 
           return;
@@ -288,8 +388,12 @@ export default function CorrectiveMobility({
 
       setRoutineCompletions(
         (current) => [
-          ...current,
           data,
+          ...current.filter(
+            (completion) =>
+              completion.completion_date !==
+              today
+          ),
         ]
       );
 
@@ -328,7 +432,8 @@ export default function CorrectiveMobility({
 
         <div style={styles.emptyCard}>
           <h3 style={styles.cardTitle}>
-            No Corrective Routine Assigned
+            No Corrective Routine
+            Assigned
           </h3>
 
           <p style={styles.bodyText}>
@@ -338,9 +443,10 @@ export default function CorrectiveMobility({
           </p>
 
           <p style={styles.bodyText}>
-            If your coach assigns mobility,
-            posture, stability, or movement
-            work, it will appear here.
+            If your coach assigns
+            mobility, posture, stability,
+            or movement work, it will
+            appear here.
           </p>
         </div>
 
@@ -370,22 +476,6 @@ export default function CorrectiveMobility({
     );
   }
 
-  const weeklyTarget =
-    Number(routine.days_per_week) || 0;
-
-  const weeklyCompleted =
-    routineCompletions.length;
-
-  const progressPercent =
-    weeklyTarget > 0
-      ? Math.min(
-          (weeklyCompleted /
-            weeklyTarget) *
-            100,
-          100
-        )
-      : 0;
-
   return (
     <section>
       <p style={styles.goldLabel}>
@@ -404,14 +494,16 @@ export default function CorrectiveMobility({
       <div style={styles.stats}>
         <Stat
           value={
-            routine.days_per_week || "-"
+            routine.days_per_week ||
+            "-"
           }
           label="DAYS / WEEK"
         />
 
         <Stat
           value={
-            routine.session_minutes || "-"
+            routine.session_minutes ||
+            "-"
           }
           label="MINUTES"
         />
@@ -422,16 +514,30 @@ export default function CorrectiveMobility({
         />
 
         <Stat
-          value={`${weeklyCompleted}/${weeklyTarget || "-"}`}
+          value={`${weeklyCompleted}/${
+            weeklyTarget || "-"
+          }`}
           label="THIS WEEK"
         />
       </div>
 
       {weeklyTarget > 0 && (
-        <div style={styles.progressCard}>
-          <div style={styles.progressHeader}>
+        <div
+          style={
+            styles.progressCard
+          }
+        >
+          <div
+            style={
+              styles.progressHeader
+            }
+          >
             <div>
-              <p style={styles.goldLabel}>
+              <p
+                style={
+                  styles.goldLabel
+                }
+              >
                 WEEKLY PROGRESS
               </p>
 
@@ -508,15 +614,23 @@ export default function CorrectiveMobility({
       {exercises.length === 0 ? (
         <div style={styles.emptyCard}>
           <p style={styles.bodyText}>
-            Your corrective movements are
-            being prepared.
+            Your corrective movements
+            are being prepared.
           </p>
         </div>
       ) : (
         <div style={styles.routineCard}>
-          <div style={styles.routineHeader}>
+          <div
+            style={
+              styles.routineHeader
+            }
+          >
             <div>
-              <p style={styles.goldLabel}>
+              <p
+                style={
+                  styles.goldLabel
+                }
+              >
                 TODAY&apos;S ROUTINE
               </p>
 
@@ -525,7 +639,9 @@ export default function CorrectiveMobility({
                   styles.routineTitle
                 }
               >
-                Complete Every Movement
+                {completedToday
+                  ? "Routine Complete"
+                  : "Complete Every Movement"}
               </h3>
             </div>
 
@@ -534,16 +650,28 @@ export default function CorrectiveMobility({
                 styles.movementCount
               }
             >
-              {
-                exerciseCompletions.length
-              }
+              {exerciseCompletions.length}
               /{exercises.length}
             </div>
           </div>
 
+          {completedToday && (
+            <div
+              style={
+                styles.completedBanner
+              }
+            >
+              ✓ TODAY&apos;S ROUTINE
+              IS COMPLETE
+            </div>
+          )}
+
           <div>
             {exercises.map(
-              (exercise, index) => {
+              (
+                exercise,
+                index
+              ) => {
                 const exerciseId =
                   getExerciseId(
                     exercise
@@ -577,7 +705,8 @@ export default function CorrectiveMobility({
                       saving
                     }
                     disabled={
-                      !exerciseId
+                      !exerciseId ||
+                      completedToday
                     }
                     onToggle={() =>
                       toggleExercise(
@@ -595,17 +724,23 @@ export default function CorrectiveMobility({
               type="button"
               disabled={
                 !allExercisesComplete ||
-                finishing
+                finishing ||
+                completedToday
               }
-              onClick={finishRoutine}
+              onClick={
+                finishRoutine
+              }
               style={
                 !allExercisesComplete ||
-                finishing
+                finishing ||
+                completedToday
                   ? styles.disabledButton
                   : styles.finishButton
               }
             >
-              {finishing
+              {completedToday
+                ? "ROUTINE COMPLETE"
+                : finishing
                 ? "SAVING..."
                 : allExercisesComplete
                 ? "FINISH ROUTINE"
@@ -638,7 +773,9 @@ function CorrectiveExercise({
       }}
     >
       <div
-        style={styles.exerciseHeader}
+        style={
+          styles.exerciseHeader
+        }
       >
         <button
           type="button"
@@ -661,7 +798,7 @@ function CorrectiveExercise({
               : "#FFFFFF",
             opacity:
               saving || disabled
-                ? 0.6
+                ? 0.65
                 : 1,
             cursor:
               saving || disabled
@@ -728,15 +865,21 @@ function CorrectiveExercise({
       </div>
 
       <div
-        style={styles.prescription}
+        style={
+          styles.prescription
+        }
       >
         <Prescription
-          value={exercise.sets || "-"}
+          value={
+            exercise.sets || "-"
+          }
           label="SETS"
         />
 
         <Prescription
-          value={exercise.reps || "-"}
+          value={
+            exercise.reps || "-"
+          }
           label="REPS"
         />
 
@@ -760,7 +903,11 @@ function CorrectiveExercise({
       </div>
 
       {exercise.instructions && (
-        <div style={styles.instructions}>
+        <div
+          style={
+            styles.instructions
+          }
+        >
           <strong
             style={
               styles.smallHeading
@@ -782,7 +929,9 @@ function CorrectiveExercise({
           }
         >
           <strong
-            style={styles.noteTitle}
+            style={
+              styles.noteTitle
+            }
           >
             QUE&apos;S COACHING NOTE
           </strong>
@@ -798,7 +947,9 @@ function CorrectiveExercise({
           href={exercise.video_url}
           target="_blank"
           rel="noopener noreferrer"
-          style={styles.videoButton}
+          style={
+            styles.videoButton
+          }
         >
           WATCH MOVEMENT VIDEO
         </a>
@@ -836,7 +987,10 @@ function Prescription({
   );
 }
 
-function Stat({ value, label }) {
+function Stat({
+  value,
+  label,
+}) {
   return (
     <div style={styles.statCard}>
       <strong
@@ -896,21 +1050,52 @@ function formatText(value) {
     );
 }
 
-function getStartOfWeekISO() {
+function padNumber(value) {
+  return String(value).padStart(
+    2,
+    "0"
+  );
+}
+
+function formatLocalDate(date) {
+  return `${date.getFullYear()}-${padNumber(
+    date.getMonth() + 1
+  )}-${padNumber(date.getDate())}`;
+}
+
+function getLocalDateString() {
+  return formatLocalDate(
+    new Date()
+  );
+}
+
+function getLocalWeekStartString() {
   const now = new Date();
+
   const day = now.getDay();
 
   const difference =
-    now.getDate() -
-    day +
-    (day === 0 ? -6 : 1);
+    day === 0
+      ? -6
+      : 1 - day;
 
-  const monday = new Date(now);
+  const monday =
+    new Date(now);
 
-  monday.setDate(difference);
-  monday.setHours(0, 0, 0, 0);
+  monday.setDate(
+    now.getDate() + difference
+  );
 
-  return monday.toISOString();
+  monday.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  return formatLocalDate(
+    monday
+  );
 }
 
 const styles = {
@@ -945,7 +1130,8 @@ const styles = {
 
   statCard: {
     background: "#111111",
-    border: "1px solid #2A2A2A",
+    border:
+      "1px solid #2A2A2A",
     borderRadius: "12px",
     padding: "18px",
     display: "flex",
@@ -965,7 +1151,8 @@ const styles = {
 
   progressCard: {
     background: "#111111",
-    border: "1px solid #2A2A2A",
+    border:
+      "1px solid #2A2A2A",
     borderRadius: "14px",
     padding: "20px",
     marginBottom: "20px",
@@ -1008,7 +1195,8 @@ const styles = {
 
   focusCard: {
     background: "#111111",
-    border: "1px solid #2A2A2A",
+    border:
+      "1px solid #2A2A2A",
     borderRadius: "14px",
     padding: "22px",
     marginBottom: "20px",
@@ -1030,7 +1218,8 @@ const styles = {
 
   message: {
     background: "#111111",
-    border: "1px solid #F4C20D",
+    border:
+      "1px solid #F4C20D",
     borderRadius: "12px",
     padding: "13px 16px",
     color: "#F4C20D",
@@ -1040,7 +1229,8 @@ const styles = {
 
   routineCard: {
     background: "#111111",
-    border: "1px solid #2A2A2A",
+    border:
+      "1px solid #2A2A2A",
     borderRadius: "16px",
     overflow: "hidden",
   },
@@ -1068,9 +1258,20 @@ const styles = {
     fontSize: "22px",
   },
 
+  completedBanner: {
+    background: "#F4C20D",
+    color: "#050505",
+    textAlign: "center",
+    padding: "11px",
+    fontWeight: "900",
+    fontSize: "11px",
+    letterSpacing: "1px",
+  },
+
   exerciseCard: {
     background: "#111111",
-    border: "1px solid #2A2A2A",
+    border:
+      "1px solid #2A2A2A",
     padding: "22px",
     borderLeft: "none",
     borderRight: "none",
@@ -1155,7 +1356,8 @@ const styles = {
 
   prescriptionItem: {
     background: "#050505",
-    border: "1px solid #2A2A2A",
+    border:
+      "1px solid #2A2A2A",
     borderRadius: "10px",
     padding: "12px",
     display: "flex",
@@ -1239,7 +1441,8 @@ const styles = {
 
   emptyCard: {
     background: "#111111",
-    border: "1px solid #2A2A2A",
+    border:
+      "1px solid #2A2A2A",
     borderRadius: "14px",
     padding: "25px",
     marginTop: "20px",
@@ -1252,7 +1455,8 @@ const styles = {
 
   disclaimer: {
     background: "#0B0B0B",
-    border: "1px solid #2A2A2A",
+    border:
+      "1px solid #2A2A2A",
     borderRadius: "12px",
     padding: "18px",
     marginTop: "30px",

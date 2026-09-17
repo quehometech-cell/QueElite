@@ -37,6 +37,7 @@ export default function MembersPage() {
 
   const [correctiveRoutine, setCorrectiveRoutine] =
     useState(null);
+
   const [
     correctiveExercises,
     setCorrectiveExercises,
@@ -44,8 +45,10 @@ export default function MembersPage() {
 
   const [weeklyCompleted, setWeeklyCompleted] =
     useState(0);
+
   const [latestWeight, setLatestWeight] =
     useState(null);
+
   const [latestCheckIn, setLatestCheckIn] =
     useState(null);
 
@@ -58,7 +61,9 @@ export default function MembersPage() {
     setLoadError("");
 
     try {
+      // =====================================================
       // 1. AUTHENTICATION
+      // =====================================================
 
       const {
         data: { session },
@@ -78,7 +83,9 @@ export default function MembersPage() {
 
       setUser(currentUser);
 
+      // =====================================================
       // 2. PROFILE + MEMBERSHIP
+      // =====================================================
 
       const {
         data: profileData,
@@ -104,7 +111,9 @@ export default function MembersPage() {
         return;
       }
 
+      // =====================================================
       // 3. ONBOARDING
+      // =====================================================
 
       const {
         data: onboardingData,
@@ -129,7 +138,9 @@ export default function MembersPage() {
         return;
       }
 
-      // 4. LOAD PORTAL DATA
+      // =====================================================
+      // 4. LOAD MEMBER PORTAL DATA
+      // =====================================================
 
       await Promise.all([
         loadMemberWorkout(currentUser.id),
@@ -153,6 +164,10 @@ export default function MembersPage() {
       setLoading(false);
     }
   }
+
+  // =========================================================
+  // MEMBER WORKOUT
+  // =========================================================
 
   async function loadMemberWorkout(userId) {
     const {
@@ -195,6 +210,8 @@ export default function MembersPage() {
 
     setProgram(programData);
 
+    // Load the rows that connect exercises to this program.
+
     const {
       data: programExerciseRows,
       error: programExerciseError,
@@ -220,13 +237,31 @@ export default function MembersPage() {
       return;
     }
 
+    // Get all unique exercise IDs.
+
     const exerciseIds = [
       ...new Set(
-        programExerciseRows.map(
-          (row) => row.exercise_id
-        )
+        programExerciseRows
+          .map((row) => row.exercise_id)
+          .filter(
+            (exerciseId) =>
+              exerciseId !== null &&
+              exerciseId !== undefined
+          )
       ),
     ];
+
+    if (!exerciseIds.length) {
+      console.error(
+        "Program exercise rows are missing exercise IDs:",
+        programExerciseRows
+      );
+
+      setWorkoutExercises([]);
+      return;
+    }
+
+    // Load the actual exercise information.
 
     const {
       data: exerciseRows,
@@ -244,25 +279,42 @@ export default function MembersPage() {
 
     const exerciseMap = new Map(
       (exerciseRows || []).map((exercise) => [
-        exercise.id,
+        Number(exercise.id),
         exercise,
       ])
     );
+
+    // =====================================================
+    // IMPORTANT:
+    // Preserve BOTH IDs.
+    //
+    // exercise_id = actual exercise
+    // program_exercise_id = program assignment row
+    // =====================================================
 
     const mergedExercises =
       programExerciseRows
         .map((row) => {
           const exercise = exerciseMap.get(
-            row.exercise_id
+            Number(row.exercise_id)
           );
 
           if (!exercise) {
+            console.error(
+              "Exercise not found for program row:",
+              row
+            );
+
             return null;
           }
 
           return {
             ...exercise,
 
+            // THIS IS THE FIX
+            exercise_id: row.exercise_id,
+
+            // ID of the program_exercises row
             program_exercise_id: row.id,
 
             exercise_order:
@@ -271,20 +323,27 @@ export default function MembersPage() {
             workout_day:
               row.workout_day,
 
-            sets: row.sets,
+            sets:
+              row.sets,
 
-            reps: row.reps,
+            reps:
+              row.reps,
 
             rest_seconds:
               row.rest_seconds,
 
-            notes: row.notes,
+            notes:
+              row.notes,
           };
         })
         .filter(Boolean);
 
     setWorkoutExercises(mergedExercises);
   }
+
+  // =========================================================
+  // EXERCISE LIBRARY
+  // =========================================================
 
   async function loadExerciseLibrary() {
     const { data, error } = await supabase
@@ -304,6 +363,10 @@ export default function MembersPage() {
     setLibraryExercises(data || []);
   }
 
+  // =========================================================
+  // NUTRITION
+  // =========================================================
+
   async function loadNutrition(userId) {
     const { data, error } = await supabase
       .from("nutrition_plans")
@@ -319,6 +382,10 @@ export default function MembersPage() {
 
     setNutritionPlan(data || null);
   }
+
+  // =========================================================
+  // CORRECTIVE / MOBILITY
+  // =========================================================
 
   async function loadCorrectiveRoutine(userId) {
     const {
@@ -395,9 +462,13 @@ export default function MembersPage() {
 
     const exerciseIds = [
       ...new Set(
-        routineRows.map(
-          (row) => row.exercise_id
-        )
+        routineRows
+          .map((row) => row.exercise_id)
+          .filter(
+            (exerciseId) =>
+              exerciseId !== null &&
+              exerciseId !== undefined
+          )
       ),
     ];
 
@@ -417,7 +488,7 @@ export default function MembersPage() {
 
     const exerciseMap = new Map(
       (exerciseRows || []).map((exercise) => [
-        exercise.id,
+        Number(exercise.id),
         exercise,
       ])
     );
@@ -426,7 +497,7 @@ export default function MembersPage() {
       routineRows
         .map((row) => {
           const exercise = exerciseMap.get(
-            row.exercise_id
+            Number(row.exercise_id)
           );
 
           if (!exercise) {
@@ -436,15 +507,20 @@ export default function MembersPage() {
           return {
             ...exercise,
 
+            exercise_id:
+              row.exercise_id,
+
             corrective_exercise_id:
               row.id,
 
             exercise_order:
               row.exercise_order,
 
-            sets: row.sets,
+            sets:
+              row.sets,
 
-            reps: row.reps,
+            reps:
+              row.reps,
 
             duration_seconds:
               row.duration_seconds,
@@ -452,13 +528,20 @@ export default function MembersPage() {
             rest_seconds:
               row.rest_seconds,
 
-            notes: row.notes,
+            notes:
+              row.notes,
           };
         })
         .filter(Boolean);
 
-    setCorrectiveExercises(mergedExercises);
+    setCorrectiveExercises(
+      mergedExercises
+    );
   }
+
+  // =========================================================
+  // WEEKLY WORKOUT COMPLETIONS
+  // =========================================================
 
   async function loadWeeklyCompletions(userId) {
     const start = getStartOfWeek();
@@ -483,6 +566,10 @@ export default function MembersPage() {
     );
   }
 
+  // =========================================================
+  // PROGRESS
+  // =========================================================
+
   async function loadLatestProgress(userId) {
     const { data, error } = await supabase
       .from("progress_entries")
@@ -505,6 +592,10 @@ export default function MembersPage() {
     );
   }
 
+  // =========================================================
+  // CHECK-IN
+  // =========================================================
+
   async function loadLatestCheckIn(userId) {
     const { data, error } = await supabase
       .from("weekly_checkins")
@@ -522,14 +613,28 @@ export default function MembersPage() {
       throw error;
     }
 
-    setLatestCheckIn(data || null);
+    setLatestCheckIn(
+      data || null
+    );
   }
+
+  // =========================================================
+  // WORKOUT CALLBACK
+  // =========================================================
 
   async function handleWorkoutCompletion() {
-    if (!user?.id) return;
+    if (!user?.id) {
+      return;
+    }
 
-    await loadWeeklyCompletions(user.id);
+    await loadWeeklyCompletions(
+      user.id
+    );
   }
+
+  // =========================================================
+  // LOGOUT
+  // =========================================================
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -537,6 +642,10 @@ export default function MembersPage() {
     router.replace("/login");
     router.refresh();
   }
+
+  // =========================================================
+  // LOADING
+  // =========================================================
 
   if (loading) {
     return (
@@ -555,6 +664,10 @@ export default function MembersPage() {
       </main>
     );
   }
+
+  // =========================================================
+  // ERROR
+  // =========================================================
 
   if (loadError) {
     return (
@@ -581,6 +694,10 @@ export default function MembersPage() {
       </main>
     );
   }
+
+  // =========================================================
+  // MEMBER PORTAL
+  // =========================================================
 
   return (
     <main style={styles.page}>
@@ -761,13 +878,23 @@ export default function MembersPage() {
               weeklyCompleted={
                 weeklyCompleted
               }
-              latestWeight={latestWeight}
-              nutritionPlan={nutritionPlan}
-              latestCheckIn={latestCheckIn}
-              hasCorrectiveRoutine={
-                Boolean(correctiveRoutine)
+              latestWeight={
+                latestWeight
               }
-              setActiveTab={setActiveTab}
+              nutritionPlan={
+                nutritionPlan
+              }
+              latestCheckIn={
+                latestCheckIn
+              }
+              hasCorrectiveRoutine={
+                Boolean(
+                  correctiveRoutine
+                )
+              }
+              setActiveTab={
+                setActiveTab
+              }
             />
           )}
 
@@ -824,6 +951,10 @@ export default function MembersPage() {
   );
 }
 
+// ===========================================================
+// NAV BUTTON
+// ===========================================================
+
 function NavButton({
   label,
   active,
@@ -854,8 +985,14 @@ function NavButton({
   );
 }
 
+// ===========================================================
+// INITIALS
+// ===========================================================
+
 function getInitials(value) {
-  if (!value) return "GCR";
+  if (!value) {
+    return "GCR";
+  }
 
   const parts = value
     .trim()
@@ -873,6 +1010,10 @@ function getInitials(value) {
   }`.toUpperCase();
 }
 
+// ===========================================================
+// START OF WEEK
+// ===========================================================
+
 function getStartOfWeek() {
   const now = new Date();
 
@@ -887,10 +1028,19 @@ function getStartOfWeek() {
     now.getDate() + difference
   );
 
-  monday.setHours(0, 0, 0, 0);
+  monday.setHours(
+    0,
+    0,
+    0,
+    0
+  );
 
   return monday;
 }
+
+// ===========================================================
+// STYLES
+// ===========================================================
 
 const styles = {
   page: {
@@ -1032,7 +1182,8 @@ const styles = {
   logoutButton: {
     background: "transparent",
     color: "#BDBDBD",
-    border: "1px solid #2A2A2A",
+    border:
+      "1px solid #2A2A2A",
     borderRadius: "8px",
     padding: "10px 13px",
     fontSize: "10px",
@@ -1043,7 +1194,8 @@ const styles = {
   portal: {
     display: "flex",
     width: "100%",
-    minHeight: "calc(100vh - 72px)",
+    minHeight:
+      "calc(100vh - 72px)",
   },
 
   sidebar: {
@@ -1106,7 +1258,8 @@ const styles = {
     color: "#999999",
     border: "none",
     borderRadius: "8px",
-    padding: "13px 13px 13px 18px",
+    padding:
+      "13px 13px 13px 18px",
     textAlign: "left",
     cursor: "pointer",
     fontWeight: "800",
@@ -1122,7 +1275,8 @@ const styles = {
     position: "absolute",
     left: "6px",
     top: "50%",
-    transform: "translateY(-50%)",
+    transform:
+      "translateY(-50%)",
     width: "3px",
     height: "18px",
     borderRadius: "5px",
@@ -1137,7 +1291,8 @@ const styles = {
     marginTop: "auto",
     borderTop:
       "1px solid #2A2A2A",
-    padding: "18px 8px 0",
+    padding:
+      "18px 8px 0",
   },
 
   sidebarText: {

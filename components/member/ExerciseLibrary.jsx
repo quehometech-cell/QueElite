@@ -2,469 +2,344 @@
 
 import { useMemo, useState } from "react";
 
-export default function ExerciseLibrary({
-  exercises = [],
-}) {
+export default function ExerciseLibrary({ exercises = [] }) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
 
   const categories = useMemo(() => {
-    const values = exercises
-      .map((exercise) => exercise.category)
-      .filter(Boolean);
-
-    return [
-      "all",
-      ...Array.from(new Set(values)).sort(),
+    const unique = [
+      ...new Set(
+        exercises
+          .map((exercise) => exercise.category)
+          .filter(Boolean)
+      ),
     ];
+
+    return unique.sort();
   }, [exercises]);
 
   const filteredExercises = useMemo(() => {
-    const searchValue = search
-      .trim()
-      .toLowerCase();
+    const searchTerm = search.trim().toLowerCase();
 
     return exercises.filter((exercise) => {
       const matchesCategory =
-        category === "all" ||
-        exercise.category === category;
+        category === "all" || exercise.category === category;
 
       const searchableText = [
         exercise.name,
         exercise.category,
         exercise.equipment,
-        exercise.difficulty,
         exercise.muscle_group,
+        exercise.difficulty,
       ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
 
       const matchesSearch =
-        !searchValue ||
-        searchableText.includes(searchValue);
+        !searchTerm || searchableText.includes(searchTerm);
 
       return matchesCategory && matchesSearch;
     });
   }, [exercises, search, category]);
 
+  function formatText(value) {
+    if (!value) return "";
+
+    return value
+      .replaceAll("_", " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  function isValidVideoUrl(url) {
+    if (!url) return false;
+
+    try {
+      const parsed = new URL(url);
+
+      return (
+        parsed.protocol === "https:" ||
+        parsed.protocol === "http:"
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  const styles = {
+    page: {
+      display: "grid",
+      gap: "20px",
+    },
+
+    header: {
+      background: "#111111",
+      border: "1px solid #2A2A2A",
+      borderRadius: "16px",
+      padding: "22px",
+    },
+
+    title: {
+      margin: 0,
+      color: "#FFFFFF",
+      fontSize: "24px",
+      fontWeight: "800",
+    },
+
+    subtitle: {
+      color: "#BDBDBD",
+      marginTop: "6px",
+      lineHeight: "1.5",
+    },
+
+    filters: {
+      display: "grid",
+      gridTemplateColumns:
+        "repeat(auto-fit, minmax(220px, 1fr))",
+      gap: "12px",
+      marginTop: "20px",
+    },
+
+    input: {
+      width: "100%",
+      boxSizing: "border-box",
+      padding: "13px",
+      borderRadius: "10px",
+      border: "1px solid #2A2A2A",
+      background: "#050505",
+      color: "#FFFFFF",
+      outline: "none",
+      fontSize: "14px",
+    },
+
+    select: {
+      width: "100%",
+      padding: "13px",
+      borderRadius: "10px",
+      border: "1px solid #2A2A2A",
+      background: "#050505",
+      color: "#FFFFFF",
+      outline: "none",
+      fontSize: "14px",
+    },
+
+    count: {
+      color: "#F4C20D",
+      fontSize: "13px",
+      fontWeight: "800",
+      marginTop: "16px",
+    },
+
+    grid: {
+      display: "grid",
+      gridTemplateColumns:
+        "repeat(auto-fit, minmax(280px, 1fr))",
+      gap: "16px",
+    },
+
+    card: {
+      background: "#111111",
+      border: "1px solid #2A2A2A",
+      borderRadius: "16px",
+      padding: "20px",
+      display: "flex",
+      flexDirection: "column",
+      minHeight: "260px",
+    },
+
+    top: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: "12px",
+    },
+
+    name: {
+      color: "#FFFFFF",
+      fontSize: "19px",
+      fontWeight: "800",
+      lineHeight: "1.3",
+    },
+
+    difficulty: {
+      color: "#F4C20D",
+      background: "#050505",
+      border: "1px solid #2A2A2A",
+      borderRadius: "999px",
+      padding: "6px 10px",
+      fontSize: "11px",
+      fontWeight: "800",
+      whiteSpace: "nowrap",
+    },
+
+    details: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "8px",
+      marginTop: "14px",
+    },
+
+    detail: {
+      background: "#050505",
+      border: "1px solid #2A2A2A",
+      borderRadius: "8px",
+      padding: "6px 9px",
+      color: "#BDBDBD",
+      fontSize: "12px",
+    },
+
+    instructions: {
+      color: "#BDBDBD",
+      fontSize: "14px",
+      lineHeight: "1.6",
+      marginTop: "16px",
+      flex: 1,
+    },
+
+    videoButton: {
+      display: "block",
+      width: "100%",
+      boxSizing: "border-box",
+      marginTop: "18px",
+      padding: "12px 16px",
+      borderRadius: "10px",
+      background: "#F4C20D",
+      color: "#050505",
+      fontWeight: "900",
+      textAlign: "center",
+      textDecoration: "none",
+    },
+
+    noVideo: {
+      marginTop: "18px",
+      padding: "11px",
+      borderRadius: "10px",
+      background: "#050505",
+      border: "1px solid #2A2A2A",
+      color: "#777777",
+      fontSize: "12px",
+      textAlign: "center",
+    },
+
+    empty: {
+      background: "#111111",
+      border: "1px solid #2A2A2A",
+      borderRadius: "16px",
+      padding: "30px",
+      color: "#BDBDBD",
+      textAlign: "center",
+    },
+  };
+
   return (
-    <section>
-      <p style={styles.goldLabel}>
-        EXERCISE LIBRARY
-      </p>
+    <div style={styles.page}>
+      <div style={styles.header}>
+        <h2 style={styles.title}>Exercise Library</h2>
 
-      <h2 style={styles.title}>
-        LEARN THE MOVEMENTS
-      </h2>
+        <div style={styles.subtitle}>
+          Search exercises, review coaching instructions, and
+          watch exercise demonstrations when available.
+        </div>
 
-      <p style={styles.description}>
-        Search your exercise library for movement
-        instructions, equipment information, muscle groups,
-        and demonstration videos when available.
-      </p>
-
-      <div style={styles.searchCard}>
-        <label style={styles.label}>
-          SEARCH EXERCISES
-
+        <div style={styles.filters}>
           <input
             type="text"
             value={search}
-            onChange={(event) =>
-              setSearch(event.target.value)
-            }
-            placeholder="Search squat, dumbbell, core..."
-            style={styles.searchInput}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search exercises..."
+            style={styles.input}
           />
-        </label>
 
-        <div style={styles.categoryArea}>
-          <span style={styles.filterLabel}>
-            FILTER BY CATEGORY
-          </span>
+          <select
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+            style={styles.select}
+          >
+            <option value="all">All Categories</option>
 
-          <div style={styles.categoryButtons}>
             {categories.map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setCategory(item)}
-                style={
-                  category === item
-                    ? styles.activeCategory
-                    : styles.categoryButton
-                }
-              >
-                {item === "all"
-                  ? "ALL"
-                  : formatText(item).toUpperCase()}
-              </button>
+              <option key={item} value={item}>
+                {formatText(item)}
+              </option>
             ))}
-          </div>
+          </select>
         </div>
-      </div>
 
-      <div style={styles.resultHeader}>
-        <h3 style={styles.resultTitle}>
-          {category === "all"
-            ? "All Exercises"
-            : formatText(category)}
-        </h3>
-
-        <span style={styles.resultCount}>
-          {filteredExercises.length}{" "}
-          {filteredExercises.length === 1
-            ? "EXERCISE"
-            : "EXERCISES"}
-        </span>
+        <div style={styles.count}>
+          {filteredExercises.length} exercise
+          {filteredExercises.length === 1 ? "" : "s"}
+        </div>
       </div>
 
       {filteredExercises.length === 0 ? (
-        <div style={styles.emptyCard}>
-          <h3 style={styles.emptyTitle}>
-            No Exercises Found
-          </h3>
-
-          <p style={styles.bodyText}>
-            Try a different search or category.
-          </p>
+        <div style={styles.empty}>
+          No exercises match your search.
         </div>
       ) : (
-        <div style={styles.exerciseGrid}>
-          {filteredExercises.map((exercise) => (
-            <ExerciseCard
-              key={exercise.id}
-              exercise={exercise}
-            />
-          ))}
+        <div style={styles.grid}>
+          {filteredExercises.map((exercise) => {
+            const hasVideo = isValidVideoUrl(
+              exercise.video_url
+            );
+
+            return (
+              <div key={exercise.id} style={styles.card}>
+                <div style={styles.top}>
+                  <div style={styles.name}>
+                    {exercise.name}
+                  </div>
+
+                  {exercise.difficulty && (
+                    <div style={styles.difficulty}>
+                      {formatText(exercise.difficulty)}
+                    </div>
+                  )}
+                </div>
+
+                <div style={styles.details}>
+                  {exercise.category && (
+                    <div style={styles.detail}>
+                      {formatText(exercise.category)}
+                    </div>
+                  )}
+
+                  {exercise.muscle_group && (
+                    <div style={styles.detail}>
+                      {formatText(exercise.muscle_group)}
+                    </div>
+                  )}
+
+                  {exercise.equipment && (
+                    <div style={styles.detail}>
+                      {formatText(exercise.equipment)}
+                    </div>
+                  )}
+                </div>
+
+                <div style={styles.instructions}>
+                  {exercise.instructions ||
+                    "Exercise instructions will be added soon."}
+                </div>
+
+                {hasVideo ? (
+                  <a
+                    href={exercise.video_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={styles.videoButton}
+                  >
+                    Watch Demo
+                  </a>
+                ) : (
+                  <div style={styles.noVideo}>
+                    Video demonstration coming soon
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
-    </section>
+    </div>
   );
 }
-
-function ExerciseCard({ exercise }) {
-  return (
-    <article style={styles.exerciseCard}>
-      <div style={styles.cardTop}>
-        <div style={styles.exerciseIcon}>
-          GCR
-        </div>
-
-        <div style={styles.exerciseHeading}>
-          <h3 style={styles.exerciseName}>
-            {exercise.name}
-          </h3>
-
-          <div style={styles.tags}>
-            {exercise.category && (
-              <Tag value={exercise.category} />
-            )}
-
-            {exercise.muscle_group && (
-              <Tag value={exercise.muscle_group} />
-            )}
-
-            {exercise.equipment && (
-              <Tag value={exercise.equipment} />
-            )}
-
-            {exercise.difficulty && (
-              <Tag value={exercise.difficulty} />
-            )}
-          </div>
-        </div>
-      </div>
-
-      {exercise.instructions ? (
-        <div style={styles.instructions}>
-          <strong style={styles.smallHeading}>
-            HOW TO
-          </strong>
-
-          <p style={styles.bodyText}>
-            {exercise.instructions}
-          </p>
-        </div>
-      ) : (
-        <div style={styles.instructions}>
-          <strong style={styles.smallHeading}>
-            INSTRUCTIONS
-          </strong>
-
-          <p style={styles.mutedText}>
-            Exercise instructions will be added here.
-          </p>
-        </div>
-      )}
-
-      {exercise.video_url ? (
-        <a
-          href={exercise.video_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={styles.videoButton}
-        >
-          WATCH DEMONSTRATION
-        </a>
-      ) : (
-        <div style={styles.videoUnavailable}>
-          VIDEO COMING SOON
-        </div>
-      )}
-    </article>
-  );
-}
-
-function Tag({ value }) {
-  return (
-    <span style={styles.tag}>
-      {formatText(value)}
-    </span>
-  );
-}
-
-function formatText(value) {
-  if (!value) return "";
-
-  return value
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (letter) =>
-      letter.toUpperCase()
-    );
-}
-
-const styles = {
-  goldLabel: {
-    color: "#F4C20D",
-    fontWeight: "900",
-    letterSpacing: "1.5px",
-    fontSize: "11px",
-    margin: 0,
-  },
-
-  title: {
-    color: "#FFFFFF",
-    fontSize: "clamp(32px, 6vw, 52px)",
-    margin: "8px 0 10px",
-  },
-
-  description: {
-    color: "#BDBDBD",
-    lineHeight: 1.6,
-    maxWidth: "800px",
-    marginBottom: "25px",
-  },
-
-  searchCard: {
-    background: "#111111",
-    border: "1px solid #2A2A2A",
-    borderRadius: "15px",
-    padding: "20px",
-    marginBottom: "30px",
-  },
-
-  label: {
-    color: "#BDBDBD",
-    fontSize: "10px",
-    fontWeight: "900",
-    letterSpacing: "1px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-  },
-
-  searchInput: {
-    width: "100%",
-    boxSizing: "border-box",
-    background: "#050505",
-    color: "#FFFFFF",
-    border: "1px solid #2A2A2A",
-    borderRadius: "9px",
-    padding: "15px",
-    outline: "none",
-    fontSize: "15px",
-  },
-
-  categoryArea: {
-    marginTop: "18px",
-  },
-
-  filterLabel: {
-    color: "#BDBDBD",
-    fontSize: "10px",
-    fontWeight: "900",
-    letterSpacing: "1px",
-  },
-
-  categoryButtons: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "8px",
-    marginTop: "10px",
-  },
-
-  categoryButton: {
-    background: "#050505",
-    color: "#BDBDBD",
-    border: "1px solid #2A2A2A",
-    borderRadius: "30px",
-    padding: "9px 13px",
-    cursor: "pointer",
-    fontSize: "10px",
-    fontWeight: "900",
-  },
-
-  activeCategory: {
-    background: "#F4C20D",
-    color: "#050505",
-    border: "1px solid #F4C20D",
-    borderRadius: "30px",
-    padding: "9px 13px",
-    cursor: "pointer",
-    fontSize: "10px",
-    fontWeight: "900",
-  },
-
-  resultHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "15px",
-    flexWrap: "wrap",
-    marginBottom: "15px",
-  },
-
-  resultTitle: {
-    color: "#FFFFFF",
-    fontSize: "25px",
-    margin: 0,
-  },
-
-  resultCount: {
-    color: "#F4C20D",
-    fontSize: "10px",
-    fontWeight: "900",
-  },
-
-  exerciseGrid: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: "15px",
-  },
-
-  exerciseCard: {
-    background: "#111111",
-    border: "1px solid #2A2A2A",
-    borderRadius: "15px",
-    padding: "20px",
-    display: "flex",
-    flexDirection: "column",
-  },
-
-  cardTop: {
-    display: "flex",
-    gap: "13px",
-    alignItems: "flex-start",
-  },
-
-  exerciseIcon: {
-    width: "42px",
-    height: "42px",
-    minWidth: "42px",
-    background: "#F4C20D",
-    color: "#050505",
-    borderRadius: "9px",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    fontSize: "10px",
-    fontWeight: "900",
-  },
-
-  exerciseHeading: {
-    flex: 1,
-  },
-
-  exerciseName: {
-    color: "#FFFFFF",
-    margin: "2px 0 9px",
-    fontSize: "19px",
-  },
-
-  tags: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "5px",
-  },
-
-  tag: {
-    background: "#2A2A2A",
-    color: "#FFFFFF",
-    borderRadius: "20px",
-    padding: "5px 8px",
-    fontSize: "9px",
-  },
-
-  instructions: {
-    marginTop: "20px",
-    flex: 1,
-  },
-
-  smallHeading: {
-    color: "#F4C20D",
-    fontSize: "10px",
-    letterSpacing: "1px",
-  },
-
-  bodyText: {
-    color: "#BDBDBD",
-    lineHeight: 1.6,
-    fontSize: "13px",
-  },
-
-  mutedText: {
-    color: "#777777",
-    lineHeight: 1.6,
-    fontSize: "13px",
-  },
-
-  videoButton: {
-    display: "block",
-    textAlign: "center",
-    background: "#F4C20D",
-    color: "#050505",
-    borderRadius: "8px",
-    padding: "12px",
-    textDecoration: "none",
-    fontWeight: "900",
-    fontSize: "10px",
-    marginTop: "15px",
-  },
-
-  videoUnavailable: {
-    background: "#050505",
-    color: "#777777",
-    border: "1px solid #2A2A2A",
-    borderRadius: "8px",
-    padding: "12px",
-    textAlign: "center",
-    fontWeight: "900",
-    fontSize: "10px",
-    marginTop: "15px",
-  },
-
-  emptyCard: {
-    background: "#111111",
-    border: "1px solid #2A2A2A",
-    borderRadius: "15px",
-    padding: "25px",
-  },
-
-  emptyTitle: {
-    color: "#FFFFFF",
-    marginTop: 0,
-  },
-};

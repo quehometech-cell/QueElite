@@ -46,6 +46,16 @@ export default function MembersPage() {
   const [weeklyCompleted, setWeeklyCompleted] =
     useState(0);
 
+  const [
+    weeklyCorrectiveCompleted,
+    setWeeklyCorrectiveCompleted,
+  ] = useState(0);
+
+  const [
+    weeklyNutritionDays,
+    setWeeklyNutritionDays,
+  ] = useState(0);
+
   const [latestWeight, setLatestWeight] =
     useState(null);
 
@@ -155,6 +165,12 @@ export default function MembersPage() {
         loadWeeklyCompletions(
           currentUser.id,
           currentProgramId
+        ),
+        loadWeeklyCorrectiveCompletions(
+          currentUser.id
+        ),
+        loadWeeklyNutritionDays(
+          currentUser.id
         ),
         loadLatestProgress(currentUser.id),
         loadLatestCheckIn(currentUser.id),
@@ -593,6 +609,56 @@ export default function MembersPage() {
   }
 
   // =========================================================
+  // WEEKLY CORRECTIVE COMPLETIONS
+  // =========================================================
+
+  async function loadWeeklyCorrectiveCompletions(
+    userId
+  ) {
+    const start = getLocalWeekStartString();
+    const today = getLocalDateString();
+
+    const { data, error } = await supabase
+      .from("corrective_routine_completions")
+      .select("id, routine_id, completion_date")
+      .eq("user_id", userId)
+      .gte("completion_date", start)
+      .lte("completion_date", today);
+
+    if (error) {
+      throw error;
+    }
+
+    setWeeklyCorrectiveCompleted(
+      (data || []).length
+    );
+  }
+
+  // =========================================================
+  // WEEKLY NUTRITION LOGS
+  // =========================================================
+
+  async function loadWeeklyNutritionDays(userId) {
+    const start = getLocalWeekStartString();
+    const today = getLocalDateString();
+
+    const { data, error } = await supabase
+      .from("nutrition_logs")
+      .select("id, log_date")
+      .eq("user_id", userId)
+      .gte("log_date", start)
+      .lte("log_date", today);
+
+    if (error) {
+      throw error;
+    }
+
+    setWeeklyNutritionDays(
+      (data || []).length
+    );
+  }
+
+  // =========================================================
   // PROGRESS
   // =========================================================
 
@@ -656,6 +722,26 @@ export default function MembersPage() {
     await loadWeeklyCompletions(
       user.id,
       program?.id
+    );
+  }
+
+  async function handleCorrectiveCompletion() {
+    if (!user?.id) {
+      return;
+    }
+
+    await loadWeeklyCorrectiveCompletions(
+      user.id
+    );
+  }
+
+  async function handleNutritionChange() {
+    if (!user?.id) {
+      return;
+    }
+
+    await loadWeeklyNutritionDays(
+      user.id
     );
   }
 
@@ -905,6 +991,12 @@ export default function MembersPage() {
               weeklyCompleted={
                 weeklyCompleted
               }
+              weeklyCorrectiveCompleted={
+                weeklyCorrectiveCompleted
+              }
+              weeklyNutritionDays={
+                weeklyNutritionDays
+              }
               latestWeight={
                 latestWeight
               }
@@ -918,6 +1010,9 @@ export default function MembersPage() {
                 Boolean(
                   correctiveRoutine
                 )
+              }
+              correctiveTarget={
+                correctiveRoutine?.days_per_week || 0
               }
               setActiveTab={
                 setActiveTab
@@ -940,19 +1035,27 @@ export default function MembersPage() {
 
           {activeTab === "corrective" && (
             <CorrectiveMobility
+              user={user}
               routine={
                 correctiveRoutine
               }
               exercises={
                 correctiveExercises
               }
+              onCompletionChange={
+                handleCorrectiveCompletion
+              }
             />
           )}
 
           {activeTab === "nutrition" && (
             <Nutrition
+              user={user}
               nutritionPlan={
                 nutritionPlan
+              }
+              onNutritionChange={
+                handleNutritionChange
               }
             />
           )}
@@ -1040,6 +1143,32 @@ function getInitials(value) {
 // ===========================================================
 // START OF WEEK
 // ===========================================================
+
+function padNumber(value) {
+  return String(value).padStart(2, "0");
+}
+
+function formatLocalDate(date) {
+  return `${date.getFullYear()}-${padNumber(
+    date.getMonth() + 1
+  )}-${padNumber(date.getDate())}`;
+}
+
+function getLocalDateString() {
+  return formatLocalDate(new Date());
+}
+
+function getLocalWeekStartString() {
+  const now = new Date();
+  const day = now.getDay();
+  const difference = day === 0 ? -6 : 1 - day;
+  const monday = new Date(now);
+
+  monday.setDate(now.getDate() + difference);
+  monday.setHours(0, 0, 0, 0);
+
+  return formatLocalDate(monday);
+}
 
 function getStartOfWeek() {
   const now = new Date();

@@ -15,6 +15,12 @@ export default function sitemap() {
       priority: 0.9,
     },
     {
+      url: `${baseUrl}/online-personal-trainer-for-beginners`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
       url: `${baseUrl}/fitness-for-desk-workers`,
       lastModified: new Date(),
       changeFrequency: "monthly",

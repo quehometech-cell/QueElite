@@ -104,7 +104,7 @@ export default function MembershipRequiredPage() {
 
         <button
           type="button"
-          onClick={() => router.push("/#pricing")}
+          onClick={() => router.push("/checkout")}
           style={{
             width: "100%",
             marginTop: "24px",
@@ -118,7 +118,7 @@ export default function MembershipRequiredPage() {
             cursor: "pointer",
           }}
         >
-          View Coaching Plans
+          Complete Membership
         </button>
 
         <button

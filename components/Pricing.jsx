@@ -1,140 +1,170 @@
 "use client";
 
 export default function Pricing() {
-  return (
-    <section style={{ padding: "80px 60px" }}>
-      <h2
-        style={{
-          fontSize: "48px",
-          marginBottom: "40px",
-        }}
-      >
-        Coaching Plans
-      </h2>
+  const features = [
+    "Personalized workouts",
+    "Corrective mobility",
+    "Nutrition guidance",
+    "Progress tracking",
+    "Weekly check-ins",
+    "Private member portal",
+  ];
 
+  return (
+    <section
+      id="pricing"
+      style={{
+        padding: "80px 20px",
+        background: "#050505",
+        color: "#FFFFFF",
+      }}
+    >
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(auto-fit, minmax(300px, 1fr))",
-          gap: "20px",
+          maxWidth: "1050px",
+          margin: "0 auto",
         }}
       >
-        <div
+        <p
           style={{
-            background: "#121212",
-            padding: "40px",
-            border: "1px solid #333",
+            color: "#F4C20D",
+            fontWeight: "900",
+            letterSpacing: "2px",
+            fontSize: "12px",
+            textAlign: "center",
           }}
         >
-          <h3>Online Coaching</h3>
+          GET CHA RIGHT COACHING
+        </p>
 
-          <h2 style={{ color: "#facc15" }}>
-            $129/mo
-          </h2>
+        <h2
+          style={{
+            fontSize: "clamp(34px, 5vw, 52px)",
+            margin: "8px 0 14px",
+            textAlign: "center",
+          }}
+        >
+          Start Your Transformation
+        </h2>
 
-          <p style={{ color: "#999" }}>
-            Personalized workouts, accountability,
-            nutrition guidance, and weekly check-ins.
-          </p>
-
-          <button
-            onClick={() =>
-              window.open(
-                "https://buy.stripe.com/eVqcN44MD96se43fSc2sM02",
-                "_blank"
-              )
-            }
-            style={{
-              width: "100%",
-              padding: "14px",
-              background: "#facc15",
-              border: "none",
-              fontWeight: "bold",
-              cursor: "pointer",
-              marginTop: "20px",
-            }}
-          >
-            Subscribe Now
-          </button>
-        </div>
+        <p
+          style={{
+            color: "#999999",
+            maxWidth: "650px",
+            margin: "0 auto 34px",
+            textAlign: "center",
+            lineHeight: "1.6",
+          }}
+        >
+          Personalized online coaching for people who want a structured plan,
+          accountability, and one place to track the work.
+        </p>
 
         <div
           style={{
-            background: "#121212",
-            padding: "40px",
-            border: "1px solid #333",
+            maxWidth: "700px",
+            margin: "0 auto",
+            background: "#111111",
+            padding: "clamp(24px, 5vw, 38px)",
+            border: "1px solid #3A3A3A",
+            borderRadius: "18px",
           }}
         >
-          <h3>Hybrid Coaching</h3>
-
-          <h2 style={{ color: "#facc15" }}>
-            $249/mo
-          </h2>
-
-          <p style={{ color: "#999" }}>
-            Online + in-person support with strength,
-            mobility, and corrective exercise coaching.
-          </p>
-
-          <button
-            onClick={() =>
-              window.open(
-                "https://buy.stripe.com/00w8wOa6X4Qc8JJ49u2sM04",
-                "_blank"
-              )
-            }
+          <div
             style={{
-              width: "100%",
-              padding: "14px",
-              background: "#facc15",
-              border: "none",
-              fontWeight: "bold",
-              cursor: "pointer",
-              marginTop: "20px",
+              color: "#F4C20D",
+              fontSize: "11px",
+              fontWeight: "900",
+              letterSpacing: "1.5px",
             }}
           >
-            Subscribe Now
-          </button>
-        </div>
+            ONLINE TRANSFORMATION COACHING
+          </div>
 
-        <div
-          style={{
-            background: "#121212",
-            padding: "40px",
-            border: "1px solid #333",
-          }}
-        >
-          <h3>Movement Assessment</h3>
-
-          <h2 style={{ color: "#facc15" }}>
-            $49
-          </h2>
-
-          <p style={{ color: "#999" }}>
-            Posture analysis, mobility screening,
-            and corrective recommendations.
-          </p>
-
-          <button
-            onClick={() =>
-              window.open(
-                "https://buy.stripe.com/8x27sK5QH0zWf87gWg2sM03",
-                "_blank"
-              )
-            }
+          <h3
             style={{
-              width: "100%",
-              padding: "14px",
-              background: "#facc15",
-              border: "none",
-              fontWeight: "bold",
-              cursor: "pointer",
-              marginTop: "20px",
+              fontSize: "28px",
+              margin: "10px 0 14px",
             }}
           >
-            Book Assessment
-          </button>
+            Built Around You
+          </h3>
+
+          <p
+            style={{
+              color: "#A0A0A0",
+              lineHeight: "1.65",
+              marginBottom: "24px",
+            }}
+          >
+            Training, corrective mobility, nutrition guidance, progress
+            tracking, weekly check-ins, and coach support through your private
+            member portal.
+          </p>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(210px, 1fr))",
+              gap: "10px",
+              marginBottom: "28px",
+            }}
+          >
+            {features.map((item) => (
+              <div
+                key={item}
+                style={{
+                  color: "#D8D8D8",
+                  fontSize: "14px",
+                }}
+              >
+                <span
+                  style={{
+                    color: "#F4C20D",
+                    fontWeight: "900",
+                    marginRight: "8px",
+                  }}
+                >
+                  ✓
+                </span>
+
+                {item}
+              </div>
+            ))}
+          </div>
+
+          <a
+            href="/join"
+            style={{
+              width: "100%",
+              minHeight: "56px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "#F4C20D",
+              color: "#050505",
+              borderRadius: "10px",
+              textDecoration: "none",
+              fontWeight: "900",
+              fontSize: "15px",
+              textAlign: "center",
+            }}
+          >
+            START YOUR TRANSFORMATION →
+          </a>
+
+          <p
+            style={{
+              color: "#777777",
+              fontSize: "12px",
+              textAlign: "center",
+              margin: "13px 0 0",
+            }}
+          >
+            Create your account first. Secure payment follows during membership
+            setup.
+          </p>
         </div>
       </div>
     </section>

@@ -76,8 +76,7 @@ export default function Services() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit, minmax(260px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
             gap: "14px",
           }}
         >
@@ -123,6 +122,25 @@ export default function Services() {
               </p>
             </div>
           ))}
+        </div>
+
+        <div
+          style={{
+            marginTop: "34px",
+          }}
+        >
+          <a
+            href="/online-personal-training"
+            style={{
+              display: "inline-block",
+              color: "#F4C20D",
+              textDecoration: "none",
+              fontWeight: "900",
+              fontSize: "15px",
+            }}
+          >
+            LEARN ABOUT ONLINE PERSONAL TRAINING →
+          </a>
         </div>
       </div>
     </section>

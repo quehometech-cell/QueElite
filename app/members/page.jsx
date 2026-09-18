@@ -842,7 +842,117 @@ export default function MembersPage() {
 
   return (
     <main style={styles.page}>
-      <header style={styles.header}>
+      <style jsx global>{`
+        * {
+          box-sizing: border-box;
+        }
+
+        html,
+        body {
+          max-width: 100%;
+          overflow-x: hidden;
+        }
+
+        .gcr-member-header {
+          min-width: 0;
+        }
+
+        .gcr-member-portal {
+          min-width: 0;
+        }
+
+        .gcr-member-sidebar {
+          min-width: 245px;
+        }
+
+        .gcr-member-content {
+          min-width: 0;
+          width: 100%;
+        }
+
+        @media (max-width: 768px) {
+          .gcr-member-header {
+            position: relative !important;
+            padding: 10px 12px !important;
+            gap: 10px !important;
+            align-items: flex-start !important;
+          }
+
+          .gcr-member-header-actions {
+            width: 100% !important;
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+          }
+
+          .gcr-member-header-actions > * {
+            width: 100% !important;
+            min-width: 0 !important;
+            text-align: center !important;
+          }
+
+          .gcr-member-portal {
+            display: block !important;
+            width: 100% !important;
+            min-height: 0 !important;
+          }
+
+          .gcr-member-sidebar {
+            width: 100% !important;
+            min-width: 0 !important;
+            border-right: none !important;
+            border-bottom: 1px solid #2A2A2A !important;
+            padding: 12px !important;
+          }
+
+          .gcr-member-profile-card {
+            margin-bottom: 10px !important;
+            padding: 6px 4px !important;
+          }
+
+          .gcr-member-nav {
+            flex-direction: row !important;
+            width: 100% !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            gap: 8px !important;
+            padding: 2px 0 8px !important;
+            scrollbar-width: thin;
+            -webkit-overflow-scrolling: touch;
+          }
+
+          .gcr-member-nav button {
+            width: auto !important;
+            min-width: max-content !important;
+            flex: 0 0 auto !important;
+            padding: 11px 14px 11px 18px !important;
+            white-space: nowrap !important;
+          }
+
+          .gcr-member-sidebar-bottom {
+            display: none !important;
+          }
+
+          .gcr-member-content {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 18px 12px 28px !important;
+            overflow: visible !important;
+          }
+
+          .gcr-member-content > * {
+            max-width: 100% !important;
+            min-width: 0 !important;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .gcr-member-header-actions {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+      <header className="gcr-member-header" style={styles.header}>
         <button
           type="button"
           onClick={() =>
@@ -865,7 +975,7 @@ export default function MembersPage() {
           </div>
         </button>
 
-        <div style={styles.headerActions}>
+        <div className="gcr-member-header-actions" style={styles.headerActions}>
           {profile?.role &&
             ["coach", "admin"].includes(
               profile.role
@@ -900,9 +1010,9 @@ export default function MembersPage() {
         </div>
       </header>
 
-      <div style={styles.portal}>
-        <aside style={styles.sidebar}>
-          <div style={styles.profileCard}>
+      <div className="gcr-member-portal" style={styles.portal}>
+        <aside className="gcr-member-sidebar" style={styles.sidebar}>
+          <div className="gcr-member-profile-card" style={styles.profileCard}>
             <div style={styles.avatar}>
               {getInitials(
                 profile?.full_name ||
@@ -923,7 +1033,7 @@ export default function MembersPage() {
             </div>
           </div>
 
-          <nav style={styles.nav}>
+          <nav className="gcr-member-nav" style={styles.nav}>
             <NavButton
               label="Dashboard"
               active={
@@ -995,7 +1105,7 @@ export default function MembersPage() {
             />
           </nav>
 
-          <div style={styles.sidebarBottom}>
+          <div className="gcr-member-sidebar-bottom" style={styles.sidebarBottom}>
             <p style={styles.sidebarText}>
               Need help with your plan?
             </p>
@@ -1011,7 +1121,7 @@ export default function MembersPage() {
           </div>
         </aside>
 
-        <section style={styles.content}>
+        <section className="gcr-member-content" style={styles.content}>
           {activeTab === "dashboard" && (
             <Dashboard
               program={program}

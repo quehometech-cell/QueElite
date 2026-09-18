@@ -84,11 +84,40 @@ export default function Pricing() {
           <h3
             style={{
               fontSize: "28px",
-              margin: "10px 0 14px",
+              margin: "10px 0 6px",
             }}
           >
             Built Around You
           </h3>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: "7px",
+              marginBottom: "18px",
+            }}
+          >
+            <span
+              style={{
+                color: "#F4C20D",
+                fontSize: "38px",
+                fontWeight: "900",
+              }}
+            >
+              $125
+            </span>
+
+            <span
+              style={{
+                color: "#999999",
+                fontSize: "15px",
+                fontWeight: "700",
+              }}
+            >
+              / month
+            </span>
+          </div>
 
           <p
             style={{
@@ -105,8 +134,7 @@ export default function Pricing() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit, minmax(210px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
               gap: "10px",
               marginBottom: "28px",
             }}

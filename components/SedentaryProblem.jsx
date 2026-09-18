@@ -122,6 +122,42 @@ export default function SedentaryProblem() {
         >
           START MY FREE 3-DAY RESET
         </a>
+
+        {/* SEO INTERNAL LINKS */}
+        <div
+          style={{
+            marginTop: "32px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "12px 22px",
+          }}
+        >
+          <a
+            href="/fitness-for-desk-workers"
+            style={{
+              color: "#F4C20D",
+              textDecoration: "none",
+              fontWeight: "800",
+              fontSize: "14px",
+            }}
+          >
+            FITNESS FOR DESK WORKERS →
+          </a>
+
+          <a
+            href="/personal-trainer-georgia"
+            style={{
+              color: "#F4C20D",
+              textDecoration: "none",
+              fontWeight: "800",
+              fontSize: "14px",
+            }}
+          >
+            PERSONAL TRAINING IN GEORGIA →
+          </a>
+        </div>
       </div>
     </section>
   );

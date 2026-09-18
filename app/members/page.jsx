@@ -214,13 +214,22 @@ export default function MembersPage() {
   // =========================================================
 
   async function loadMemberWorkout(userId) {
+    // =====================================================
+    // NEW WORKOUT ENGINE
+    // Member -> Assignment -> Program -> Current Week
+    // -> Workout Days -> Prescribed Exercises
+    // =====================================================
+
     const {
       data: assignment,
       error: assignmentError,
     } = await supabase
       .from("member_programs")
-      .select("program_id, assigned_at")
+      .select(
+        "id, program_id, assigned_at, start_date, end_date, current_week, status, assignment_type, coach_id"
+      )
       .eq("user_id", userId)
+      .eq("status", "active")
       .order("assigned_at", {
         ascending: false,
       })
@@ -243,7 +252,7 @@ export default function MembersPage() {
     } = await supabase
       .from("programs")
       .select(
-        "id, name, goal, experience_level, equipment, days_per_week, session_minutes, location, description"
+        "id, name, goal, experience_level, equipment, days_per_week, session_minutes, location, description, duration_weeks, program_type"
       )
       .eq("id", assignment.program_id)
       .single();
@@ -252,40 +261,95 @@ export default function MembersPage() {
       throw programError;
     }
 
-    setProgram(programData);
+    const currentWeek = Math.max(
+      1,
+      Number(assignment.current_week || 1)
+    );
 
-    // Load the rows connecting exercises to this program.
+    const programWithAssignment = {
+      ...programData,
+      member_program_id: assignment.id,
+      assignment_id: assignment.id,
+      assigned_at: assignment.assigned_at,
+      start_date: assignment.start_date,
+      end_date: assignment.end_date,
+      current_week: currentWeek,
+      assignment_status: assignment.status,
+      assignment_type: assignment.assignment_type,
+      coach_id: assignment.coach_id,
+    };
 
+    setProgram(programWithAssignment);
+
+    // Load the member's current week from the new
+    // 12-week program structure.
     const {
-      data: programExerciseRows,
-      error: programExerciseError,
+      data: weekData,
+      error: weekError,
     } = await supabase
-      .from("program_exercises")
+      .from("program_weeks")
       .select(
-        "id, exercise_id, exercise_order, workout_day, sets, reps, rest_seconds, notes"
+        "id, week_number, name, phase_name, description, coach_notes"
       )
       .eq("program_id", assignment.program_id)
-      .order("workout_day", {
-        ascending: true,
-      })
-      .order("exercise_order", {
-        ascending: true,
-      });
+      .eq("week_number", currentWeek)
+      .maybeSingle();
 
-    if (programExerciseError) {
-      throw programExerciseError;
+    if (weekError) {
+      throw weekError;
     }
 
-    if (!programExerciseRows?.length) {
+    if (!weekData?.id) {
       setWorkoutExercises([]);
       return assignment.program_id;
     }
 
-    // Get all unique exercise IDs.
+    const {
+      data: workoutRows,
+      error: workoutError,
+    } = await supabase
+      .from("program_workouts")
+      .select(
+        "id, workout_day, name, workout_type, description, estimated_minutes, coach_notes, is_rest_day"
+      )
+      .eq("program_week_id", weekData.id)
+      .order("workout_day", {
+        ascending: true,
+      });
+
+    if (workoutError) {
+      throw workoutError;
+    }
+
+    if (!workoutRows?.length) {
+      setWorkoutExercises([]);
+      return assignment.program_id;
+    }
+
+    const workoutIds = workoutRows.map(
+      (workout) => workout.id
+    );
+
+    const {
+      data: prescriptionRows,
+      error: prescriptionError,
+    } = await supabase
+      .from("program_workout_exercises")
+      .select(
+        "id, program_workout_id, exercise_id, exercise_order, sets, reps, rir, rest_seconds, tempo, duration_seconds, distance_target, distance_unit, pace_target, notes"
+      )
+      .in("program_workout_id", workoutIds)
+      .order("exercise_order", {
+        ascending: true,
+      });
+
+    if (prescriptionError) {
+      throw prescriptionError;
+    }
 
     const exerciseIds = [
       ...new Set(
-        programExerciseRows
+        (prescriptionRows || [])
           .map((row) => row.exercise_id)
           .filter(
             (exerciseId) =>
@@ -295,95 +359,112 @@ export default function MembersPage() {
       ),
     ];
 
-    if (!exerciseIds.length) {
-      console.error(
-        "Program exercise rows are missing exercise IDs:",
-        programExerciseRows
-      );
+    let exerciseRows = [];
 
-      setWorkoutExercises([]);
-      return assignment.program_id;
+    if (exerciseIds.length) {
+      const {
+        data,
+        error: exerciseError,
+      } = await supabase
+        .from("exercises")
+        .select(
+          "id, name, category, equipment, difficulty, instructions, instructions_short, coaching_cues, common_mistakes, video_url, muscle_group, movement_pattern, secondary_muscles, exercise_type, unilateral, tracking_type"
+        )
+        .in("id", exerciseIds);
+
+      if (exerciseError) {
+        throw exerciseError;
+      }
+
+      exerciseRows = data || [];
     }
 
-    // Load actual exercise information.
-
-    const {
-      data: exerciseRows,
-      error: exerciseError,
-    } = await supabase
-      .from("exercises")
-      .select(
-        "id, name, category, equipment, difficulty, instructions, video_url, muscle_group"
-      )
-      .in("id", exerciseIds);
-
-    if (exerciseError) {
-      throw exerciseError;
-    }
+    const workoutMap = new Map(
+      workoutRows.map((workout) => [
+        Number(workout.id),
+        workout,
+      ])
+    );
 
     const exerciseMap = new Map(
-      (exerciseRows || []).map((exercise) => [
+      exerciseRows.map((exercise) => [
         Number(exercise.id),
         exercise,
       ])
     );
 
-    // =====================================================
-    // Preserve BOTH IDs.
-    //
-    // exercise_id = actual exercise
-    // program_exercise_id = program assignment row
-    // =====================================================
+    // Keep the existing flat exercises prop temporarily so
+    // Dashboard and the current Workouts component continue
+    // rendering while Step 27B replaces the workout UI.
+    // Extra IDs/fields below are for the new logging engine.
+    const mergedExercises = (prescriptionRows || [])
+      .map((row) => {
+        const workout = workoutMap.get(
+          Number(row.program_workout_id)
+        );
 
-    const mergedExercises =
-      programExerciseRows
-        .map((row) => {
-          const exercise = exerciseMap.get(
-            Number(row.exercise_id)
-          );
+        const exercise = exerciseMap.get(
+          Number(row.exercise_id)
+        );
 
-          if (!exercise) {
-            console.error(
-              "Exercise not found for program row:",
-              row
-            );
+        if (!workout || !exercise) {
+          return null;
+        }
 
-            return null;
-          }
+        return {
+          ...exercise,
 
-          return {
-            ...exercise,
+          exercise_id: row.exercise_id,
+          program_exercise_id: row.id,
+          program_workout_exercise_id: row.id,
+          program_workout_id: row.program_workout_id,
+          program_week_id: weekData.id,
 
-            exercise_id: row.exercise_id,
+          week_number: weekData.week_number,
+          week_name: weekData.name,
+          phase_name: weekData.phase_name,
+          week_description: weekData.description,
+          week_coach_notes: weekData.coach_notes,
 
-            program_exercise_id: row.id,
+          workout_day: workout.workout_day,
+          workout_name: workout.name,
+          workout_type: workout.workout_type,
+          workout_description: workout.description,
+          estimated_minutes: workout.estimated_minutes,
+          workout_coach_notes: workout.coach_notes,
+          is_rest_day: workout.is_rest_day,
 
-            exercise_order:
-              row.exercise_order,
+          exercise_order: row.exercise_order,
+          sets: row.sets,
+          reps: row.reps,
+          rir: row.rir,
+          rest_seconds: row.rest_seconds,
+          tempo: row.tempo,
+          duration_seconds: row.duration_seconds,
+          distance_target: row.distance_target,
+          distance_unit: row.distance_unit,
+          pace_target: row.pace_target,
+          notes: row.notes,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        const dayDifference =
+          Number(a.workout_day || 0) -
+          Number(b.workout_day || 0);
 
-            workout_day:
-              row.workout_day,
+        if (dayDifference !== 0) {
+          return dayDifference;
+        }
 
-            sets:
-              row.sets,
-
-            reps:
-              row.reps,
-
-            rest_seconds:
-              row.rest_seconds,
-
-            notes:
-              row.notes,
-          };
-        })
-        .filter(Boolean);
+        return (
+          Number(a.exercise_order || 0) -
+          Number(b.exercise_order || 0)
+        );
+      });
 
     setWorkoutExercises(mergedExercises);
 
-    // IMPORTANT:
-    // Return the current program ID so Dashboard
-    // completion tracking only counts this program.
     return assignment.program_id;
   }
 

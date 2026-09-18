@@ -62,7 +62,7 @@ export async function POST(request) {
 
       line_items: [
         {
-          price: "price_1TWedMAqc3ss0YxTG2Fl2HY0",
+          price: "price_1UH338Aqc3ss0YxT1k8OG9JX",
           quantity: 1,
         },
       ],

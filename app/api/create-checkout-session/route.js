@@ -1,21 +1,39 @@
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
+const getStripe = () => {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error("STRIPE_SECRET_KEY is not configured.");
   }
-);
+
+  return new Stripe(process.env.STRIPE_SECRET_KEY);
+};
+
+const getSupabaseAdmin = () => {
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.SUPABASE_SERVICE_ROLE_KEY
+  ) {
+    throw new Error("Supabase server environment variables are not configured.");
+  }
+
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+};
 
 export async function POST(request) {
   try {
+    const stripe = getStripe();
+    const supabaseAdmin = getSupabaseAdmin();
+
     const authorization = request.headers.get("authorization");
 
     if (!authorization?.startsWith("Bearer ")) {
@@ -38,10 +56,6 @@ export async function POST(request) {
         { status: 401 }
       );
     }
-
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      "https://www.getcharightfitness.com";
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -67,8 +81,11 @@ export async function POST(request) {
         },
       },
 
-      success_url: `${siteUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/checkout`,
+      success_url:
+        "https://www.getcharightfitness.com/payment-success?session_id={CHECKOUT_SESSION_ID}",
+
+      cancel_url:
+        "https://www.getcharightfitness.com/checkout",
 
       allow_promotion_codes: true,
     });
@@ -80,7 +97,9 @@ export async function POST(request) {
     console.error("Stripe checkout error:", error);
 
     return Response.json(
-      { error: "Unable to create checkout session" },
+      {
+        error: "Unable to create checkout session",
+      },
       { status: 500 }
     );
   }

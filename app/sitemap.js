@@ -21,6 +21,12 @@ export default function sitemap() {
       priority: 0.9,
     },
     {
+      url: `${baseUrl}/personal-trainer-georgia`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
       url: `${baseUrl}/starter-kit`,
       lastModified: new Date(),
       changeFrequency: "monthly",

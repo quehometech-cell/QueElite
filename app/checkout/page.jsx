@@ -136,7 +136,7 @@ export default function CheckoutPage() {
           </p>
 
           <div className="price">
-            <strong>$125</strong>
+            <strong>$129</strong>
             <span>/ month</span>
           </div>
 
@@ -201,7 +201,7 @@ export default function CheckoutPage() {
           {error && <p className="error">{error}</p>}
 
           <p className="temporary">
-            $125/month. Your membership renews monthly until canceled.
+            $129/month. Your membership renews monthly until canceled.
           </p>
         </div>
 

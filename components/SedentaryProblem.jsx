@@ -1,20 +1,33 @@
 export default function SedentaryProblem() {
+  const items = [
+    "You feel stiff after sitting for hours",
+    "You want to lose body fat and get stronger",
+    "You struggle to stay consistent with workouts",
+    "You don't have hours to spend in a gym",
+    "You want something simple that fits your schedule",
+  ];
+
   return (
     <section
       style={{
         background: "#111111",
         color: "#FFFFFF",
-        padding: "70px 20px",
-        textAlign: "center",
+        padding: "80px 20px",
       }}
     >
-      <div style={{ maxWidth: "850px", margin: "0 auto" }}>
+      <div
+        style={{
+          maxWidth: "900px",
+          margin: "0 auto",
+          textAlign: "center",
+        }}
+      >
         <p
           style={{
             color: "#F4C20D",
-            fontWeight: "700",
+            fontWeight: "900",
             letterSpacing: "2px",
-            marginBottom: "10px",
+            fontSize: "12px",
           }}
         >
           BUILT FOR PEOPLE WHO SIT FOR WORK
@@ -22,8 +35,8 @@ export default function SedentaryProblem() {
 
         <h2
           style={{
-            fontSize: "clamp(32px, 5vw, 48px)",
-            marginBottom: "25px",
+            fontSize: "clamp(34px, 5vw, 52px)",
+            margin: "10px 0 20px",
           }}
         >
           DOES THIS SOUND LIKE YOU?
@@ -33,39 +46,59 @@ export default function SedentaryProblem() {
           style={{
             fontSize: "18px",
             lineHeight: "1.7",
-            color: "#E5E5E5",
-            marginBottom: "30px",
+            color: "#BDBDBD",
+            maxWidth: "760px",
+            margin: "0 auto 32px",
           }}
         >
-          You work at a desk, drive all day, work from home, or spend most
-          of your shift sitting. By the end of the day, your body feels like
-          it needs more movement.
+          You work at a desk, drive all day, work from home, or spend most of
+          your shift sitting. By the end of the day, your body feels like it
+          needs more movement.
         </p>
 
         <div
           style={{
+            maxWidth: "680px",
+            margin: "0 auto 34px",
+            display: "grid",
+            gap: "10px",
             textAlign: "left",
-            maxWidth: "600px",
-            margin: "0 auto 35px",
-            fontSize: "18px",
-            lineHeight: "2",
           }}
         >
-          <div>✓ You feel stiff after sitting for hours</div>
-          <div>✓ You want to lose body fat and get stronger</div>
-          <div>✓ You struggle to stay consistent with workouts</div>
-          <div>✓ You don't have hours to spend in a gym</div>
-          <div>✓ You want something simple that fits your schedule</div>
+          {items.map((item) => (
+            <div
+              key={item}
+              style={{
+                background: "#0A0A0A",
+                border: "1px solid #2A2A2A",
+                borderRadius: "10px",
+                padding: "14px 16px",
+                fontSize: "16px",
+              }}
+            >
+              <span
+                style={{
+                  color: "#F4C20D",
+                  fontWeight: "900",
+                  marginRight: "10px",
+                }}
+              >
+                ✓
+              </span>
+              {item}
+            </div>
+          ))}
         </div>
 
         <p
           style={{
             fontSize: "21px",
-            fontWeight: "700",
-            marginBottom: "30px",
+            fontWeight: "800",
+            lineHeight: "1.5",
+            marginBottom: "28px",
           }}
         >
-          You don't need to become a gym person.
+          You don&apos;t need to become a gym person.
           <br />
           <span style={{ color: "#F4C20D" }}>
             You need a plan that fits your life.
@@ -75,12 +108,15 @@ export default function SedentaryProblem() {
         <a
           href="/starter-kit"
           style={{
-            display: "inline-block",
+            display: "inline-flex",
+            minHeight: "52px",
+            alignItems: "center",
+            justifyContent: "center",
             background: "#F4C20D",
             color: "#050505",
-            padding: "16px 28px",
-            borderRadius: "8px",
-            fontWeight: "800",
+            padding: "0 26px",
+            borderRadius: "10px",
+            fontWeight: "900",
             textDecoration: "none",
           }}
         >

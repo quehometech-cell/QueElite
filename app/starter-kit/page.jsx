@@ -1,7 +1,17 @@
 export const metadata = {
-  title: "Free 3-Day Sedentary Reset | Get Cha Right Fitness",
+  title: "Free 3-Day Fitness Reset for Desk Workers",
   description:
-    "A free 3-day beginner-friendly fitness reset for busy professionals who spend most of their workday sitting.",
+    "Download a free 3-day beginner fitness reset for desk workers and busy professionals. Improve mobility, build strength, and get active at home with no gym required.",
+  alternates: {
+    canonical: "/starter-kit",
+  },
+  openGraph: {
+    title: "Free 3-Day Fitness Reset for Desk Workers",
+    description:
+      "A free beginner-friendly 3-day fitness reset for busy professionals who spend most of their day sitting.",
+    url: "/starter-kit",
+    type: "website",
+  },
 };
 
 export default function StarterKit() {
@@ -55,9 +65,10 @@ export default function StarterKit() {
             color: "#ddd",
           }}
         >
-          Built for busy professionals who spend most of their workday
-          sitting. Start moving better, building strength, and getting active
-          with simple workouts you can do at home.
+          A beginner-friendly fitness reset for desk workers and busy
+          professionals who spend most of their workday sitting. Start moving
+          better, building strength, and getting active with simple workouts
+          you can do at home.
         </p>
 
         <p
@@ -152,7 +163,7 @@ export default function StarterKit() {
           }}
         >
           <h2 style={{ textAlign: "center", fontSize: "30px" }}>
-            WHAT YOU'LL DO
+            WHAT YOU&apos;LL DO
           </h2>
 
           <div style={cardStyle}>
@@ -182,6 +193,42 @@ export default function StarterKit() {
             </p>
           </div>
         </div>
+
+        <section
+          style={{
+            maxWidth: "700px",
+            margin: "55px auto 0",
+            textAlign: "left",
+            background: "#111",
+            border: "1px solid #292929",
+            borderRadius: "14px",
+            padding: "28px",
+          }}
+        >
+          <h2
+            style={{
+              textAlign: "center",
+              fontSize: "28px",
+              marginTop: "0",
+            }}
+          >
+            FITNESS FOR PEOPLE WHO SIT ALL DAY
+          </h2>
+
+          <p
+            style={{
+              color: "#ccc",
+              lineHeight: "1.7",
+              marginBottom: "0",
+            }}
+          >
+            Long workdays at a desk can make staying active difficult. This
+            free reset gives beginners and busy professionals a simple place to
+            start with strength, mobility, walking, and full-body movement. You
+            can complete the workouts at home with minimal equipment and build
+            a foundation for a more consistent fitness routine.
+          </p>
+        </section>
 
         <p
           style={{

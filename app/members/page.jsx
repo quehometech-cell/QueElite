@@ -913,20 +913,36 @@ export default function MembersPage() {
           .gcr-member-nav {
             flex-direction: row !important;
             width: 100% !important;
+            max-width: 100% !important;
             overflow-x: auto !important;
             overflow-y: hidden !important;
             gap: 8px !important;
-            padding: 2px 0 8px !important;
-            scrollbar-width: thin;
+            padding: 2px 12px 8px !important;
+            scroll-padding-inline: 12px !important;
+            scrollbar-width: none !important;
             -webkit-overflow-scrolling: touch;
+            overscroll-behavior-x: contain;
+          }
+
+          .gcr-member-nav::-webkit-scrollbar {
+            display: none;
           }
 
           .gcr-member-nav button {
             width: auto !important;
             min-width: max-content !important;
             flex: 0 0 auto !important;
-            padding: 11px 14px 11px 18px !important;
+            padding: 11px 16px 11px 20px !important;
             white-space: nowrap !important;
+            scroll-snap-align: start;
+          }
+
+          .gcr-member-nav button:first-child {
+            margin-left: 0 !important;
+          }
+
+          .gcr-member-nav button:last-child {
+            margin-right: 4px !important;
           }
 
           .gcr-member-sidebar-bottom {

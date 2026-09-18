@@ -1,31 +1,55 @@
 export default function Hero() {
+  const buttonBase = {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "54px",
+    padding: "0 24px",
+    borderRadius: "10px",
+    fontWeight: "900",
+    fontSize: "15px",
+    textDecoration: "none",
+    textAlign: "center",
+  };
+
   return (
     <section
       style={{
-        padding: "100px 60px",
-        background: "#111",
-        minHeight: "70vh",
+        padding: "clamp(70px, 10vw, 120px) clamp(20px, 6vw, 70px)",
+        background:
+          "radial-gradient(circle at 75% 20%, rgba(244,194,13,.10), transparent 28rem), #0A0A0A",
+        minHeight: "78vh",
         display: "flex",
-        alignItems: "center"
+        alignItems: "center",
+        color: "#FFFFFF",
       }}
     >
-      <div style={{ maxWidth: "950px" }}>
-
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "1050px",
+          margin: "0 auto",
+        }}
+      >
         <p
           style={{
-            color: "#facc15",
-            fontWeight: "bold",
-            letterSpacing: "2px"
+            color: "#F4C20D",
+            fontWeight: "900",
+            letterSpacing: "2px",
+            fontSize: "13px",
+            margin: 0,
           }}
         >
-          PERSONAL TRAINING FOR SEDENTARY PROFESSIONALS
+          ONLINE FITNESS COACHING FOR SEDENTARY PROFESSIONALS
         </p>
 
         <h1
           style={{
-            fontSize: "clamp(42px, 7vw, 76px)",
-            lineHeight: "1",
-            margin: "20px 0"
+            fontSize: "clamp(46px, 8vw, 82px)",
+            lineHeight: ".95",
+            letterSpacing: "-2px",
+            margin: "22px 0",
+            maxWidth: "900px",
           }}
         >
           YOU SIT FOR WORK.
@@ -37,108 +61,93 @@ export default function Hero() {
 
         <p
           style={{
-            maxWidth: "700px",
-            color: "#ccc",
-            fontSize: "20px",
-            lineHeight: "1.6"
+            maxWidth: "720px",
+            color: "#BDBDBD",
+            fontSize: "clamp(17px, 2vw, 20px)",
+            lineHeight: "1.65",
+            margin: 0,
           }}
         >
-          Get stronger, move better, and take control of your fitness
-          with simple training designed for people who spend most of
-          their workday sitting.
+          Get stronger, move better, and lose body fat with practical coaching
+          built for people who spend most of their workday sitting.
         </p>
 
         <p
           style={{
-            color: "#fff",
-            fontSize: "18px",
-            fontWeight: "bold"
+            color: "#FFFFFF",
+            fontSize: "16px",
+            fontWeight: "800",
+            marginTop: "18px",
           }}
         >
-          No gym membership required.
+          Beginner-friendly. Home or gym. Built around your schedule.
         </p>
 
         <div
           style={{
             display: "flex",
-            gap: "16px",
+            gap: "12px",
             flexWrap: "wrap",
-            marginTop: "30px"
+            marginTop: "30px",
           }}
         >
-          {/* FREE STARTER KIT */}
+          <a
+            href="/join"
+            style={{
+              ...buttonBase,
+              background: "#F4C20D",
+              color: "#050505",
+              border: "1px solid #F4C20D",
+            }}
+          >
+            START YOUR TRANSFORMATION →
+          </a>
+
           <a
             href="/starter-kit"
-            style={{ textDecoration: "none" }}
+            style={{
+              ...buttonBase,
+              background: "transparent",
+              color: "#FFFFFF",
+              border: "1px solid #3A3A3A",
+            }}
           >
-            <button
-              style={{
-                background: "#facc15",
-                border: "none",
-                color: "#111",
-                padding: "17px 26px",
-                cursor: "pointer",
-                fontWeight: "bold",
-                fontSize: "16px"
-              }}
-            >
-              Get My Free 3-Day Starter Kit
-            </button>
+            GET THE FREE 3-DAY RESET
           </a>
 
-          {/* FREE ASSESSMENT */}
-          <a
-            href="https://calendly.com/getcharighttransformations22/free-15-minute-assessment"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ textDecoration: "none" }}
-          >
-            <button
-              style={{
-                background: "transparent",
-                border: "1px solid white",
-                color: "white",
-                padding: "16px 24px",
-                cursor: "pointer",
-                fontWeight: "bold",
-                fontSize: "16px"
-              }}
-            >
-              Book Free Assessment
-            </button>
-          </a>
-
-          {/* MEMBER PORTAL */}
           <a
             href="/members"
-            style={{ textDecoration: "none" }}
+            style={{
+              ...buttonBase,
+              background: "transparent",
+              color: "#F4C20D",
+              border: "1px solid #F4C20D",
+            }}
           >
-            <button
-              style={{
-                background: "#111111",
-                border: "1px solid #facc15",
-                color: "#facc15",
-                padding: "16px 24px",
-                cursor: "pointer",
-                fontWeight: "bold",
-                fontSize: "16px"
-              }}
-            >
-              Member Portal
-            </button>
+            MEMBER PORTAL
           </a>
         </div>
 
         <p
           style={{
-            color: "#888",
-            marginTop: "20px",
-            fontSize: "14px"
+            color: "#777777",
+            marginTop: "18px",
+            fontSize: "13px",
           }}
         >
-          Beginner-friendly • Home workouts • Minimal equipment
+          Want to talk first?{" "}
+          <a
+            href="https://calendly.com/getcharighttransformations22/free-15-minute-assessment"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: "#FFFFFF",
+              fontWeight: "800",
+            }}
+          >
+            Book a free 15-minute assessment.
+          </a>
         </p>
-
       </div>
     </section>
   );

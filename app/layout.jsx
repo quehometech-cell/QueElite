@@ -33,10 +33,6 @@ export const metadata = {
   creator: "Get Cha Right Fitness",
   publisher: "Get Cha Right Fitness",
 
-  alternates: {
-    canonical: "/",
-  },
-
   openGraph: {
     title: "Get Cha Right Fitness | Online Personal Training",
     description:

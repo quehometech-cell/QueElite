@@ -8,7 +8,9 @@ export default function CheckoutPage() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [user, setUser] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     async function loadUser() {
@@ -27,6 +29,48 @@ export default function CheckoutPage() {
 
     loadUser();
   }, [router]);
+
+  async function handleCheckout() {
+    try {
+      setCheckoutLoading(true);
+      setError("");
+
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        router.replace("/login");
+        return;
+      }
+
+      const response = await fetch("/api/create-checkout-session", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to start checkout.");
+      }
+
+      if (!data.url) {
+        throw new Error("Stripe checkout URL was not returned.");
+      }
+
+      window.location.href = data.url;
+    } catch (err) {
+      console.error("Checkout error:", err);
+      setError(
+        "We couldn't open secure checkout. Please try again."
+      );
+      setCheckoutLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -91,6 +135,11 @@ export default function CheckoutPage() {
             move better, and lose body fat.
           </p>
 
+          <div className="price">
+            <strong>$125</strong>
+            <span>/ month</span>
+          </div>
+
           <div className="features">
             <div>
               <span>✓</span>
@@ -133,19 +182,26 @@ export default function CheckoutPage() {
           <div className="status">
             <div>
               <span className="status-label">PAYMENT</span>
-              <strong>Secure checkout</strong>
+              <strong>Secure checkout powered by Stripe</strong>
             </div>
 
-            <span className="pending">COMING ONLINE</span>
+            <span className="secure">SECURE</span>
           </div>
 
-          <button className="checkout-button" disabled>
-            COMPLETE MEMBERSHIP →
+          <button
+            className="checkout-button"
+            onClick={handleCheckout}
+            disabled={checkoutLoading}
+          >
+            {checkoutLoading
+              ? "OPENING SECURE CHECKOUT..."
+              : "COMPLETE MEMBERSHIP →"}
           </button>
 
+          {error && <p className="error">{error}</p>}
+
           <p className="temporary">
-            Secure payment checkout is temporarily unavailable while payment
-            access is being restored.
+            $125/month. Your membership renews monthly until canceled.
           </p>
         </div>
 
@@ -156,7 +212,7 @@ export default function CheckoutPage() {
             <strong>Protected membership access</strong>
             <p>
               Creating an account does not activate paid coaching. Membership
-              access is only activated after a successful payment is confirmed.
+              access is activated only after a successful payment is confirmed.
             </p>
           </div>
         </div>
@@ -294,7 +350,25 @@ export default function CheckoutPage() {
         .description {
           color: #9f9f9f;
           line-height: 1.6;
-          margin: 16px 0 22px;
+          margin: 16px 0 12px;
+        }
+
+        .price {
+          display: flex;
+          align-items: baseline;
+          gap: 7px;
+          margin-bottom: 24px;
+        }
+
+        .price strong {
+          color: #ffffff;
+          font-size: 34px;
+          line-height: 1;
+        }
+
+        .price span {
+          color: #8d8d8d;
+          font-size: 14px;
         }
 
         .features {
@@ -342,7 +416,7 @@ export default function CheckoutPage() {
           letter-spacing: 1.4px;
         }
 
-        .pending {
+        .secure {
           color: #f4c20d;
           border: 1px solid rgba(244, 194, 13, 0.35);
           background: rgba(244, 194, 13, 0.07);
@@ -363,14 +437,33 @@ export default function CheckoutPage() {
           font-size: 14px;
           font-weight: 900;
           letter-spacing: 0.5px;
-          opacity: 0.45;
-          cursor: not-allowed;
+          cursor: pointer;
+          transition:
+            transform 0.15s ease,
+            opacity 0.15s ease;
+        }
+
+        .checkout-button:hover:not(:disabled) {
+          transform: translateY(-1px);
+        }
+
+        .checkout-button:disabled {
+          opacity: 0.6;
+          cursor: wait;
         }
 
         .temporary {
           color: #777777;
           text-align: center;
           font-size: 12px;
+          line-height: 1.5;
+          margin: 12px 0 0;
+        }
+
+        .error {
+          color: #ff7777;
+          text-align: center;
+          font-size: 13px;
           line-height: 1.5;
           margin: 12px 0 0;
         }

@@ -105,7 +105,7 @@ export default function Pricing() {
                 fontWeight: "900",
               }}
             >
-              $125
+              $129
             </span>
 
             <span

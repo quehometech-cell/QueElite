@@ -100,15 +100,18 @@ export default function Workouts({
   const currentWeek = Number(program?.current_week || 1);
   const durationWeeks = Number(program?.duration_weeks || 12);
 
-  const programStartDate = program?.start_date
-    ? startOfLocalDay(`${program.start_date}T12:00:00`)
-    : null;
   const today = startOfLocalDay(new Date());
 
+  // The visible current week follows the real calendar:
+  // Day 1 = Monday ... Day 6 = Saturday ... Day 7 = Sunday.
+  // This keeps "today" aligned with the actual weekday even if the member
+  // program was assigned/created in the middle of a week.
+  const jsDay = today.getDay(); // Sunday=0, Monday=1, ... Saturday=6
+  const daysSinceMonday = jsDay === 0 ? 6 : jsDay - 1;
+  const currentWeekMonday = addDays(today, -daysSinceMonday);
+
   function scheduledDateFor(day) {
-    if (!programStartDate) return null;
-    const offset = (currentWeek - 1) * 7 + (Number(day) - 1);
-    return addDays(programStartDate, offset);
+    return addDays(currentWeekMonday, Number(day) - 1);
   }
 
   function scheduleStateFor(day) {
@@ -509,10 +512,26 @@ export default function Workouts({
     setSetLogs(setRows || []);
   }
 
+  function firstRequiredIncompleteDay() {
+    for (let day = 1; day <= 7; day += 1) {
+      const scheduled = scheduledDateFor(day);
+      if (!scheduled || startOfLocalDay(scheduled).getTime() > today.getTime()) continue;
+
+      const hasTraining = (grouped[day] || []).length > 0;
+      if (!hasTraining) continue;
+
+      const session = getSession(day);
+      if (session?.status !== "completed") return day;
+    }
+    return null;
+  }
+
   async function startWorkout() {
     if (!user?.id || !program?.member_program_id || !selectedMeta?.id) return;
 
     const scheduleState = scheduleStateFor(selectedDay);
+    const requiredDay = firstRequiredIncompleteDay();
+
     if (scheduleState === "future") {
       const scheduled = scheduledDateFor(selectedDay);
       setMessage(
@@ -521,6 +540,13 @@ export default function Workouts({
           month: "short",
           day: "numeric",
         })}. You can preview it now, but it cannot be started early.`
+      );
+      return;
+    }
+
+    if (requiredDay && Number(selectedDay) !== Number(requiredDay)) {
+      setMessage(
+        `Complete ${DAY_NAMES[requiredDay]}'s workout before starting ${DAY_NAMES[selectedDay]}.`
       );
       return;
     }
@@ -885,6 +911,11 @@ export default function Workouts({
   const selectedSession = getSession(selectedDay);
   const selectedScheduledDate = scheduledDateFor(selectedDay);
   const selectedScheduleState = scheduleStateFor(selectedDay);
+  const requiredIncompleteDay = firstRequiredIncompleteDay();
+  const selectedBlockedBySequence =
+    selectedScheduleState !== "future" &&
+    requiredIncompleteDay &&
+    Number(selectedDay) !== Number(requiredIncompleteDay);
   const completedCount = sessions.filter((s) => s.status === "completed").length;
   const trainingDays = Object.values(grouped).filter((items) => items.length > 0).length;
   const weekProgress = trainingDays
@@ -1036,12 +1067,14 @@ export default function Workouts({
                 <div style={styles.eyebrow}>
                   {selectedScheduleState === "future"
                     ? "WORKOUT PREVIEW"
-                    : selectedScheduleState === "today"
-                      ? "TODAY'S WORKOUT"
-                      : "READY TO TRAIN?"}
+                    : selectedBlockedBySequence
+                      ? "LOCKED • COMPLETE PREVIOUS WORKOUT"
+                      : selectedScheduleState === "today"
+                        ? "TODAY'S WORKOUT"
+                        : "AVAILABLE WORKOUT"}
                 </div>
                 <h3 style={styles.nextTitle}>
-                  {selectedScheduleState === "future"
+                  {selectedScheduleState === "future" || selectedBlockedBySequence
                     ? selectedMeta.name
                     : `Start ${selectedMeta.name}`}
                 </h3>
@@ -1052,23 +1085,35 @@ export default function Workouts({
                         month: "long",
                         day: "numeric",
                       })}. You can review the full prescription now.`
-                    : `Starting creates your private workout log for Week ${currentWeek}. Your prescription stays unchanged.`}
+                    : selectedBlockedBySequence
+                      ? `Complete ${DAY_NAMES[requiredIncompleteDay]}'s workout first. Your workouts unlock in order so no scheduled training day is skipped.`
+                      : `This is your next available workout for Week ${currentWeek}. Starting creates your private workout log without changing the prescription.`}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={startWorkout}
-                disabled={savingKey === "start" || selectedScheduleState === "future"}
+                disabled={
+                  savingKey === "start" ||
+                  selectedScheduleState === "future" ||
+                  selectedBlockedBySequence
+                }
                 style={{
                   ...styles.primaryButton,
-                  ...(selectedScheduleState === "future" ? styles.disabledButton : {}),
+                  ...(
+                    selectedScheduleState === "future" || selectedBlockedBySequence
+                      ? styles.disabledButton
+                      : {}
+                  ),
                 }}
               >
                 {selectedScheduleState === "future"
                   ? "Scheduled"
-                  : savingKey === "start"
-                    ? "Starting…"
-                    : "Start Workout"}
+                  : selectedBlockedBySequence
+                    ? `Complete ${DAY_NAMES[requiredIncompleteDay]} First`
+                    : savingKey === "start"
+                      ? "Starting…"
+                      : "Start Workout"}
               </button>
             </section>
           ) : null}

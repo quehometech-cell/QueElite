@@ -73,6 +73,8 @@ export default function Workouts({
   const [setLogs, setSetLogs] = useState([]);
   const [savingKey, setSavingKey] = useState("");
   const [workoutNotes, setWorkoutNotes] = useState("");
+  const [workoutHistory, setWorkoutHistory] = useState([]);
+  const [previousPerformance, setPreviousPerformance] = useState({});
 
   const currentWeek = Number(program?.current_week || 1);
   const durationWeeks = Number(program?.duration_weeks || 12);
@@ -258,6 +260,11 @@ export default function Workouts({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, program?.member_program_id, currentWeek]);
 
+  useEffect(() => {
+    loadHistoryAndPreviousPerformance();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, program?.member_program_id, currentWeek]);
+
   async function loadSessions() {
     if (!user?.id || !program?.member_program_id) {
       setSessions([]);
@@ -289,6 +296,133 @@ export default function Workouts({
     }
 
     setLoadingSessions(false);
+  }
+
+  async function loadHistoryAndPreviousPerformance() {
+    if (!user?.id || !program?.member_program_id) {
+      setWorkoutHistory([]);
+      setPreviousPerformance({});
+      return;
+    }
+
+    const { data: completedSessions, error: sessionError } = await supabase
+      .from("workout_sessions")
+      .select(
+        "id, program_workout_id, week_number, workout_day, workout_name, status, started_at, completed_at, duration_minutes, workout_notes"
+      )
+      .eq("user_id", user.id)
+      .eq("member_program_id", program.member_program_id)
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false });
+
+    if (sessionError) {
+      console.error("Workout history load error:", sessionError);
+      return;
+    }
+
+    const history = completedSessions || [];
+    setWorkoutHistory(history);
+
+    const sessionIds = history.map((row) => row.id);
+    if (!sessionIds.length) {
+      setPreviousPerformance({});
+      return;
+    }
+
+    const { data: loggedExercises, error: exerciseError } = await supabase
+      .from("workout_exercise_logs")
+      .select(
+        "id, workout_session_id, exercise_id, exercise_name, exercise_order, completed, duration_seconds, distance, distance_unit, pace, notes"
+      )
+      .in("workout_session_id", sessionIds)
+      .order("created_at", { ascending: false });
+
+    if (exerciseError) {
+      console.error("Previous exercise performance load error:", exerciseError);
+      return;
+    }
+
+    const exerciseLogIds = (loggedExercises || []).map((row) => row.id);
+    let historicalSets = [];
+
+    if (exerciseLogIds.length) {
+      const { data: setRows, error: setError } = await supabase
+        .from("workout_set_logs")
+        .select(
+          "id, workout_exercise_log_id, set_number, weight, weight_unit, reps, rir, completed"
+        )
+        .in("workout_exercise_log_id", exerciseLogIds)
+        .eq("completed", true)
+        .order("set_number", { ascending: true });
+
+      if (setError) {
+        console.error("Previous set performance load error:", setError);
+        return;
+      }
+
+      historicalSets = setRows || [];
+    }
+
+    const sessionById = new Map(history.map((row) => [String(row.id), row]));
+    const latestByExercise = {};
+
+    (loggedExercises || []).forEach((log) => {
+      const key = String(log.exercise_id);
+      const session = sessionById.get(String(log.workout_session_id));
+      if (!session) return;
+
+      const existing = latestByExercise[key];
+      const completedAt = session.completed_at ? new Date(session.completed_at).getTime() : 0;
+      const existingAt = existing?.session?.completed_at
+        ? new Date(existing.session.completed_at).getTime()
+        : -1;
+
+      if (!existing || completedAt > existingAt) {
+        latestByExercise[key] = {
+          session,
+          log,
+          sets: historicalSets
+            .filter((row) => Number(row.workout_exercise_log_id) === Number(log.id))
+            .sort((a, b) => Number(a.set_number) - Number(b.set_number)),
+        };
+      }
+    });
+
+    setPreviousPerformance(latestByExercise);
+  }
+
+  function formatPreviousPerformance(item) {
+    const previous = previousPerformance[String(item.exercise_id || item.id)];
+    if (!previous) return null;
+
+    if (previous.sets?.length) {
+      const setText = previous.sets
+        .map((set) => {
+          const pieces = [];
+          if (set.weight !== null && set.weight !== undefined) {
+            pieces.push(`${set.weight} ${set.weight_unit || "lb"}`);
+          }
+          if (set.reps !== null && set.reps !== undefined) pieces.push(`× ${set.reps}`);
+          if (set.rir !== null && set.rir !== undefined) pieces.push(`@ ${set.rir} RIR`);
+          return pieces.join(" ");
+        })
+        .filter(Boolean)
+        .join(" • ");
+
+      return setText || null;
+    }
+
+    const pieces = [];
+    if (previous.log.duration_seconds) {
+      pieces.push(`${Math.round(Number(previous.log.duration_seconds) / 60)} min`);
+    }
+    if (previous.log.distance !== null && previous.log.distance !== undefined) {
+      pieces.push(
+        `${previous.log.distance}${previous.log.distance_unit ? ` ${previous.log.distance_unit}` : ""}`
+      );
+    }
+    if (previous.log.pace) pieces.push(`Pace ${previous.log.pace}`);
+    return pieces.length ? pieces.join(" • ") : "Completed";
   }
 
   async function loadWorkoutLogs(sessionRows = sessions) {
@@ -563,6 +697,115 @@ export default function Workouts({
     setSavingKey("");
   }
 
+  async function completeWorkout() {
+    if (!selectedSession || selectedSession.status === "completed") return;
+
+    const sessionExerciseLogs = exerciseLogs.filter(
+      (row) => Number(row.workout_session_id) === Number(selectedSession.id)
+    );
+
+    if (!sessionExerciseLogs.length) {
+      setMessage("Start the workout and log your exercises before completing it.");
+      return;
+    }
+
+    const incompleteNames = [];
+
+    selectedExercises.forEach((item) => {
+      const log = sessionExerciseLogs.find(
+        (row) =>
+          String(row.program_workout_exercise_id) ===
+          String(item.program_workout_exercise_id)
+      );
+
+      if (!log) {
+        incompleteNames.push(item.name);
+        return;
+      }
+
+      if (isSetBasedExercise(item)) {
+        const requiredSets = Math.max(1, Number(item.sets || 1));
+        const completedSets = setLogs.filter(
+          (row) =>
+            Number(row.workout_exercise_log_id) === Number(log.id) &&
+            row.completed === true
+        ).length;
+
+        if (completedSets < requiredSets) incompleteNames.push(item.name);
+      } else if (!log.completed) {
+        incompleteNames.push(item.name);
+      }
+    });
+
+    if (incompleteNames.length) {
+      setMessage(
+        `Finish the remaining work before completing this workout: ${incompleteNames.join(", ")}.`
+      );
+      return;
+    }
+
+    setSavingKey("complete");
+    setMessage("");
+
+    try {
+      // Snapshot all set-based exercises as completed BEFORE locking the session.
+      const setBasedLogIds = sessionExerciseLogs
+        .filter((log) => {
+          const item = selectedExercises.find(
+            (exercise) =>
+              String(exercise.program_workout_exercise_id) ===
+              String(log.program_workout_exercise_id)
+          );
+          return item && isSetBasedExercise(item);
+        })
+        .map((log) => log.id);
+
+      if (setBasedLogIds.length) {
+        const { error: exerciseCompleteError } = await supabase
+          .from("workout_exercise_logs")
+          .update({
+            completed: true,
+            updated_at: new Date().toISOString(),
+          })
+          .in("id", setBasedLogIds);
+
+        if (exerciseCompleteError) throw exerciseCompleteError;
+      }
+
+      const completedAt = new Date();
+      const startedAt = selectedSession.started_at
+        ? new Date(selectedSession.started_at)
+        : completedAt;
+      const durationMinutes = Math.max(
+        1,
+        Math.round((completedAt.getTime() - startedAt.getTime()) / 60000)
+      );
+
+      const { error: sessionCompleteError } = await supabase
+        .from("workout_sessions")
+        .update({
+          status: "completed",
+          completed_at: completedAt.toISOString(),
+          duration_minutes: durationMinutes,
+          workout_notes: workoutNotes || null,
+          updated_at: completedAt.toISOString(),
+        })
+        .eq("id", selectedSession.id);
+
+      if (sessionCompleteError) throw sessionCompleteError;
+
+      await loadSessions();
+      await loadHistoryAndPreviousPerformance();
+      setMessage("Workout completed. Your performance is now saved in history.");
+      if (onCompletionChange) onCompletionChange();
+    } catch (error) {
+      console.error("Complete workout error:", error);
+      setMessage(error.message || "Unable to complete workout.");
+    } finally {
+      setSavingKey("");
+    }
+  }
+
   function getSession(day) {
     return sessions.find((session) => Number(session.workout_day) === Number(day));
   }
@@ -748,6 +991,12 @@ export default function Workouts({
                     <div style={styles.exerciseMain}>
                       <h3 style={styles.exerciseName}>{item.name}</h3>
                       <div style={styles.prescription}>{prescriptionText(item)}</div>
+                      {formatPreviousPerformance(item) ? (
+                        <div style={styles.previousPerformance}>
+                          <span style={styles.previousLabel}>PREVIOUS</span>
+                          <strong>{formatPreviousPerformance(item)}</strong>
+                        </div>
+                      ) : null}
                       <div style={styles.exerciseTags}>
                         {item.equipment ? <span style={styles.smallTag}>{item.equipment}</span> : null}
                         {item.muscle_group ? <span style={styles.smallTag}>{item.muscle_group}</span> : null}
@@ -967,30 +1216,87 @@ export default function Workouts({
                 placeholder="Energy, pain, form notes, wins, or anything your coach should know…"
                 style={styles.workoutTextarea}
               />
-              <button
-                type="button"
-                disabled={
-                  selectedSession.status === "completed" || savingKey === "notes"
-                }
-                onClick={saveWorkoutNotes}
-                style={styles.saveButton}
-              >
-                {savingKey === "notes" ? "Saving…" : "Save Workout Notes"}
-              </button>
+              <div style={styles.notesActions}>
+                <button
+                  type="button"
+                  disabled={
+                    selectedSession.status === "completed" || savingKey === "notes"
+                  }
+                  onClick={saveWorkoutNotes}
+                  style={styles.saveButton}
+                >
+                  {savingKey === "notes" ? "Saving…" : "Save Workout Notes"}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={
+                    selectedSession.status === "completed" || savingKey === "complete"
+                  }
+                  onClick={completeWorkout}
+                  style={styles.completeButton}
+                >
+                  {selectedSession.status === "completed"
+                    ? "Workout Completed ✓"
+                    : savingKey === "complete"
+                      ? "Completing…"
+                      : "Complete Workout"}
+                </button>
+              </div>
             </section>
           ) : null}
         </>
       )}
 
+      <section style={styles.historyCard}>
+        <div style={styles.historyHeader}>
+          <div>
+            <div style={styles.eyebrow}>WORKOUT HISTORY</div>
+            <h3 style={styles.nextTitle}>Completed sessions</h3>
+          </div>
+          <span style={styles.historyCount}>{workoutHistory.length} completed</span>
+        </div>
+
+        {workoutHistory.length ? (
+          <div style={styles.historyList}>
+            {workoutHistory.slice(0, 8).map((session) => (
+              <div key={session.id} style={styles.historyRow}>
+                <div>
+                  <strong style={styles.historyName}>{session.workout_name}</strong>
+                  <div style={styles.historyMeta}>
+                    Week {session.week_number} • {DAY_NAMES[Number(session.workout_day)] || `Day ${session.workout_day}`}
+                  </div>
+                </div>
+                <div style={styles.historyRight}>
+                  <strong>{session.duration_minutes ? `${session.duration_minutes} min` : "Completed"}</strong>
+                  <span>
+                    {session.completed_at
+                      ? new Date(session.completed_at).toLocaleDateString()
+                      : ""}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p style={styles.muted}>
+            Your completed workouts will appear here. Once a workout is completed, its
+            performance becomes the previous-performance reference for future sessions.
+          </p>
+        )}
+      </section>
+
       <section style={styles.nextStepCard}>
         <div>
-          <div style={styles.eyebrow}>WORKOUT LOGGING</div>
+          <div style={styles.eyebrow}>PROGRESSIVE OVERLOAD</div>
           <h3 style={styles.nextTitle}>
-            {loadingWorkoutPlan || loadingSessions ? "Loading workout plan…" : "Prescription view connected"}
+            {loadingWorkoutPlan || loadingSessions
+              ? "Loading workout data…"
+              : "Workout logging + history connected"}
           </h3>
           <p style={styles.muted}>
-            Set-by-set weight, reps, RIR, cardio, mobility, and workout notes are now connected.
-            Workout completion and history are the next step.
+            Completed sessions are locked into history. When you perform an exercise again,
+            your latest completed performance appears above the new log as your previous result.
           </p>
         </div>
       </section>
@@ -1408,6 +1714,92 @@ const styles = {
     color: "#050505",
     fontWeight: 950,
     margin: "0 auto 12px",
+  },
+  previousPerformance: {
+    marginTop: 10,
+    padding: "9px 11px",
+    background: "rgba(244,194,13,.07)",
+    border: "1px solid rgba(244,194,13,.25)",
+    borderRadius: 10,
+    color: "#FFFFFF",
+    display: "flex",
+    gap: 8,
+    alignItems: "center",
+    flexWrap: "wrap",
+    fontSize: 12,
+  },
+  previousLabel: {
+    color: "#F4C20D",
+    fontSize: 9,
+    fontWeight: 950,
+    letterSpacing: 1,
+  },
+  notesActions: {
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+  completeButton: {
+    background: "#F4C20D",
+    color: "#050505",
+    border: 0,
+    borderRadius: 9,
+    padding: "11px 15px",
+    fontWeight: 950,
+    cursor: "pointer",
+  },
+  historyCard: {
+    background: "#111111",
+    border: "1px solid #2A2A2A",
+    borderRadius: 18,
+    padding: 20,
+  },
+  historyHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    flexWrap: "wrap",
+    marginBottom: 12,
+  },
+  historyCount: {
+    color: "#F4C20D",
+    background: "rgba(244,194,13,.08)",
+    border: "1px solid rgba(244,194,13,.25)",
+    borderRadius: 999,
+    padding: "6px 10px",
+    fontSize: 11,
+    fontWeight: 900,
+  },
+  historyList: {
+    display: "grid",
+    gap: 8,
+  },
+  historyRow: {
+    background: "#050505",
+    border: "1px solid #2A2A2A",
+    borderRadius: 12,
+    padding: "12px 14px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  historyName: {
+    color: "#FFFFFF",
+    fontSize: 14,
+  },
+  historyMeta: {
+    color: "#BDBDBD",
+    fontSize: 11,
+    marginTop: 3,
+  },
+  historyRight: {
+    color: "#FFFFFF",
+    display: "grid",
+    justifyItems: "end",
+    gap: 2,
+    fontSize: 12,
   },
   nextStepCard: {
     background: "#111111",

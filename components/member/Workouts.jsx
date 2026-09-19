@@ -1,4 +1,4 @@
-"use client";
+
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
@@ -57,6 +57,27 @@ function toNullableNumber(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+
+function startOfLocalDay(value) {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function addDays(value, days) {
+  const date = new Date(value);
+  date.setDate(date.getDate() + Number(days || 0));
+  return date;
+}
+
+function formatScheduleDate(value) {
+  if (!value) return "";
+  return new Date(value).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export default function Workouts({
   user,
   program,
@@ -78,6 +99,26 @@ export default function Workouts({
 
   const currentWeek = Number(program?.current_week || 1);
   const durationWeeks = Number(program?.duration_weeks || 12);
+
+  const programStartDate = program?.start_date
+    ? startOfLocalDay(`${program.start_date}T12:00:00`)
+    : null;
+  const today = startOfLocalDay(new Date());
+
+  function scheduledDateFor(day) {
+    if (!programStartDate) return null;
+    const offset = (currentWeek - 1) * 7 + (Number(day) - 1);
+    return addDays(programStartDate, offset);
+  }
+
+  function scheduleStateFor(day) {
+    const scheduled = scheduledDateFor(day);
+    if (!scheduled) return "available";
+    const scheduledDay = startOfLocalDay(scheduled);
+    if (scheduledDay.getTime() === today.getTime()) return "today";
+    if (scheduledDay.getTime() > today.getTime()) return "future";
+    return "past";
+  }
 
   const displayExercises = liveExercises.length ? liveExercises : exercises;
 
@@ -471,6 +512,19 @@ export default function Workouts({
   async function startWorkout() {
     if (!user?.id || !program?.member_program_id || !selectedMeta?.id) return;
 
+    const scheduleState = scheduleStateFor(selectedDay);
+    if (scheduleState === "future") {
+      const scheduled = scheduledDateFor(selectedDay);
+      setMessage(
+        `This workout is scheduled for ${scheduled?.toLocaleDateString(undefined, {
+          weekday: "long",
+          month: "short",
+          day: "numeric",
+        })}. You can preview it now, but it cannot be started early.`
+      );
+      return;
+    }
+
     setSavingKey("start");
     setMessage("");
 
@@ -829,6 +883,8 @@ export default function Workouts({
   const selectedExercises = grouped[selectedDay] || [];
   const selectedMeta = workoutMeta[selectedDay] || {};
   const selectedSession = getSession(selectedDay);
+  const selectedScheduledDate = scheduledDateFor(selectedDay);
+  const selectedScheduleState = scheduleStateFor(selectedDay);
   const completedCount = sessions.filter((s) => s.status === "completed").length;
   const trainingDays = Object.values(grouped).filter((items) => items.length > 0).length;
   const weekProgress = trainingDays
@@ -894,8 +950,14 @@ export default function Workouts({
                 ...(active ? styles.dayButtonActive : {}),
               }}
             >
-              <span style={styles.dayNumber}>DAY {day}</span>
+              <span style={styles.dayNumber}>
+                DAY {day}
+                {scheduleStateFor(day) === "today" ? " • TODAY" : ""}
+              </span>
               <strong style={styles.dayName}>{DAY_NAMES[day]}</strong>
+              {scheduledDateFor(day) ? (
+                <span style={styles.dayDate}>{formatScheduleDate(scheduledDateFor(day))}</span>
+              ) : null}
               <span style={styles.dayWorkoutName}>
                 {meta?.name || (hasExercises ? "Training" : "Rest / Active Recovery")}
               </span>
@@ -925,6 +987,21 @@ export default function Workouts({
         </div>
 
         <div style={styles.metaRow}>
+          {selectedScheduledDate ? (
+            <span
+              style={{
+                ...styles.metaPill,
+                ...(selectedScheduleState === "today" ? styles.todayPill : {}),
+              }}
+            >
+              {selectedScheduleState === "today" ? "Today • " : ""}
+              {selectedScheduledDate.toLocaleDateString(undefined, {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+              })}
+            </span>
+          ) : null}
           {selectedMeta.type ? <span style={styles.metaPill}>{selectedMeta.type}</span> : null}
           {selectedMeta.minutes ? (
             <span style={styles.metaPill}>~{selectedMeta.minutes} min</span>
@@ -956,20 +1033,42 @@ export default function Workouts({
           {!selectedSession ? (
             <section style={styles.startCard}>
               <div>
-                <div style={styles.eyebrow}>READY TO TRAIN?</div>
-                <h3 style={styles.nextTitle}>Start {selectedMeta.name}</h3>
+                <div style={styles.eyebrow}>
+                  {selectedScheduleState === "future"
+                    ? "WORKOUT PREVIEW"
+                    : selectedScheduleState === "today"
+                      ? "TODAY'S WORKOUT"
+                      : "READY TO TRAIN?"}
+                </div>
+                <h3 style={styles.nextTitle}>
+                  {selectedScheduleState === "future"
+                    ? selectedMeta.name
+                    : `Start ${selectedMeta.name}`}
+                </h3>
                 <p style={styles.muted}>
-                  Starting creates your private workout log for Week {currentWeek}. Your
-                  prescription stays unchanged.
+                  {selectedScheduleState === "future"
+                    ? `Scheduled for ${selectedScheduledDate?.toLocaleDateString(undefined, {
+                        weekday: "long",
+                        month: "long",
+                        day: "numeric",
+                      })}. You can review the full prescription now.`
+                    : `Starting creates your private workout log for Week ${currentWeek}. Your prescription stays unchanged.`}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={startWorkout}
-                disabled={savingKey === "start"}
-                style={styles.primaryButton}
+                disabled={savingKey === "start" || selectedScheduleState === "future"}
+                style={{
+                  ...styles.primaryButton,
+                  ...(selectedScheduleState === "future" ? styles.disabledButton : {}),
+                }}
               >
-                {savingKey === "start" ? "Starting…" : "Start Workout"}
+                {selectedScheduleState === "future"
+                  ? "Scheduled"
+                  : savingKey === "start"
+                    ? "Starting…"
+                    : "Start Workout"}
               </button>
             </section>
           ) : null}
@@ -1410,6 +1509,11 @@ const styles = {
     fontWeight: 900,
     letterSpacing: 1,
   },
+  dayDate: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: 800,
+  },
   dayName: {
     fontSize: 15,
   },
@@ -1469,6 +1573,10 @@ const styles = {
     background: "#050505",
     fontSize: 12,
     textTransform: "capitalize",
+  },
+  todayPill: {
+    border: "1px solid #F4C20D",
+    color: "#F4C20D",
   },
   coachNote: {
     background: "rgba(244,194,13,.07)",
@@ -1595,6 +1703,11 @@ const styles = {
     padding: "12px 18px",
     fontWeight: 950,
     cursor: "pointer",
+  },
+  disabledButton: {
+    background: "#2A2A2A",
+    color: "#777777",
+    cursor: "not-allowed",
   },
   logArea: {
     marginTop: 16,

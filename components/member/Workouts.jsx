@@ -46,15 +46,19 @@ export default function Workouts({
   const [sessions, setSessions] = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [message, setMessage] = useState("");
+  const [liveExercises, setLiveExercises] = useState([]);
+  const [loadingWorkoutPlan, setLoadingWorkoutPlan] = useState(true);
 
   const currentWeek = Number(program?.current_week || 1);
   const durationWeeks = Number(program?.duration_weeks || 12);
+
+  const displayExercises = liveExercises.length ? liveExercises : exercises;
 
   const grouped = useMemo(() => {
     const result = {};
     for (let day = 1; day <= 7; day += 1) result[day] = [];
 
-    exercises.forEach((item) => {
+    displayExercises.forEach((item) => {
       const day = Number(item.workout_day || 1);
       if (!result[day]) result[day] = [];
       result[day].push(item);
@@ -67,11 +71,11 @@ export default function Workouts({
     });
 
     return result;
-  }, [exercises]);
+  }, [displayExercises]);
 
   const workoutMeta = useMemo(() => {
     const result = {};
-    exercises.forEach((item) => {
+    displayExercises.forEach((item) => {
       const day = Number(item.workout_day || 1);
       if (!result[day]) {
         result[day] = {
@@ -87,7 +91,135 @@ export default function Workouts({
       }
     });
     return result;
-  }, [exercises]);
+  }, [displayExercises]);
+
+  useEffect(() => {
+    loadCurrentWeekPlan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [program?.id, currentWeek]);
+
+  async function loadCurrentWeekPlan() {
+    if (!program?.id) {
+      setLiveExercises([]);
+      setLoadingWorkoutPlan(false);
+      return;
+    }
+
+    setLoadingWorkoutPlan(true);
+
+    try {
+      const { data: weekData, error: weekError } = await supabase
+        .from("program_weeks")
+        .select("id, week_number, name, phase_name, description, coach_notes")
+        .eq("program_id", program.id)
+        .eq("week_number", currentWeek)
+        .single();
+
+      if (weekError) throw weekError;
+
+      const { data: workoutRows, error: workoutError } = await supabase
+        .from("program_workouts")
+        .select("id, workout_day, name, workout_type, description, estimated_minutes, coach_notes, is_rest_day")
+        .eq("program_week_id", weekData.id)
+        .order("workout_day", { ascending: true });
+
+      if (workoutError) throw workoutError;
+
+      const workoutIds = (workoutRows || []).map((row) => row.id);
+
+      if (!workoutIds.length) {
+        setLiveExercises([]);
+        return;
+      }
+
+      const { data: prescriptionRows, error: prescriptionError } = await supabase
+        .from("program_workout_exercises")
+        .select("id, program_workout_id, exercise_id, exercise_order, sets, reps, rir, rest_seconds, tempo, duration_seconds, distance_target, distance_unit, pace_target, notes")
+        .in("program_workout_id", workoutIds)
+        .order("program_workout_id", { ascending: true })
+        .order("exercise_order", { ascending: true });
+
+      if (prescriptionError) throw prescriptionError;
+
+      const exerciseIds = [
+        ...new Set(
+          (prescriptionRows || [])
+            .map((row) => row.exercise_id)
+            .filter((id) => id !== null && id !== undefined)
+        ),
+      ];
+
+      const { data: exerciseRows, error: exerciseError } = exerciseIds.length
+        ? await supabase
+            .from("exercises")
+            .select("id, name, category, equipment, difficulty, instructions, instructions_short, coaching_cues, common_mistakes, video_url, muscle_group, movement_pattern, secondary_muscles, exercise_type, unilateral, tracking_type")
+            .in("id", exerciseIds)
+        : { data: [], error: null };
+
+      if (exerciseError) throw exerciseError;
+
+      const workoutMap = new Map(
+        (workoutRows || []).map((row) => [String(row.id), row])
+      );
+      const exerciseMap = new Map(
+        (exerciseRows || []).map((row) => [String(row.id), row])
+      );
+
+      const merged = (prescriptionRows || [])
+        .map((row) => {
+          const workout = workoutMap.get(String(row.program_workout_id));
+          const exercise = exerciseMap.get(String(row.exercise_id));
+
+          if (!workout || !exercise) return null;
+
+          return {
+            ...exercise,
+            exercise_id: row.exercise_id,
+            program_exercise_id: row.id,
+            program_workout_exercise_id: row.id,
+            program_workout_id: row.program_workout_id,
+            program_week_id: weekData.id,
+            week_number: weekData.week_number,
+            week_name: weekData.name,
+            phase_name: weekData.phase_name,
+            week_description: weekData.description,
+            week_coach_notes: weekData.coach_notes,
+            workout_day: workout.workout_day,
+            workout_name: workout.name,
+            workout_type: workout.workout_type,
+            workout_description: workout.description,
+            estimated_minutes: workout.estimated_minutes,
+            workout_coach_notes: workout.coach_notes,
+            is_rest_day: workout.is_rest_day,
+            exercise_order: row.exercise_order,
+            sets: row.sets,
+            reps: row.reps,
+            rir: row.rir,
+            rest_seconds: row.rest_seconds,
+            tempo: row.tempo,
+            duration_seconds: row.duration_seconds,
+            distance_target: row.distance_target,
+            distance_unit: row.distance_unit,
+            pace_target: row.pace_target,
+            notes: row.notes,
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => {
+          const dayDiff = Number(a.workout_day || 0) - Number(b.workout_day || 0);
+          if (dayDiff !== 0) return dayDiff;
+          return Number(a.exercise_order || 0) - Number(b.exercise_order || 0);
+        });
+
+      setLiveExercises(merged);
+    } catch (error) {
+      console.error("Direct workout plan load error:", error);
+      setMessage(error.message || "Unable to load the complete workout plan.");
+      setLiveExercises([]);
+    } finally {
+      setLoadingWorkoutPlan(false);
+    }
+  }
 
   useEffect(() => {
     const firstTrainingDay = [1, 2, 3, 4, 5, 6, 7].find(
@@ -322,7 +454,7 @@ export default function Workouts({
         <div>
           <div style={styles.eyebrow}>WORKOUT LOGGING</div>
           <h3 style={styles.nextTitle}>
-            {loadingSessions ? "Loading workout status…" : "Prescription view connected"}
+            {loadingWorkoutPlan || loadingSessions ? "Loading workout plan…" : "Prescription view connected"}
           </h3>
           <p style={styles.muted}>
             Your 12-week program is now being read from the new workout engine. Set-by-set

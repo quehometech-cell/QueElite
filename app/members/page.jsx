@@ -36,6 +36,11 @@ export default function MembersPage() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
 
+  const [activePackage, setActivePackage] =
+    useState(null);
+  const [serviceEntitlements, setServiceEntitlements] =
+    useState([]);
+
   const [activeTab, setActiveTab] = useState("dashboard");
 
   const [program, setProgram] = useState(null);
@@ -169,7 +174,39 @@ export default function MembersPage() {
       }
 
       // =====================================================
-      // 4. LOAD MEMBER PORTAL DATA
+      // 4. PACKAGE + SERVICE ENTITLEMENTS
+      // =====================================================
+
+      const entitlementResult =
+        await loadServiceEntitlements(currentUser.id);
+
+      const effectiveServices =
+        entitlementResult.services;
+
+      // If a saved tab is no longer included in the client's
+      // package, return them safely to the dashboard.
+      const savedTab =
+        window.localStorage.getItem(
+          ACTIVE_TAB_STORAGE_KEY
+        );
+
+      if (
+        savedTab &&
+        savedTab !== "dashboard" &&
+        !isTabAllowed(
+          savedTab,
+          effectiveServices
+        )
+      ) {
+        setActiveTab("dashboard");
+        window.localStorage.setItem(
+          ACTIVE_TAB_STORAGE_KEY,
+          "dashboard"
+        );
+      }
+
+      // =====================================================
+      // 5. LOAD MEMBER PORTAL DATA
       // =====================================================
 
       // Load the current program first.
@@ -207,6 +244,172 @@ export default function MembersPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // =========================================================
+  // PACKAGE + SERVICE ENTITLEMENTS
+  // =========================================================
+
+  async function loadServiceEntitlements(userId) {
+    const {
+      data: clientPackage,
+      error: packageError,
+    } = await supabase
+      .from("client_packages")
+      .select(
+        "id, package_id, status, start_date, end_date"
+      )
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .order("created_at", {
+        ascending: false,
+      })
+      .limit(1)
+      .maybeSingle();
+
+    if (packageError) {
+      throw packageError;
+    }
+
+    if (!clientPackage?.package_id) {
+      setActivePackage(null);
+      setServiceEntitlements([]);
+      return {
+        package: null,
+        services: [],
+      };
+    }
+
+    const [
+      packageResult,
+      packageServicesResult,
+      overrideResult,
+    ] = await Promise.all([
+      supabase
+        .from("coaching_packages")
+        .select(
+          "id, name, slug, description, price_cents, billing_interval, duration_weeks, stripe_price_id"
+        )
+        .eq("id", clientPackage.package_id)
+        .single(),
+
+      supabase
+        .from("package_services")
+        .select("service_id")
+        .eq(
+          "package_id",
+          clientPackage.package_id
+        ),
+
+      supabase
+        .from(
+          "client_service_entitlements"
+        )
+        .select(
+          "service_id, enabled, source, notes"
+        )
+        .eq("user_id", userId),
+    ]);
+
+    if (packageResult.error) {
+      throw packageResult.error;
+    }
+
+    if (packageServicesResult.error) {
+      throw packageServicesResult.error;
+    }
+
+    if (overrideResult.error) {
+      throw overrideResult.error;
+    }
+
+    const serviceIds = [
+      ...new Set([
+        ...(packageServicesResult.data || []).map(
+          (row) => Number(row.service_id)
+        ),
+        ...(overrideResult.data || []).map(
+          (row) => Number(row.service_id)
+        ),
+      ]),
+    ].filter(
+      (serviceId) =>
+        Number.isFinite(serviceId) &&
+        serviceId > 0
+    );
+
+    let serviceRows = [];
+
+    if (serviceIds.length > 0) {
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("coaching_services")
+        .select(
+          "id, service_key, name, description, is_active"
+        )
+        .in("id", serviceIds);
+
+      if (error) {
+        throw error;
+      }
+
+      serviceRows = data || [];
+    }
+
+    const packageServiceIds = new Set(
+      (packageServicesResult.data || []).map(
+        (row) => Number(row.service_id)
+      )
+    );
+
+    const overrideMap = new Map(
+      (overrideResult.data || []).map(
+        (row) => [
+          Number(row.service_id),
+          Boolean(row.enabled),
+        ]
+      )
+    );
+
+    const effectiveServices = serviceRows
+      .filter((service) => {
+        const serviceId = Number(service.id);
+
+        if (overrideMap.has(serviceId)) {
+          return (
+            overrideMap.get(serviceId) === true &&
+            service.is_active !== false
+          );
+        }
+
+        return (
+          packageServiceIds.has(serviceId) &&
+          service.is_active !== false
+        );
+      })
+      .map((service) => service.service_key);
+
+    const packageWithAssignment = {
+      ...packageResult.data,
+      client_package_id: clientPackage.id,
+      status: clientPackage.status,
+      start_date: clientPackage.start_date,
+      end_date: clientPackage.end_date,
+    };
+
+    setActivePackage(
+      packageWithAssignment
+    );
+    setServiceEntitlements(
+      effectiveServices
+    );
+
+    return {
+      package: packageWithAssignment,
+      services: effectiveServices,
+    };
   }
 
   // =========================================================
@@ -848,8 +1051,24 @@ export default function MembersPage() {
     );
   }
 
+  function hasService(serviceKey) {
+    return serviceEntitlements.includes(
+      serviceKey
+    );
+  }
+
+  function canOpenTab(tab) {
+    return isTabAllowed(
+      tab,
+      serviceEntitlements
+    );
+  }
+
   function changeTab(tab) {
-    if (!VALID_TABS.includes(tab)) {
+    if (
+      !VALID_TABS.includes(tab) ||
+      !canOpenTab(tab)
+    ) {
       return;
     }
 
@@ -1151,7 +1370,7 @@ export default function MembersPage() {
               }
             />
 
-            {program && (
+            {hasService("workouts") && program && (
               <NavButton
                 label="My Workouts"
                 active={
@@ -1163,7 +1382,7 @@ export default function MembersPage() {
               />
             )}
 
-            {correctiveRoutine && (
+            {hasService("corrective_mobility") && correctiveRoutine && (
               <NavButton
                 label="Corrective & Mobility"
                 active={
@@ -1175,7 +1394,9 @@ export default function MembersPage() {
               />
             )}
 
-            {nutritionPlan && (
+            {(hasService("nutrition_targets") ||
+              hasService("custom_meal_plan")) &&
+              nutritionPlan && (
               <NavButton
                 label="Nutrition"
                 active={
@@ -1187,35 +1408,41 @@ export default function MembersPage() {
               />
             )}
 
-            <NavButton
-              label="Progress"
-              active={
-                activeTab === "progress"
-              }
-              onClick={() =>
-                changeTab("progress")
-              }
-            />
+            {hasService("progress_tracking") && (
+              <NavButton
+                label="Progress"
+                active={
+                  activeTab === "progress"
+                }
+                onClick={() =>
+                  changeTab("progress")
+                }
+              />
+            )}
 
-            <NavButton
-              label="Check-In"
-              active={
-                activeTab === "checkin"
-              }
-              onClick={() =>
-                changeTab("checkin")
-              }
-            />
+            {hasService("weekly_checkins") && (
+              <NavButton
+                label="Check-In"
+                active={
+                  activeTab === "checkin"
+                }
+                onClick={() =>
+                  changeTab("checkin")
+                }
+              />
+            )}
 
-            <NavButton
-              label="Exercise Library"
-              active={
-                activeTab === "library"
-              }
-              onClick={() =>
-                changeTab("library")
-              }
-            />
+            {hasService("exercise_library") && (
+              <NavButton
+                label="Exercise Library"
+                active={
+                  activeTab === "library"
+                }
+                onClick={() =>
+                  changeTab("library")
+                }
+              />
+            )}
           </nav>
 
           <div className="gcr-member-sidebar-bottom" style={styles.sidebarBottom}>
@@ -1237,8 +1464,18 @@ export default function MembersPage() {
         <section className="gcr-member-content" style={styles.content}>
           {activeTab === "dashboard" && (
             <Dashboard
-              program={program}
-              exercises={workoutExercises}
+              activePackage={activePackage}
+              entitlements={serviceEntitlements}
+              program={
+                hasService("workouts")
+                  ? program
+                  : null
+              }
+              exercises={
+                hasService("workouts")
+                  ? workoutExercises
+                  : []
+              }
               weeklyCompleted={
                 weeklyCompleted
               }
@@ -1252,12 +1489,18 @@ export default function MembersPage() {
                 latestWeight
               }
               nutritionPlan={
-                nutritionPlan
+                hasService("nutrition_targets") ||
+                hasService("custom_meal_plan")
+                  ? nutritionPlan
+                  : null
               }
               latestCheckIn={
                 latestCheckIn
               }
               hasCorrectiveRoutine={
+                hasService(
+                  "corrective_mobility"
+                ) &&
                 Boolean(
                   correctiveRoutine
                 )
@@ -1271,7 +1514,9 @@ export default function MembersPage() {
             />
           )}
 
-          {activeTab === "workouts" && program && (
+          {activeTab === "workouts" &&
+            hasService("workouts") &&
+            program && (
             <Workouts
               user={user}
               program={program}
@@ -1284,7 +1529,9 @@ export default function MembersPage() {
             />
           )}
 
-          {activeTab === "corrective" && correctiveRoutine && (
+          {activeTab === "corrective" &&
+            hasService("corrective_mobility") &&
+            correctiveRoutine && (
             <CorrectiveMobility
               user={user}
               routine={
@@ -1299,7 +1546,10 @@ export default function MembersPage() {
             />
           )}
 
-          {activeTab === "nutrition" && nutritionPlan && (
+          {activeTab === "nutrition" &&
+            (hasService("nutrition_targets") ||
+              hasService("custom_meal_plan")) &&
+            nutritionPlan && (
             <Nutrition
               user={user}
               nutritionPlan={
@@ -1311,15 +1561,18 @@ export default function MembersPage() {
             />
           )}
 
-          {activeTab === "progress" && (
+          {activeTab === "progress" &&
+            hasService("progress_tracking") && (
             <Progress user={user} />
           )}
 
-          {activeTab === "checkin" && (
+          {activeTab === "checkin" &&
+            hasService("weekly_checkins") && (
             <CheckIn user={user} />
           )}
 
-          {activeTab === "library" && (
+          {activeTab === "library" &&
+            hasService("exercise_library") && (
             <ExerciseLibrary
               exercises={
                 libraryExercises
@@ -1330,6 +1583,60 @@ export default function MembersPage() {
       </div>
     </main>
   );
+}
+
+// ===========================================================
+// PACKAGE / TAB ACCESS
+// ===========================================================
+
+function isTabAllowed(
+  tab,
+  entitlements = []
+) {
+  if (tab === "dashboard") {
+    return true;
+  }
+
+  const services = new Set(
+    entitlements || []
+  );
+
+  if (tab === "workouts") {
+    return services.has("workouts");
+  }
+
+  if (tab === "corrective") {
+    return services.has(
+      "corrective_mobility"
+    );
+  }
+
+  if (tab === "nutrition") {
+    return (
+      services.has("nutrition_targets") ||
+      services.has("custom_meal_plan")
+    );
+  }
+
+  if (tab === "progress") {
+    return services.has(
+      "progress_tracking"
+    );
+  }
+
+  if (tab === "checkin") {
+    return services.has(
+      "weekly_checkins"
+    );
+  }
+
+  if (tab === "library") {
+    return services.has(
+      "exercise_library"
+    );
+  }
+
+  return false;
 }
 
 // ===========================================================

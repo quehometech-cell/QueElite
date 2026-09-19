@@ -36,6 +36,27 @@ function prescriptionText(item) {
   return parts.length ? parts.join(" • ") : "Complete as prescribed";
 }
 
+
+function isSetBasedExercise(item) {
+  const tracking = String(item?.tracking_type || "").toLowerCase();
+  const type = String(item?.exercise_type || "").toLowerCase();
+  return !(
+    tracking.includes("duration") ||
+    tracking.includes("distance") ||
+    tracking.includes("pace") ||
+    tracking.includes("completion") ||
+    type.includes("cardio") ||
+    type.includes("mobility") ||
+    type.includes("recovery")
+  );
+}
+
+function toNullableNumber(value) {
+  if (value === "" || value === null || value === undefined) return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 export default function Workouts({
   user,
   program,
@@ -48,6 +69,10 @@ export default function Workouts({
   const [message, setMessage] = useState("");
   const [liveExercises, setLiveExercises] = useState([]);
   const [loadingWorkoutPlan, setLoadingWorkoutPlan] = useState(true);
+  const [exerciseLogs, setExerciseLogs] = useState([]);
+  const [setLogs, setSetLogs] = useState([]);
+  const [savingKey, setSavingKey] = useState("");
+  const [workoutNotes, setWorkoutNotes] = useState("");
 
   const currentWeek = Number(program?.current_week || 1);
   const durationWeeks = Number(program?.duration_weeks || 12);
@@ -258,10 +283,284 @@ export default function Workouts({
       setMessage(error.message || "Unable to load workout progress.");
       setSessions([]);
     } else {
-      setSessions(data || []);
+      const nextSessions = data || [];
+      setSessions(nextSessions);
+      await loadWorkoutLogs(nextSessions);
     }
 
     setLoadingSessions(false);
+  }
+
+  async function loadWorkoutLogs(sessionRows = sessions) {
+    const sessionIds = (sessionRows || []).map((row) => row.id);
+    if (!sessionIds.length) {
+      setExerciseLogs([]);
+      setSetLogs([]);
+      return;
+    }
+
+    const { data: exerciseRows, error: exerciseError } = await supabase
+      .from("workout_exercise_logs")
+      .select("*")
+      .in("workout_session_id", sessionIds)
+      .order("exercise_order", { ascending: true });
+
+    if (exerciseError) {
+      console.error("Workout exercise log load error:", exerciseError);
+      setMessage(exerciseError.message || "Unable to load exercise logs.");
+      return;
+    }
+
+    setExerciseLogs(exerciseRows || []);
+    const exerciseLogIds = (exerciseRows || []).map((row) => row.id);
+
+    if (!exerciseLogIds.length) {
+      setSetLogs([]);
+      return;
+    }
+
+    const { data: setRows, error: setError } = await supabase
+      .from("workout_set_logs")
+      .select("*")
+      .in("workout_exercise_log_id", exerciseLogIds)
+      .order("set_number", { ascending: true });
+
+    if (setError) {
+      console.error("Workout set log load error:", setError);
+      setMessage(setError.message || "Unable to load set logs.");
+      return;
+    }
+
+    setSetLogs(setRows || []);
+  }
+
+  async function startWorkout() {
+    if (!user?.id || !program?.member_program_id || !selectedMeta?.id) return;
+
+    setSavingKey("start");
+    setMessage("");
+
+    try {
+      let session = selectedSession;
+
+      if (!session) {
+        const { data, error } = await supabase
+          .from("workout_sessions")
+          .insert({
+            user_id: user.id,
+            member_program_id: program.member_program_id,
+            program_workout_id: selectedMeta.id,
+            week_number: currentWeek,
+            workout_day: selectedDay,
+            workout_name: selectedMeta.name || DAY_NAMES[selectedDay],
+            status: "in_progress",
+          })
+          .select("*")
+          .single();
+
+        if (error) throw error;
+        session = data;
+      }
+
+      const existingForSession = exerciseLogs.filter(
+        (row) => Number(row.workout_session_id) === Number(session.id)
+      );
+      const existingPrescriptionIds = new Set(
+        existingForSession.map((row) => String(row.program_workout_exercise_id))
+      );
+
+      const missing = selectedExercises.filter(
+        (item) => !existingPrescriptionIds.has(String(item.program_workout_exercise_id))
+      );
+
+      let createdExerciseLogs = [];
+      if (missing.length) {
+        const { data, error } = await supabase
+          .from("workout_exercise_logs")
+          .insert(
+            missing.map((item) => ({
+              workout_session_id: session.id,
+              program_workout_exercise_id: item.program_workout_exercise_id,
+              exercise_id: item.exercise_id || item.id,
+              exercise_order: Number(item.exercise_order || 1),
+              exercise_name: item.name,
+              prescribed_sets: item.sets ? Number(item.sets) : null,
+              prescribed_reps: item.reps || null,
+              prescribed_rir: toNullableNumber(item.rir),
+              prescribed_rest_seconds: item.rest_seconds ? Number(item.rest_seconds) : null,
+              prescribed_tempo: item.tempo || null,
+              duration_seconds: item.duration_seconds ? Number(item.duration_seconds) : null,
+              distance: toNullableNumber(item.distance_target),
+              distance_unit: item.distance_unit || null,
+              pace: item.pace_target || null,
+              completed: false,
+            }))
+          )
+          .select("*");
+
+        if (error) throw error;
+        createdExerciseLogs = data || [];
+      }
+
+      const allExerciseLogs = [...existingForSession, ...createdExerciseLogs];
+      const setRowsToCreate = [];
+
+      allExerciseLogs.forEach((log) => {
+        const item = selectedExercises.find(
+          (exercise) =>
+            String(exercise.program_workout_exercise_id) ===
+            String(log.program_workout_exercise_id)
+        );
+        if (!item || !isSetBasedExercise(item)) return;
+
+        const setCount = Math.max(1, Number(item.sets || 1));
+        const existingSetNumbers = new Set(
+          setLogs
+            .filter((row) => Number(row.workout_exercise_log_id) === Number(log.id))
+            .map((row) => Number(row.set_number))
+        );
+
+        for (let setNumber = 1; setNumber <= setCount; setNumber += 1) {
+          if (!existingSetNumbers.has(setNumber)) {
+            setRowsToCreate.push({
+              workout_exercise_log_id: log.id,
+              set_number: setNumber,
+              weight: null,
+              weight_unit: "lb",
+              reps: null,
+              rir: null,
+              completed: false,
+            });
+          }
+        }
+      });
+
+      if (setRowsToCreate.length) {
+        const { error } = await supabase.from("workout_set_logs").insert(setRowsToCreate);
+        if (error) throw error;
+      }
+
+      setWorkoutNotes(session.workout_notes || "");
+      await loadSessions();
+      setMessage("Workout started. Your log is ready.");
+    } catch (error) {
+      console.error("Start workout error:", error);
+      setMessage(error.message || "Unable to start workout.");
+    } finally {
+      setSavingKey("");
+    }
+  }
+
+  function getExerciseLog(item) {
+    if (!selectedSession) return null;
+    return exerciseLogs.find(
+      (row) =>
+        Number(row.workout_session_id) === Number(selectedSession.id) &&
+        String(row.program_workout_exercise_id) === String(item.program_workout_exercise_id)
+    );
+  }
+
+  function getSetsForExercise(exerciseLogId) {
+    return setLogs
+      .filter((row) => Number(row.workout_exercise_log_id) === Number(exerciseLogId))
+      .sort((a, b) => Number(a.set_number) - Number(b.set_number));
+  }
+
+  function updateLocalSet(setId, field, value) {
+    setSetLogs((current) =>
+      current.map((row) => (row.id === setId ? { ...row, [field]: value } : row))
+    );
+  }
+
+  async function saveSet(row) {
+    const key = `set-${row.id}`;
+    setSavingKey(key);
+    setMessage("");
+
+    const { error } = await supabase
+      .from("workout_set_logs")
+      .update({
+        weight: toNullableNumber(row.weight),
+        reps: toNullableNumber(row.reps),
+        rir: toNullableNumber(row.rir),
+        completed: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", row.id);
+
+    if (error) {
+      console.error("Set save error:", error);
+      setMessage(error.message || "Unable to save set.");
+    } else {
+      setSetLogs((current) =>
+        current.map((item) => (item.id === row.id ? { ...item, completed: true } : item))
+      );
+      setMessage(`Set ${row.set_number} saved.`);
+    }
+    setSavingKey("");
+  }
+
+  function updateLocalExerciseLog(logId, field, value) {
+    setExerciseLogs((current) =>
+      current.map((row) => (row.id === logId ? { ...row, [field]: value } : row))
+    );
+  }
+
+  async function saveTrackedExercise(log) {
+    const key = `exercise-${log.id}`;
+    setSavingKey(key);
+    setMessage("");
+
+    const { error } = await supabase
+      .from("workout_exercise_logs")
+      .update({
+        duration_seconds: toNullableNumber(log.duration_seconds),
+        distance: toNullableNumber(log.distance),
+        distance_unit: log.distance_unit || null,
+        pace: log.pace || null,
+        notes: log.notes || null,
+        completed: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", log.id);
+
+    if (error) {
+      console.error("Exercise save error:", error);
+      setMessage(error.message || "Unable to save exercise.");
+    } else {
+      setExerciseLogs((current) =>
+        current.map((row) => (row.id === log.id ? { ...row, completed: true } : row))
+      );
+      setMessage(`${log.exercise_name} saved.`);
+    }
+    setSavingKey("");
+  }
+
+  async function saveWorkoutNotes() {
+    if (!selectedSession || selectedSession.status === "completed") return;
+    setSavingKey("notes");
+    setMessage("");
+
+    const { error } = await supabase
+      .from("workout_sessions")
+      .update({
+        workout_notes: workoutNotes || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", selectedSession.id);
+
+    if (error) {
+      console.error("Workout notes save error:", error);
+      setMessage(error.message || "Unable to save workout notes.");
+    } else {
+      setSessions((current) =>
+        current.map((row) =>
+          row.id === selectedSession.id ? { ...row, workout_notes: workoutNotes } : row
+        )
+      );
+      setMessage("Workout notes saved.");
+    }
+    setSavingKey("");
   }
 
   function getSession(day) {
@@ -276,6 +575,13 @@ export default function Workouts({
     if (session.status === "skipped") return "Skipped";
     return "Scheduled";
   }
+
+  useEffect(() => {
+    const session = sessions.find(
+      (row) => Number(row.workout_day) === Number(selectedDay)
+    );
+    setWorkoutNotes(session?.workout_notes || "");
+  }, [selectedDay, sessions]);
 
   const selectedExercises = grouped[selectedDay] || [];
   const selectedMeta = workoutMeta[selectedDay] || {};
@@ -403,51 +709,277 @@ export default function Workouts({
           </p>
         </section>
       ) : (
-        <section style={styles.exerciseList}>
-          {selectedExercises.map((item, index) => (
-            <article key={item.program_workout_exercise_id || `${selectedDay}-${index}`} style={styles.exerciseCard}>
-              <div style={styles.exerciseTop}>
-                <div style={styles.orderBadge}>{index + 1}</div>
-                <div style={styles.exerciseMain}>
-                  <h3 style={styles.exerciseName}>{item.name}</h3>
-                  <div style={styles.prescription}>{prescriptionText(item)}</div>
-                  <div style={styles.exerciseTags}>
-                    {item.equipment ? <span style={styles.smallTag}>{item.equipment}</span> : null}
-                    {item.muscle_group ? <span style={styles.smallTag}>{item.muscle_group}</span> : null}
-                    {item.tracking_type ? (
-                      <span style={styles.smallTag}>{item.tracking_type.replaceAll("_", " ")}</span>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-
-              {(item.rest_seconds || item.tempo) ? (
-                <div style={styles.detailGrid}>
-                  {item.rest_seconds ? (
-                    <div style={styles.detailBox}>
-                      <span style={styles.detailLabel}>REST</span>
-                      <strong>{item.rest_seconds}s</strong>
-                    </div>
-                  ) : null}
-                  {item.tempo ? (
-                    <div style={styles.detailBox}>
-                      <span style={styles.detailLabel}>TEMPO</span>
-                      <strong>{item.tempo}</strong>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {item.instructions_short || item.instructions ? (
-                <p style={styles.instructions}>
-                  {item.instructions_short || item.instructions}
+        <>
+          {!selectedSession ? (
+            <section style={styles.startCard}>
+              <div>
+                <div style={styles.eyebrow}>READY TO TRAIN?</div>
+                <h3 style={styles.nextTitle}>Start {selectedMeta.name}</h3>
+                <p style={styles.muted}>
+                  Starting creates your private workout log for Week {currentWeek}. Your
+                  prescription stays unchanged.
                 </p>
-              ) : null}
+              </div>
+              <button
+                type="button"
+                onClick={startWorkout}
+                disabled={savingKey === "start"}
+                style={styles.primaryButton}
+              >
+                {savingKey === "start" ? "Starting…" : "Start Workout"}
+              </button>
+            </section>
+          ) : null}
 
-              {item.notes ? <p style={styles.exerciseNote}>{item.notes}</p> : null}
-            </article>
-          ))}
-        </section>
+          <section style={styles.exerciseList}>
+            {selectedExercises.map((item, index) => {
+              const log = getExerciseLog(item);
+              const setBased = isSetBasedExercise(item);
+              const loggedSets = log ? getSetsForExercise(log.id) : [];
+              const locked = selectedSession?.status === "completed";
+
+              return (
+                <article
+                  key={item.program_workout_exercise_id || `${selectedDay}-${index}`}
+                  style={styles.exerciseCard}
+                >
+                  <div style={styles.exerciseTop}>
+                    <div style={styles.orderBadge}>{index + 1}</div>
+                    <div style={styles.exerciseMain}>
+                      <h3 style={styles.exerciseName}>{item.name}</h3>
+                      <div style={styles.prescription}>{prescriptionText(item)}</div>
+                      <div style={styles.exerciseTags}>
+                        {item.equipment ? <span style={styles.smallTag}>{item.equipment}</span> : null}
+                        {item.muscle_group ? <span style={styles.smallTag}>{item.muscle_group}</span> : null}
+                        {item.tracking_type ? (
+                          <span style={styles.smallTag}>{item.tracking_type.replaceAll("_", " ")}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+
+                  {(item.rest_seconds || item.tempo) ? (
+                    <div style={styles.detailGrid}>
+                      {item.rest_seconds ? (
+                        <div style={styles.detailBox}>
+                          <span style={styles.detailLabel}>REST</span>
+                          <strong>{item.rest_seconds}s</strong>
+                        </div>
+                      ) : null}
+                      {item.tempo ? (
+                        <div style={styles.detailBox}>
+                          <span style={styles.detailLabel}>TEMPO</span>
+                          <strong>{item.tempo}</strong>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {item.instructions_short || item.instructions ? (
+                    <p style={styles.instructions}>
+                      {item.instructions_short || item.instructions}
+                    </p>
+                  ) : null}
+
+                  {item.notes ? <p style={styles.exerciseNote}>{item.notes}</p> : null}
+
+                  {selectedSession && log && setBased ? (
+                    <div style={styles.logArea}>
+                      <div style={styles.logHeading}>LOG YOUR SETS</div>
+                      <div style={styles.setHeader}>
+                        <span>SET</span>
+                        <span>WEIGHT (LB)</span>
+                        <span>REPS</span>
+                        <span>RIR</span>
+                        <span></span>
+                      </div>
+
+                      {loggedSets.map((row) => (
+                        <div key={row.id} style={styles.setRow}>
+                          <strong style={styles.setNumber}>{row.set_number}</strong>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            value={row.weight ?? ""}
+                            disabled={locked}
+                            onChange={(event) =>
+                              updateLocalSet(row.id, "weight", event.target.value)
+                            }
+                            placeholder="0"
+                            style={styles.input}
+                          />
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            value={row.reps ?? ""}
+                            disabled={locked}
+                            onChange={(event) =>
+                              updateLocalSet(row.id, "reps", event.target.value)
+                            }
+                            placeholder={item.reps || "0"}
+                            style={styles.input}
+                          />
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            step="0.5"
+                            value={row.rir ?? ""}
+                            disabled={locked}
+                            onChange={(event) =>
+                              updateLocalSet(row.id, "rir", event.target.value)
+                            }
+                            placeholder={item.rir ?? "—"}
+                            style={styles.input}
+                          />
+                          <button
+                            type="button"
+                            disabled={locked || savingKey === `set-${row.id}`}
+                            onClick={() => saveSet(row)}
+                            style={{
+                              ...styles.saveButton,
+                              ...(row.completed ? styles.savedButton : {}),
+                            }}
+                          >
+                            {savingKey === `set-${row.id}`
+                              ? "Saving…"
+                              : row.completed
+                                ? "Saved ✓"
+                                : "Save"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {selectedSession && log && !setBased ? (
+                    <div style={styles.logArea}>
+                      <div style={styles.logHeading}>LOG THIS EXERCISE</div>
+                      <div style={styles.trackingGrid}>
+                        <label style={styles.fieldLabel}>
+                          TIME (MIN)
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            disabled={locked}
+                            value={
+                              log.duration_seconds === null || log.duration_seconds === undefined
+                                ? ""
+                                : Number(log.duration_seconds) / 60
+                            }
+                            onChange={(event) =>
+                              updateLocalExerciseLog(
+                                log.id,
+                                "duration_seconds",
+                                event.target.value === ""
+                                  ? ""
+                                  : Number(event.target.value) * 60
+                              )
+                            }
+                            style={styles.input}
+                          />
+                        </label>
+
+                        <label style={styles.fieldLabel}>
+                          DISTANCE
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            disabled={locked}
+                            value={log.distance ?? ""}
+                            onChange={(event) =>
+                              updateLocalExerciseLog(log.id, "distance", event.target.value)
+                            }
+                            style={styles.input}
+                          />
+                        </label>
+
+                        <label style={styles.fieldLabel}>
+                          UNIT
+                          <input
+                            type="text"
+                            disabled={locked}
+                            value={log.distance_unit ?? ""}
+                            onChange={(event) =>
+                              updateLocalExerciseLog(log.id, "distance_unit", event.target.value)
+                            }
+                            placeholder={item.distance_unit || "mi"}
+                            style={styles.input}
+                          />
+                        </label>
+
+                        <label style={styles.fieldLabel}>
+                          PACE
+                          <input
+                            type="text"
+                            disabled={locked}
+                            value={log.pace ?? ""}
+                            onChange={(event) =>
+                              updateLocalExerciseLog(log.id, "pace", event.target.value)
+                            }
+                            placeholder={item.pace_target || "Optional"}
+                            style={styles.input}
+                          />
+                        </label>
+                      </div>
+
+                      <label style={styles.fieldLabel}>
+                        NOTES
+                        <textarea
+                          disabled={locked}
+                          value={log.notes ?? ""}
+                          onChange={(event) =>
+                            updateLocalExerciseLog(log.id, "notes", event.target.value)
+                          }
+                          placeholder="How did this feel?"
+                          style={styles.textarea}
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        disabled={locked || savingKey === `exercise-${log.id}`}
+                        onClick={() => saveTrackedExercise(log)}
+                        style={{
+                          ...styles.saveButton,
+                          ...(log.completed ? styles.savedButton : {}),
+                        }}
+                      >
+                        {savingKey === `exercise-${log.id}`
+                          ? "Saving…"
+                          : log.completed
+                            ? "Saved ✓"
+                            : "Save Exercise"}
+                      </button>
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
+          </section>
+
+          {selectedSession ? (
+            <section style={styles.notesCard}>
+              <div style={styles.eyebrow}>WORKOUT NOTES</div>
+              <textarea
+                value={workoutNotes}
+                disabled={selectedSession.status === "completed"}
+                onChange={(event) => setWorkoutNotes(event.target.value)}
+                placeholder="Energy, pain, form notes, wins, or anything your coach should know…"
+                style={styles.workoutTextarea}
+              />
+              <button
+                type="button"
+                disabled={
+                  selectedSession.status === "completed" || savingKey === "notes"
+                }
+                onClick={saveWorkoutNotes}
+                style={styles.saveButton}
+              >
+                {savingKey === "notes" ? "Saving…" : "Save Workout Notes"}
+              </button>
+            </section>
+          ) : null}
+        </>
       )}
 
       <section style={styles.nextStepCard}>
@@ -457,8 +989,8 @@ export default function Workouts({
             {loadingWorkoutPlan || loadingSessions ? "Loading workout plan…" : "Prescription view connected"}
           </h3>
           <p style={styles.muted}>
-            Your 12-week program is now being read from the new workout engine. Set-by-set
-            weight, reps, RIR, cardio, notes, and workout completion are added in the next step.
+            Set-by-set weight, reps, RIR, cardio, mobility, and workout notes are now connected.
+            Workout completion and history are the next step.
           </p>
         </div>
       </section>
@@ -737,6 +1269,127 @@ const styles = {
     borderRadius: "0 8px 8px 0",
     fontSize: 13,
     lineHeight: 1.5,
+  },
+  startCard: {
+    background: "#111111",
+    border: "1px solid #F4C20D",
+    borderRadius: 18,
+    padding: 20,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 16,
+    flexWrap: "wrap",
+  },
+  primaryButton: {
+    background: "#F4C20D",
+    color: "#050505",
+    border: 0,
+    borderRadius: 10,
+    padding: "12px 18px",
+    fontWeight: 950,
+    cursor: "pointer",
+  },
+  logArea: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTop: "1px solid #2A2A2A",
+    display: "grid",
+    gap: 10,
+  },
+  logHeading: {
+    color: "#F4C20D",
+    fontSize: 11,
+    fontWeight: 900,
+    letterSpacing: 1,
+  },
+  setHeader: {
+    display: "grid",
+    gridTemplateColumns: "45px minmax(85px, 1fr) minmax(70px, .8fr) minmax(65px, .7fr) 88px",
+    gap: 8,
+    color: "#BDBDBD",
+    fontSize: 9,
+    fontWeight: 900,
+    alignItems: "center",
+  },
+  setRow: {
+    display: "grid",
+    gridTemplateColumns: "45px minmax(85px, 1fr) minmax(70px, .8fr) minmax(65px, .7fr) 88px",
+    gap: 8,
+    alignItems: "center",
+  },
+  setNumber: {
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+  input: {
+    width: "100%",
+    boxSizing: "border-box",
+    background: "#050505",
+    color: "#FFFFFF",
+    border: "1px solid #2A2A2A",
+    borderRadius: 9,
+    padding: "10px 9px",
+    outline: "none",
+  },
+  saveButton: {
+    background: "#F4C20D",
+    color: "#050505",
+    border: 0,
+    borderRadius: 9,
+    padding: "10px 12px",
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+  savedButton: {
+    background: "#2A2A2A",
+    color: "#F4C20D",
+  },
+  trackingGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+    gap: 10,
+  },
+  fieldLabel: {
+    color: "#BDBDBD",
+    fontSize: 10,
+    fontWeight: 900,
+    display: "grid",
+    gap: 6,
+  },
+  textarea: {
+    width: "100%",
+    minHeight: 72,
+    resize: "vertical",
+    boxSizing: "border-box",
+    background: "#050505",
+    color: "#FFFFFF",
+    border: "1px solid #2A2A2A",
+    borderRadius: 9,
+    padding: 10,
+    outline: "none",
+    fontFamily: "inherit",
+  },
+  notesCard: {
+    background: "#111111",
+    border: "1px solid #2A2A2A",
+    borderRadius: 18,
+    padding: 18,
+    display: "grid",
+    gap: 12,
+  },
+  workoutTextarea: {
+    width: "100%",
+    minHeight: 100,
+    resize: "vertical",
+    boxSizing: "border-box",
+    background: "#050505",
+    color: "#FFFFFF",
+    border: "1px solid #2A2A2A",
+    borderRadius: 10,
+    padding: 12,
+    outline: "none",
+    fontFamily: "inherit",
   },
   restCard: {
     textAlign: "center",

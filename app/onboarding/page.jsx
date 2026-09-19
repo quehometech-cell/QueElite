@@ -257,7 +257,7 @@ export default function OnboardingPage() {
 
       const { error } = await supabase
         .from("onboarding_assessments")
-        .insert({
+        .upsert({
           user_id: user.id,
           goal: form.goal,
           age,
@@ -294,7 +294,11 @@ export default function OnboardingPage() {
           nutrition_goal: form.nutrition_goal || null,
           assessment_status: "pending_review",
           coach_reviewed: false,
+          coach_reviewed_at: null,
+          completed: true,
           updated_at: new Date().toISOString(),
+        }, {
+          onConflict: "user_id",
         });
 
       if (error) {

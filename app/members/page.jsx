@@ -279,8 +279,6 @@ export default function MembersPage() {
       coach_id: assignment.coach_id,
     };
 
-    setProgram(programWithAssignment);
-
     // Load the member's current week from the new
     // 12-week program structure.
     const {
@@ -298,6 +296,18 @@ export default function MembersPage() {
     if (weekError) {
       throw weekError;
     }
+
+    const programWithWeek = {
+      ...programWithAssignment,
+      week_id: weekData?.id || null,
+      week_number: weekData?.week_number || currentWeek,
+      week_name: weekData?.name || null,
+      phase_name: weekData?.phase_name || null,
+      week_description: weekData?.description || null,
+      week_coach_notes: weekData?.coach_notes || null,
+    };
+
+    setProgram(programWithWeek);
 
     if (!weekData?.id) {
       setWorkoutExercises([]);

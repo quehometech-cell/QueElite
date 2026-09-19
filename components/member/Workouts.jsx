@@ -96,6 +96,11 @@ export default function Workouts({
   const [workoutNotes, setWorkoutNotes] = useState("");
   const [workoutHistory, setWorkoutHistory] = useState([]);
   const [previousPerformance, setPreviousPerformance] = useState({});
+  const [exerciseLibrary, setExerciseLibrary] = useState([]);
+  const [substitutions, setSubstitutions] = useState([]);
+  const [swapOpenId, setSwapOpenId] = useState(null);
+  const [swapSearch, setSwapSearch] = useState("");
+  const [swapReason, setSwapReason] = useState("Equipment unavailable");
 
   const currentWeek = Number(program?.current_week || 1);
   const durationWeeks = Number(program?.duration_weeks || 12);
@@ -163,6 +168,34 @@ export default function Workouts({
     });
     return result;
   }, [displayExercises]);
+
+  useEffect(() => {
+    loadCustomizationData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  async function loadCustomizationData() {
+    if (!user?.id) return;
+
+    const [{ data: libraryRows, error: libraryError }, { data: substitutionRows, error: substitutionError }] =
+      await Promise.all([
+        supabase
+          .from("exercises")
+          .select("id, name, category, equipment, difficulty, instructions, instructions_short, coaching_cues, common_mistakes, video_url, muscle_group, movement_pattern, secondary_muscles, exercise_type, unilateral, tracking_type")
+          .eq("is_active", true)
+          .order("name", { ascending: true }),
+        supabase
+          .from("exercise_substitutions")
+          .select("id, exercise_id, substitute_exercise_id, priority, reason, equipment_based")
+          .order("priority", { ascending: true }),
+      ]);
+
+    if (libraryError) console.error("Exercise library load error:", libraryError);
+    if (substitutionError) console.error("Exercise substitution load error:", substitutionError);
+
+    setExerciseLibrary(libraryRows || []);
+    setSubstitutions(substitutionRows || []);
+  }
 
   useEffect(() => {
     loadCurrentWeekPlan();
@@ -598,6 +631,10 @@ export default function Workouts({
               exercise_id: item.exercise_id || item.id,
               exercise_order: Number(item.exercise_order || 1),
               exercise_name: item.name,
+              prescribed_exercise_id: item.exercise_id || item.id,
+              prescribed_exercise_name: item.name,
+              was_substituted: false,
+              substitution_reason: null,
               prescribed_sets: item.sets ? Number(item.sets) : null,
               prescribed_reps: item.reps || null,
               prescribed_rir: toNullableNumber(item.rir),
@@ -660,6 +697,135 @@ export default function Workouts({
     } catch (error) {
       console.error("Start workout error:", error);
       setMessage(error.message || "Unable to start workout.");
+    } finally {
+      setSavingKey("");
+    }
+  }
+
+  function exerciseById(id) {
+    return exerciseLibrary.find((exercise) => Number(exercise.id) === Number(id)) || null;
+  }
+
+  function effectiveExercise(item, log) {
+    if (!log || Number(log.exercise_id) === Number(item.exercise_id || item.id)) return item;
+    const replacement = exerciseById(log.exercise_id);
+    return replacement
+      ? {
+          ...item,
+          ...replacement,
+          exercise_id: replacement.id,
+          name: replacement.name,
+        }
+      : { ...item, exercise_id: log.exercise_id, name: log.exercise_name || item.name };
+  }
+
+  function approvedSubstitutesFor(item) {
+    const ids = substitutions
+      .filter((row) => Number(row.exercise_id) === Number(item.exercise_id || item.id))
+      .sort((a, b) => Number(a.priority || 999) - Number(b.priority || 999))
+      .map((row) => Number(row.substitute_exercise_id));
+    return ids.map(exerciseById).filter(Boolean);
+  }
+
+  function searchableExercises(item) {
+    const query = swapSearch.trim().toLowerCase();
+    if (!query) return [];
+    return exerciseLibrary
+      .filter((exercise) => Number(exercise.id) !== Number(item.exercise_id || item.id))
+      .filter((exercise) =>
+        [exercise.name, exercise.category, exercise.equipment, exercise.movement_pattern]
+          .filter(Boolean)
+          .join(" " )
+          .toLowerCase()
+          .includes(query)
+      )
+      .slice(0, 20);
+  }
+
+  async function chooseDifferentExercise(item, log, replacement, reasonOverride = null) {
+    if (!log || selectedSession?.status === "completed" || !replacement) return;
+
+    const reason = reasonOverride || swapReason || "Client selected alternative";
+    const originalId = log.prescribed_exercise_id || item.exercise_id || item.id;
+    const originalName = log.prescribed_exercise_name || item.name;
+    const returningToPrescription = Number(replacement.id) === Number(originalId);
+
+    setSavingKey(`swap-${log.id}`);
+    setMessage("");
+
+    try {
+      const { error } = await supabase
+        .from("workout_exercise_logs")
+        .update({
+          exercise_id: replacement.id,
+          exercise_name: replacement.name,
+          prescribed_exercise_id: originalId,
+          prescribed_exercise_name: originalName,
+          was_substituted: !returningToPrescription,
+          substitution_reason: returningToPrescription ? null : reason,
+          completed: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", log.id);
+
+      if (error) throw error;
+
+      const replacementAsWorkoutItem = { ...item, ...replacement };
+      if (isSetBasedExercise(replacementAsWorkoutItem)) {
+        const currentSets = getSetsForExercise(log.id);
+        const targetSetCount = Math.max(1, Number(item.sets || log.prescribed_sets || 1));
+        const existingNumbers = new Set(currentSets.map((row) => Number(row.set_number)));
+        const rowsToCreate = [];
+        for (let setNumber = 1; setNumber <= targetSetCount; setNumber += 1) {
+          if (!existingNumbers.has(setNumber)) {
+            rowsToCreate.push({
+              workout_exercise_log_id: log.id,
+              set_number: setNumber,
+              weight: null,
+              weight_unit: "lb",
+              reps: null,
+              rir: null,
+              completed: false,
+            });
+          }
+        }
+        if (rowsToCreate.length) {
+          const { data: newSets, error: setError } = await supabase
+            .from("workout_set_logs")
+            .insert(rowsToCreate)
+            .select("*");
+          if (setError) throw setError;
+          setSetLogs((current) => [...current, ...(newSets || [])]);
+        }
+      }
+
+      setExerciseLogs((current) =>
+        current.map((row) =>
+          row.id === log.id
+            ? {
+                ...row,
+                exercise_id: replacement.id,
+                exercise_name: replacement.name,
+                prescribed_exercise_id: originalId,
+                prescribed_exercise_name: originalName,
+                was_substituted: !returningToPrescription,
+                substitution_reason: returningToPrescription ? null : reason,
+                completed: false,
+              }
+            : row
+        )
+      );
+
+      setSwapOpenId(null);
+      setSwapSearch("");
+      setMessage(
+        returningToPrescription
+          ? `Restored ${originalName}.`
+          : `Using ${replacement.name} instead of ${originalName} for this workout.`
+      );
+    } catch (error) {
+      console.error("Exercise swap error:", error);
+      setMessage(error.message || "Unable to change this exercise.");
     } finally {
       setSavingKey("");
     }
@@ -803,7 +969,9 @@ export default function Workouts({
         return;
       }
 
-      if (isSetBasedExercise(item)) {
+      const performedItem = effectiveExercise(item, log);
+
+      if (isSetBasedExercise(performedItem)) {
         const requiredSets = Math.max(1, Number(item.sets || 1));
         const completedSets = setLogs.filter(
           (row) =>
@@ -836,7 +1004,7 @@ export default function Workouts({
               String(exercise.program_workout_exercise_id) ===
               String(log.program_workout_exercise_id)
           );
-          return item && isSetBasedExercise(item);
+          return item && isSetBasedExercise(effectiveExercise(item, log));
         })
         .map((log) => log.id);
 
@@ -1121,9 +1289,12 @@ export default function Workouts({
           <section style={styles.exerciseList}>
             {selectedExercises.map((item, index) => {
               const log = getExerciseLog(item);
-              const setBased = isSetBasedExercise(item);
+              const performedItem = effectiveExercise(item, log);
+              const setBased = isSetBasedExercise(performedItem);
               const loggedSets = log ? getSetsForExercise(log.id) : [];
               const locked = selectedSession?.status === "completed";
+              const approved = approvedSubstitutesFor(item);
+              const isSwapped = Boolean(log?.was_substituted);
 
               return (
                 <article
@@ -1133,23 +1304,153 @@ export default function Workouts({
                   <div style={styles.exerciseTop}>
                     <div style={styles.orderBadge}>{index + 1}</div>
                     <div style={styles.exerciseMain}>
-                      <h3 style={styles.exerciseName}>{item.name}</h3>
+                      <h3 style={styles.exerciseName}>{performedItem.name}</h3>
+                      {isSwapped ? (
+                        <div style={styles.swapStatus}>
+                          Prescribed: {log.prescribed_exercise_name || item.name} • Performed: {performedItem.name}
+                        </div>
+                      ) : null}
                       <div style={styles.prescription}>{prescriptionText(item)}</div>
-                      {formatPreviousPerformance(item) ? (
+                      {formatPreviousPerformance(performedItem) ? (
                         <div style={styles.previousPerformance}>
                           <span style={styles.previousLabel}>PREVIOUS</span>
-                          <strong>{formatPreviousPerformance(item)}</strong>
+                          <strong>{formatPreviousPerformance(performedItem)}</strong>
                         </div>
                       ) : null}
                       <div style={styles.exerciseTags}>
-                        {item.equipment ? <span style={styles.smallTag}>{item.equipment}</span> : null}
-                        {item.muscle_group ? <span style={styles.smallTag}>{item.muscle_group}</span> : null}
-                        {item.tracking_type ? (
-                          <span style={styles.smallTag}>{item.tracking_type.replaceAll("_", " ")}</span>
+                        {performedItem.equipment ? <span style={styles.smallTag}>{performedItem.equipment}</span> : null}
+                        {performedItem.muscle_group ? <span style={styles.smallTag}>{performedItem.muscle_group}</span> : null}
+                        {performedItem.tracking_type ? (
+                          <span style={styles.smallTag}>{performedItem.tracking_type.replaceAll("_", " ")}</span>
                         ) : null}
                       </div>
                     </div>
                   </div>
+
+                  {selectedSession && log ? (
+                    <div style={styles.swapArea}>
+                      <div style={styles.swapActions}>
+                        <button
+                          type="button"
+                          disabled={locked || savingKey === `swap-${log.id}`}
+                          onClick={() => {
+                            setSwapOpenId(swapOpenId === log.id ? null : log.id);
+                            setSwapSearch("");
+                          }}
+                          style={styles.secondaryButton}
+                        >
+                          {isSwapped ? "Change Exercise" : "Swap Exercise"}
+                        </button>
+                        {isSwapped ? (
+                          <button
+                            type="button"
+                            disabled={locked || savingKey === `swap-${log.id}`}
+                            onClick={() =>
+                              chooseDifferentExercise(
+                                item,
+                                log,
+                                exerciseById(log.prescribed_exercise_id || item.exercise_id || item.id) || item,
+                                "Returned to prescribed exercise"
+                              )
+                            }
+                            style={styles.ghostButton}
+                          >
+                            Restore Prescribed
+                          </button>
+                        ) : null}
+                      </div>
+
+                      {isSwapped && log.substitution_reason ? (
+                        <div style={styles.swapReasonText}>Reason: {log.substitution_reason}</div>
+                      ) : null}
+
+                      {swapOpenId === log.id && !locked ? (
+                        <div style={styles.swapPanel}>
+                          <div style={styles.logHeading}>CHOOSE AN ALTERNATIVE</div>
+                          <label style={styles.fieldLabel}>
+                            REASON FOR CHANGE
+                            <select
+                              value={swapReason}
+                              onChange={(event) => setSwapReason(event.target.value)}
+                              style={styles.input}
+                            >
+                              <option>Equipment unavailable</option>
+                              <option>Exercise preference</option>
+                              <option>Pain or discomfort</option>
+                              <option>Movement restriction</option>
+                              <option>Performed something different</option>
+                              <option>Other</option>
+                            </select>
+                          </label>
+
+                          {swapReason === "Pain or discomfort" || swapReason === "Movement restriction" ? (
+                            <div style={styles.cautionBox}>
+                              This records the restriction for your coach. Suggested alternatives are not a medical determination. Stop any movement that causes concerning pain and use an option appropriate for your situation.
+                            </div>
+                          ) : null}
+
+                          {approved.length ? (
+                            <div>
+                              <div style={styles.swapSectionLabel}>APPROVED ALTERNATIVES</div>
+                              <div style={styles.swapChoices}>
+                                {approved.map((exercise) => (
+                                  <button
+                                    key={exercise.id}
+                                    type="button"
+                                    disabled={savingKey === `swap-${log.id}`}
+                                    onClick={() => chooseDifferentExercise(item, log, exercise)}
+                                    style={styles.swapChoice}
+                                  >
+                                    <strong>{exercise.name}</strong>
+                                    <span>{exercise.equipment || "No equipment"}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={styles.swapReasonText}>No approved substitutes are mapped yet for this movement.</div>
+                          )}
+
+                          <div style={styles.swapSectionLabel}>LOG A DIFFERENT EXERCISE</div>
+                          <input
+                            type="search"
+                            value={swapSearch}
+                            onChange={(event) => setSwapSearch(event.target.value)}
+                            placeholder="Search the exercise library…"
+                            style={styles.input}
+                          />
+                          {swapSearch.trim() ? (
+                            <div style={styles.swapChoices}>
+                              {searchableExercises(item).map((exercise) => (
+                                <button
+                                  key={exercise.id}
+                                  type="button"
+                                  disabled={savingKey === `swap-${log.id}`}
+                                  onClick={() =>
+                                    chooseDifferentExercise(
+                                      item,
+                                      log,
+                                      exercise,
+                                      swapReason === "Equipment unavailable"
+                                        ? "Performed something different"
+                                        : swapReason
+                                    )
+                                  }
+                                  style={styles.swapChoice}
+                                >
+                                  <strong>{exercise.name}</strong>
+                                  <span>{exercise.category || "Exercise"} • {exercise.equipment || "No equipment"}</span>
+                                </button>
+                              ))}
+                              {!searchableExercises(item).length ? (
+                                <div style={styles.swapReasonText}>No matching active exercises found.</div>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   {(item.rest_seconds || item.tempo) ? (
                     <div style={styles.detailGrid}>
@@ -1168,9 +1469,9 @@ export default function Workouts({
                     </div>
                   ) : null}
 
-                  {item.instructions_short || item.instructions ? (
+                  {performedItem.instructions_short || performedItem.instructions ? (
                     <p style={styles.instructions}>
-                      {item.instructions_short || item.instructions}
+                      {performedItem.instructions_short || performedItem.instructions}
                     </p>
                   ) : null}
 
@@ -1833,6 +2134,84 @@ const styles = {
     padding: 10,
     outline: "none",
     fontFamily: "inherit",
+  },
+  swapArea: {
+    marginTop: 12,
+    display: "grid",
+    gap: 10,
+  },
+  swapActions: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  secondaryButton: {
+    background: "transparent",
+    color: "#F4C20D",
+    border: "1px solid #F4C20D",
+    borderRadius: 9,
+    padding: "9px 12px",
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+  ghostButton: {
+    background: "#1A1A1A",
+    color: "#FFFFFF",
+    border: "1px solid #2A2A2A",
+    borderRadius: 9,
+    padding: "9px 12px",
+    fontWeight: 800,
+    cursor: "pointer",
+  },
+  swapStatus: {
+    marginTop: 6,
+    color: "#F4C20D",
+    fontSize: 12,
+    fontWeight: 800,
+  },
+  swapReasonText: {
+    color: "#BDBDBD",
+    fontSize: 11,
+  },
+  swapPanel: {
+    background: "#090909",
+    border: "1px solid #2A2A2A",
+    borderRadius: 14,
+    padding: 14,
+    display: "grid",
+    gap: 12,
+  },
+  swapSectionLabel: {
+    color: "#BDBDBD",
+    fontSize: 9,
+    fontWeight: 950,
+    letterSpacing: 1,
+    marginBottom: 7,
+  },
+  swapChoices: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+    gap: 8,
+  },
+  swapChoice: {
+    background: "#111111",
+    color: "#FFFFFF",
+    border: "1px solid #2A2A2A",
+    borderRadius: 10,
+    padding: "10px 12px",
+    textAlign: "left",
+    cursor: "pointer",
+    display: "grid",
+    gap: 4,
+  },
+  cautionBox: {
+    background: "rgba(244,194,13,.07)",
+    border: "1px solid rgba(244,194,13,.28)",
+    borderRadius: 10,
+    padding: 11,
+    color: "#E6E6E6",
+    fontSize: 11,
+    lineHeight: 1.5,
   },
   notesCard: {
     background: "#111111",

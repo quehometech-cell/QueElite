@@ -1,6 +1,8 @@
 "use client";
 
 export default function Dashboard({
+  activePackage = null,
+  entitlements = [],
   program,
   exercises = [],
   weeklyCompleted = 0,
@@ -13,9 +15,32 @@ export default function Dashboard({
   correctiveTarget = 0,
   setActiveTab,
 }) {
-  const hasTraining = Boolean(program);
-  const hasNutrition = Boolean(nutritionPlan);
-  const hasCorrective = Boolean(hasCorrectiveRoutine);
+  const services = new Set(entitlements || []);
+
+  const hasTraining =
+    services.has("workouts") &&
+    Boolean(program);
+
+  const hasNutrition =
+    (services.has("nutrition_targets") ||
+      services.has("custom_meal_plan")) &&
+    Boolean(nutritionPlan);
+
+  const hasMealPlan =
+    services.has("custom_meal_plan");
+
+  const hasCorrective =
+    services.has("corrective_mobility") &&
+    Boolean(hasCorrectiveRoutine);
+
+  const hasProgress =
+    services.has("progress_tracking");
+
+  const hasCheckIns =
+    services.has("weekly_checkins");
+
+  const hasExerciseLibrary =
+    services.has("exercise_library");
 
   const workoutTarget =
     Number(program?.days_per_week) || getWorkoutDayCount(exercises);
@@ -57,31 +82,48 @@ export default function Dashboard({
   }
   if (hasNutrition) {
     coachingCards.push({
-      title: "Nutrition",
-      text: `${weeklyNutritionDays} of 7 days logged this week.`,
+      title: hasMealPlan
+        ? "Nutrition + Custom Meal Plan"
+        : "Nutrition",
+      text: hasMealPlan
+        ? `${weeklyNutritionDays} of 7 days logged this week. Your package includes a custom meal plan.`
+        : `${weeklyNutritionDays} of 7 days logged this week.`,
       button: "TRACK NUTRITION",
       tab: "nutrition",
     });
   }
 
-  coachingCards.push({
-    title: "Progress",
-    text:
-      latestWeight !== null && latestWeight !== undefined
-        ? `Your latest recorded weight is ${latestWeight} lb.`
-        : "Add your first progress entry to start tracking.",
-    button: "VIEW PROGRESS",
-    tab: "progress",
-  });
+  if (hasProgress) {
+    coachingCards.push({
+      title: "Progress",
+      text:
+        latestWeight !== null && latestWeight !== undefined
+          ? `Your latest recorded weight is ${latestWeight} lb.`
+          : "Add your first progress entry to start tracking.",
+      button: "VIEW PROGRESS",
+      tab: "progress",
+    });
+  }
 
-  coachingCards.push({
-    title: "Weekly Check-In",
-    text: latestCheckIn
-      ? `Last submitted ${formatDate(latestCheckIn.submitted_at)}.`
-      : "Send Que your first weekly update.",
-    button: "OPEN CHECK-IN",
-    tab: "checkin",
-  });
+  if (hasCheckIns) {
+    coachingCards.push({
+      title: "Weekly Check-In",
+      text: latestCheckIn
+        ? `Last submitted ${formatDate(latestCheckIn.submitted_at)}.`
+        : "Send Que your first weekly update.",
+      button: "OPEN CHECK-IN",
+      tab: "checkin",
+    });
+  }
+
+  if (hasExerciseLibrary) {
+    coachingCards.push({
+      title: "Exercise Library",
+      text: "Browse your exercise library for movement instructions and coaching reference.",
+      button: "OPEN LIBRARY",
+      tab: "library",
+    });
+  }
 
   return (
     <section>
@@ -90,6 +132,15 @@ export default function Dashboard({
       <p style={styles.description}>
         Everything here is based on the coaching services and program assigned to you.
       </p>
+
+      {activePackage?.name && (
+        <p style={styles.packageLine}>
+          {activePackage.name}
+          {activePackage.duration_weeks
+            ? ` • ${activePackage.duration_weeks} weeks`
+            : ""}
+        </p>
+      )}
 
       {hasTraining && (
         <div style={styles.heroCard}>
@@ -162,16 +213,18 @@ export default function Dashboard({
           />
         )}
 
-        <SummaryCard
-          label="LATEST WEIGHT"
-          value={
-            latestWeight !== null && latestWeight !== undefined
-              ? `${latestWeight} lb`
-              : "-"
-          }
-          text="latest progress entry"
-          onClick={() => setActiveTab?.("progress")}
-        />
+        {hasProgress && (
+          <SummaryCard
+            label="LATEST WEIGHT"
+            value={
+              latestWeight !== null && latestWeight !== undefined
+                ? `${latestWeight} lb`
+                : "-"
+            }
+            text="latest progress entry"
+            onClick={() => setActiveTab?.("progress")}
+          />
+        )}
       </div>
 
       <div style={styles.mainGrid}>
@@ -196,6 +249,7 @@ export default function Dashboard({
           </div>
         )}
 
+        {hasCheckIns && (
         <div style={styles.card}>
           <p style={styles.goldLabel}>WEEKLY CHECK-IN</p>
           <h3 style={styles.cardTitle}>
@@ -239,6 +293,7 @@ export default function Dashboard({
             {latestCheckIn ? "VIEW CHECK-INS" : "SUBMIT CHECK-IN"}
           </button>
         </div>
+        )}
       </div>
 
       <div style={styles.sectionHeader}>
@@ -379,6 +434,11 @@ function formatLabel(value) {
 }
 
 const styles = {
+  packageLine: {
+    color: "#F4C20D",
+    fontWeight: "800",
+    margin: "8px 0 20px",
+  },
   goldLabel: { color: "#F4C20D", fontWeight: "900", letterSpacing: "1.5px", fontSize: "11px", margin: 0 },
   title: { color: "#FFFFFF", fontSize: "clamp(32px, 6vw, 52px)", margin: "8px 0 10px" },
   description: { color: "#BDBDBD", lineHeight: 1.6, maxWidth: "800px", marginBottom: "25px" },

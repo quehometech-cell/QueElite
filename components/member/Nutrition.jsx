@@ -37,6 +37,15 @@ export default function Nutrition({
   const [message, setMessage] =
     useState("");
 
+  const [approvedMealPlan, setApprovedMealPlan] =
+    useState(null);
+  const [mealPlanMeals, setMealPlanMeals] =
+    useState([]);
+  const [mealPlanLoading, setMealPlanLoading] =
+    useState(true);
+  const [selectedMealDay, setSelectedMealDay] =
+    useState(1);
+
   const today = useMemo(
     () => getLocalDateString(),
     []
@@ -146,6 +155,129 @@ export default function Nutrition({
   useEffect(() => {
     loadNutritionLogs();
   }, [loadNutritionLogs]);
+
+  const loadApprovedMealPlan =
+    useCallback(async () => {
+      if (!user?.id) {
+        setApprovedMealPlan(null);
+        setMealPlanMeals([]);
+        setMealPlanLoading(false);
+        return;
+      }
+
+      setMealPlanLoading(true);
+
+      try {
+        const { data: plan, error: planError } =
+          await supabase
+            .from("meal_plans")
+            .select(
+              "id, user_id, nutrition_plan_id, name, description, calorie_target, protein_grams, carb_grams, fat_grams, days_per_week, is_active, start_date, end_date, coach_notes, status, approved_at"
+            )
+            .eq("user_id", user.id)
+            .eq("status", "approved")
+            .eq("is_active", true)
+            .order("approved_at", {
+              ascending: false,
+            })
+            .limit(1)
+            .maybeSingle();
+
+        if (planError) {
+          throw planError;
+        }
+
+        setApprovedMealPlan(plan || null);
+        setSelectedMealDay(1);
+
+        if (!plan?.id) {
+          setMealPlanMeals([]);
+          return;
+        }
+
+        const { data: meals, error: mealsError } =
+          await supabase
+            .from("meal_plan_meals")
+            .select(
+              "id, meal_plan_id, day_number, meal_order, meal_name, meal_type, instructions, notes, target_calories, target_protein_grams, target_carb_grams, target_fat_grams"
+            )
+            .eq("meal_plan_id", plan.id)
+            .order("day_number", {
+              ascending: true,
+            })
+            .order("meal_order", {
+              ascending: true,
+            });
+
+        if (mealsError) {
+          throw mealsError;
+        }
+
+        const mealRows = meals || [];
+
+        if (!mealRows.length) {
+          setMealPlanMeals([]);
+          return;
+        }
+
+        const mealIds = mealRows.map(
+          (meal) => meal.id
+        );
+
+        const { data: foods, error: foodsError } =
+          await supabase
+            .from("meal_plan_foods")
+            .select(
+              "id, meal_plan_meal_id, food_order, food_name, serving_amount, serving_unit, calories, protein_grams, carb_grams, fat_grams, preparation, notes, is_optional"
+            )
+            .in("meal_plan_meal_id", mealIds)
+            .order("food_order", {
+              ascending: true,
+            });
+
+        if (foodsError) {
+          throw foodsError;
+        }
+
+        const foodsByMeal = new Map();
+
+        for (const food of foods || []) {
+          const key = String(
+            food.meal_plan_meal_id
+          );
+
+          if (!foodsByMeal.has(key)) {
+            foodsByMeal.set(key, []);
+          }
+
+          foodsByMeal.get(key).push(food);
+        }
+
+        setMealPlanMeals(
+          mealRows.map((meal) => ({
+            ...meal,
+            foods:
+              foodsByMeal.get(
+                String(meal.id)
+              ) || [],
+          }))
+        );
+      } catch (error) {
+        console.error(
+          "Approved meal plan load error:",
+          error
+        );
+
+        setApprovedMealPlan(null);
+        setMealPlanMeals([]);
+      } finally {
+        setMealPlanLoading(false);
+      }
+    }, [user?.id]);
+
+  useEffect(() => {
+    loadApprovedMealPlan();
+  }, [loadApprovedMealPlan]);
 
   function handleChange(event) {
     const { name, value } =
@@ -363,6 +495,13 @@ export default function Nutrition({
       )
     ).size;
 
+  const selectedMealPlanMeals =
+    mealPlanMeals.filter(
+      (meal) =>
+        Number(meal.day_number) ===
+        Number(selectedMealDay)
+    );
+
   return (
     <section>
       <p style={styles.goldLabel}>
@@ -435,6 +574,168 @@ export default function Nutrition({
           unit=" oz"
           label="WATER"
         />
+      </div>
+
+      <div style={styles.mealPlanCard}>
+        <div style={styles.mealPlanHeader}>
+          <div>
+            <p style={styles.goldLabel}>
+              YOUR CUSTOM MEAL PLAN
+            </p>
+
+            <h3 style={styles.cardTitle}>
+              {approvedMealPlan?.name ||
+                "7-Day Meal Plan"}
+            </h3>
+
+            <p style={styles.bodyText}>
+              {approvedMealPlan?.description ||
+                "Your coach-approved meals, portions, and daily nutrition structure."}
+            </p>
+          </div>
+
+          {approvedMealPlan && (
+            <span style={styles.approvedMealBadge}>
+              ✓ COACH APPROVED
+            </span>
+          )}
+        </div>
+
+        {mealPlanLoading ? (
+          <div style={styles.loadingBox}>
+            Loading your meal plan...
+          </div>
+        ) : !approvedMealPlan ? (
+          <div style={styles.mealPlanEmpty}>
+            Your custom meal plan has not been
+            published yet. Once Que approves it,
+            it will appear here automatically.
+          </div>
+        ) : (
+          <>
+            <div style={styles.mealPlanTargets}>
+              <MealPlanTarget
+                label="CALORIES"
+                value={
+                  approvedMealPlan.calorie_target
+                }
+                unit=""
+              />
+
+              <MealPlanTarget
+                label="PROTEIN"
+                value={
+                  approvedMealPlan.protein_grams
+                }
+                unit="g"
+              />
+
+              <MealPlanTarget
+                label="CARBS"
+                value={
+                  approvedMealPlan.carb_grams
+                }
+                unit="g"
+              />
+
+              <MealPlanTarget
+                label="FATS"
+                value={
+                  approvedMealPlan.fat_grams
+                }
+                unit="g"
+              />
+            </div>
+
+            <div style={styles.mealDayTabs}>
+              {Array.from(
+                {
+                  length: Number(
+                    approvedMealPlan.days_per_week ||
+                      7
+                  ),
+                },
+                (_, index) => index + 1
+              ).map((day) => (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() =>
+                    setSelectedMealDay(day)
+                  }
+                  style={{
+                    ...styles.mealDayButton,
+                    ...(selectedMealDay === day
+                      ? styles.mealDayButtonActive
+                      : {}),
+                  }}
+                >
+                  DAY {day}
+                </button>
+              ))}
+            </div>
+
+            <div style={styles.selectedDayHeader}>
+              <div>
+                <span style={styles.smallText}>
+                  DAILY MEALS
+                </span>
+
+                <h4 style={styles.selectedDayTitle}>
+                  Day {selectedMealDay}
+                </h4>
+              </div>
+
+              <span style={styles.mealCountBadge}>
+                {selectedMealPlanMeals.length}{" "}
+                {selectedMealPlanMeals.length === 1
+                  ? "MEAL"
+                  : "MEALS"}
+              </span>
+            </div>
+
+            {selectedMealPlanMeals.length ===
+            0 ? (
+              <div style={styles.mealPlanEmpty}>
+                No meals are assigned for this
+                day.
+              </div>
+            ) : (
+              <div style={styles.mealPlanList}>
+                {selectedMealPlanMeals.map(
+                  (meal) => (
+                    <ClientMealCard
+                      key={meal.id}
+                      meal={meal}
+                    />
+                  )
+                )}
+              </div>
+            )}
+
+            {approvedMealPlan.coach_notes && (
+              <div style={styles.mealCoachNote}>
+                <strong
+                  style={
+                    styles.mealCoachNoteTitle
+                  }
+                >
+                  COACH NOTE
+                </strong>
+
+                <p
+                  style={
+                    styles.mealCoachNoteText
+                  }
+                >
+                  {
+                    approvedMealPlan.coach_notes
+                  }
+                </p>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       <div style={styles.trackerCard}>
@@ -790,6 +1091,194 @@ export default function Nutrition({
       <NutritionNote />
     </section>
   );
+}
+
+function ClientMealCard({ meal }) {
+  return (
+    <div style={styles.clientMealCard}>
+      <div style={styles.clientMealHeader}>
+        <div>
+          <span style={styles.clientMealType}>
+            {formatText(
+              meal.meal_type || "meal"
+            ).toUpperCase()}
+          </span>
+
+          <h4 style={styles.clientMealName}>
+            {meal.meal_name}
+          </h4>
+        </div>
+
+        <div style={styles.clientMealMacros}>
+          <span>
+            {meal.target_calories ?? "-"} cal
+          </span>
+          <span>
+            P {meal.target_protein_grams ?? "-"}g
+          </span>
+          <span>
+            C {meal.target_carb_grams ?? "-"}g
+          </span>
+          <span>
+            F {meal.target_fat_grams ?? "-"}g
+          </span>
+        </div>
+      </div>
+
+      <div style={styles.clientFoodList}>
+        {(meal.foods || []).map((food) => (
+          <div
+            key={food.id}
+            style={styles.clientFoodRow}
+          >
+            <div style={styles.clientFoodMain}>
+              <strong
+                style={styles.clientFoodName}
+              >
+                {food.food_name}
+                {food.is_optional
+                  ? " (Optional)"
+                  : ""}
+              </strong>
+
+              <span
+                style={styles.clientFoodServing}
+              >
+                {formatServingAmount(
+                  food.serving_amount
+                )}{" "}
+                {food.serving_unit ||
+                  "serving"}
+              </span>
+
+              {food.preparation && (
+                <span
+                  style={
+                    styles.clientFoodDetail
+                  }
+                >
+                  {food.preparation}
+                </span>
+              )}
+
+              {food.notes && (
+                <span
+                  style={
+                    styles.clientFoodDetail
+                  }
+                >
+                  {food.notes}
+                </span>
+              )}
+            </div>
+
+            <div
+              style={styles.clientFoodMacros}
+            >
+              <span>
+                {food.calories ?? 0} cal
+              </span>
+              <span>
+                P{" "}
+                {formatMealMacro(
+                  food.protein_grams
+                )}
+                g
+              </span>
+              <span>
+                C{" "}
+                {formatMealMacro(
+                  food.carb_grams
+                )}
+                g
+              </span>
+              <span>
+                F{" "}
+                {formatMealMacro(
+                  food.fat_grams
+                )}
+                g
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {meal.instructions && (
+        <div style={styles.mealInstructions}>
+          <strong
+            style={styles.mealInstructionsTitle}
+          >
+            PREPARATION
+          </strong>
+
+          <p
+            style={styles.mealInstructionsText}
+          >
+            {meal.instructions}
+          </p>
+        </div>
+      )}
+
+      {meal.notes && (
+        <p style={styles.clientMealNotes}>
+          {meal.notes}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function MealPlanTarget({
+  label,
+  value,
+  unit,
+}) {
+  return (
+    <div style={styles.mealPlanTargetCard}>
+      <span style={styles.smallText}>
+        {label}
+      </span>
+
+      <strong
+        style={styles.mealPlanTargetValue}
+      >
+        {value !== null &&
+        value !== undefined
+          ? `${value}${unit}`
+          : "-"}
+      </strong>
+    </div>
+  );
+}
+
+function formatServingAmount(value) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) {
+    return value ?? "1";
+  }
+
+  if (Number.isInteger(number)) {
+    return String(number);
+  }
+
+  return number
+    .toFixed(2)
+    .replace(/0+$/, "")
+    .replace(/\.$/, "");
+}
+
+function formatMealMacro(value) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) {
+    return "0";
+  }
+
+  return Number.isInteger(number)
+    ? String(number)
+    : number.toFixed(1);
 }
 
 function NutritionInput({
@@ -1269,6 +1758,249 @@ const styles = {
     fontSize: "10px",
     marginTop: "5px",
     fontWeight: "800",
+  },
+
+  mealPlanCard: {
+    background: "#111111",
+    border: "1px solid #2A2A2A",
+    borderRadius: "16px",
+    padding: "24px",
+    marginBottom: "20px",
+  },
+
+  mealPlanHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "15px",
+    flexWrap: "wrap",
+    marginBottom: "18px",
+  },
+
+  approvedMealBadge: {
+    background: "#F4C20D",
+    color: "#050505",
+    borderRadius: "999px",
+    padding: "8px 12px",
+    fontSize: "9px",
+    fontWeight: "900",
+    whiteSpace: "nowrap",
+  },
+
+  mealPlanTargets: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(120px, 1fr))",
+    gap: "10px",
+    marginBottom: "18px",
+  },
+
+  mealPlanTargetCard: {
+    background: "#050505",
+    border: "1px solid #2A2A2A",
+    borderRadius: "10px",
+    padding: "14px",
+  },
+
+  mealPlanTargetValue: {
+    display: "block",
+    color: "#F4C20D",
+    fontSize: "21px",
+    marginTop: "5px",
+  },
+
+  mealDayTabs: {
+    display: "flex",
+    gap: "7px",
+    overflowX: "auto",
+    paddingBottom: "8px",
+    marginBottom: "15px",
+  },
+
+  mealDayButton: {
+    flex: "0 0 auto",
+    background: "#050505",
+    color: "#BDBDBD",
+    border: "1px solid #2A2A2A",
+    borderRadius: "8px",
+    padding: "10px 13px",
+    fontSize: "9px",
+    fontWeight: "900",
+    cursor: "pointer",
+  },
+
+  mealDayButtonActive: {
+    background: "#F4C20D",
+    color: "#050505",
+    borderColor: "#F4C20D",
+  },
+
+  selectedDayHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    marginBottom: "12px",
+  },
+
+  selectedDayTitle: {
+    color: "#FFFFFF",
+    fontSize: "22px",
+    margin: "4px 0 0",
+  },
+
+  mealCountBadge: {
+    color: "#BDBDBD",
+    background: "#050505",
+    border: "1px solid #2A2A2A",
+    borderRadius: "999px",
+    padding: "7px 10px",
+    fontSize: "9px",
+    fontWeight: "900",
+  },
+
+  mealPlanList: {
+    display: "grid",
+    gap: "12px",
+  },
+
+  clientMealCard: {
+    background: "#050505",
+    border: "1px solid #2A2A2A",
+    borderRadius: "12px",
+    padding: "17px",
+  },
+
+  clientMealHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "15px",
+    flexWrap: "wrap",
+    paddingBottom: "12px",
+    borderBottom: "1px solid #222222",
+  },
+
+  clientMealType: {
+    color: "#F4C20D",
+    fontSize: "8px",
+    fontWeight: "900",
+    letterSpacing: "1px",
+  },
+
+  clientMealName: {
+    color: "#FFFFFF",
+    fontSize: "18px",
+    margin: "4px 0 0",
+  },
+
+  clientMealMacros: {
+    display: "flex",
+    gap: "9px",
+    flexWrap: "wrap",
+    color: "#BDBDBD",
+    fontSize: "9px",
+    fontWeight: "800",
+  },
+
+  clientFoodList: {
+    display: "grid",
+  },
+
+  clientFoodRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "15px",
+    padding: "13px 0",
+    borderBottom: "1px solid #1E1E1E",
+    flexWrap: "wrap",
+  },
+
+  clientFoodMain: {
+    display: "grid",
+    gap: "3px",
+    minWidth: "180px",
+    flex: "1 1 260px",
+  },
+
+  clientFoodName: {
+    color: "#FFFFFF",
+    fontSize: "12px",
+  },
+
+  clientFoodServing: {
+    color: "#F4C20D",
+    fontSize: "10px",
+    fontWeight: "800",
+  },
+
+  clientFoodDetail: {
+    color: "#888888",
+    fontSize: "10px",
+  },
+
+  clientFoodMacros: {
+    display: "flex",
+    gap: "8px",
+    flexWrap: "wrap",
+    color: "#888888",
+    fontSize: "9px",
+  },
+
+  mealInstructions: {
+    marginTop: "13px",
+  },
+
+  mealInstructionsTitle: {
+    color: "#F4C20D",
+    fontSize: "8px",
+    letterSpacing: "0.8px",
+  },
+
+  mealInstructionsText: {
+    color: "#BDBDBD",
+    fontSize: "11px",
+    lineHeight: 1.6,
+    margin: "5px 0 0",
+  },
+
+  clientMealNotes: {
+    color: "#888888",
+    fontSize: "10px",
+    lineHeight: 1.5,
+    margin: "12px 0 0",
+  },
+
+  mealPlanEmpty: {
+    background: "#050505",
+    color: "#888888",
+    border: "1px dashed #2A2A2A",
+    borderRadius: "10px",
+    padding: "18px",
+    lineHeight: 1.6,
+    fontSize: "12px",
+  },
+
+  mealCoachNote: {
+    marginTop: "16px",
+    borderLeft: "3px solid #F4C20D",
+    background: "#0B0B0B",
+    padding: "14px",
+  },
+
+  mealCoachNoteTitle: {
+    color: "#F4C20D",
+    fontSize: "9px",
+    letterSpacing: "0.8px",
+  },
+
+  mealCoachNoteText: {
+    color: "#BDBDBD",
+    fontSize: "11px",
+    lineHeight: 1.6,
+    margin: "6px 0 0",
+    whiteSpace: "pre-line",
   },
 
   trackerCard: {

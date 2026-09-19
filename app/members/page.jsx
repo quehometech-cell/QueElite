@@ -634,7 +634,7 @@ export default function MembersPage() {
       routineRows
         .map((row) => {
           const exercise = exerciseMap.get(
-            Number(row.exercise_id)
+            String(row.exercise_id)
           );
 
           if (!exercise) {

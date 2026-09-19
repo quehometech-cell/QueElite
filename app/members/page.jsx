@@ -1,4 +1,4 @@
-"use client";
+
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -381,14 +381,14 @@ export default function MembersPage() {
 
     const workoutMap = new Map(
       workoutRows.map((workout) => [
-        Number(workout.id),
+        String(workout.id),
         workout,
       ])
     );
 
     const exerciseMap = new Map(
       exerciseRows.map((exercise) => [
-        Number(exercise.id),
+        String(exercise.id),
         exercise,
       ])
     );
@@ -400,11 +400,11 @@ export default function MembersPage() {
     const mergedExercises = (prescriptionRows || [])
       .map((row) => {
         const workout = workoutMap.get(
-          Number(row.program_workout_id)
+          String(row.program_workout_id)
         );
 
         const exercise = exerciseMap.get(
-          Number(row.exercise_id)
+          String(row.exercise_id)
         );
 
         if (!workout || !exercise) {
@@ -615,7 +615,7 @@ export default function MembersPage() {
 
     const exerciseMap = new Map(
       (exerciseRows || []).map((exercise) => [
-        Number(exercise.id),
+        String(exercise.id),
         exercise,
       ])
     );
@@ -1141,35 +1141,41 @@ export default function MembersPage() {
               }
             />
 
-            <NavButton
-              label="My Workouts"
-              active={
-                activeTab === "workouts"
-              }
-              onClick={() =>
-                changeTab("workouts")
-              }
-            />
+            {program && (
+              <NavButton
+                label="My Workouts"
+                active={
+                  activeTab === "workouts"
+                }
+                onClick={() =>
+                  changeTab("workouts")
+                }
+              />
+            )}
 
-            <NavButton
-              label="Corrective & Mobility"
-              active={
-                activeTab === "corrective"
-              }
-              onClick={() =>
-                changeTab("corrective")
-              }
-            />
+            {correctiveRoutine && (
+              <NavButton
+                label="Corrective & Mobility"
+                active={
+                  activeTab === "corrective"
+                }
+                onClick={() =>
+                  changeTab("corrective")
+                }
+              />
+            )}
 
-            <NavButton
-              label="Nutrition"
-              active={
-                activeTab === "nutrition"
-              }
-              onClick={() =>
-                changeTab("nutrition")
-              }
-            />
+            {nutritionPlan && (
+              <NavButton
+                label="Nutrition"
+                active={
+                  activeTab === "nutrition"
+                }
+                onClick={() =>
+                  changeTab("nutrition")
+                }
+              />
+            )}
 
             <NavButton
               label="Progress"
@@ -1255,7 +1261,7 @@ export default function MembersPage() {
             />
           )}
 
-          {activeTab === "workouts" && (
+          {activeTab === "workouts" && program && (
             <Workouts
               user={user}
               program={program}
@@ -1268,7 +1274,7 @@ export default function MembersPage() {
             />
           )}
 
-          {activeTab === "corrective" && (
+          {activeTab === "corrective" && correctiveRoutine && (
             <CorrectiveMobility
               user={user}
               routine={
@@ -1283,7 +1289,7 @@ export default function MembersPage() {
             />
           )}
 
-          {activeTab === "nutrition" && (
+          {activeTab === "nutrition" && nutritionPlan && (
             <Nutrition
               user={user}
               nutritionPlan={

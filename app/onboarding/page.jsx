@@ -41,6 +41,13 @@ export default function OnboardingPage() {
     dietary_preferences: [],
     food_allergies_text: "",
     nutrition_goal: "",
+    biological_sex: "",
+    meals_per_day: "",
+    disliked_foods_text: "",
+    preferred_foods_text: "",
+    foods_to_avoid_text: "",
+    cooking_preference: "",
+    nutrition_notes: "",
   });
 
   useEffect(() => {
@@ -206,6 +213,9 @@ export default function OnboardingPage() {
       const weight = Number(form.weight_lbs);
       const days = Number(form.days_per_week);
       const minutes = Number(form.session_minutes);
+      const mealsPerDay = form.meals_per_day
+        ? Number(form.meals_per_day)
+        : null;
 
       if (
         !Number.isFinite(age) ||
@@ -255,6 +265,19 @@ export default function OnboardingPage() {
         );
       }
 
+      if (
+        mealsPerDay !== null &&
+        (
+          !Number.isFinite(mealsPerDay) ||
+          mealsPerDay < 1 ||
+          mealsPerDay > 8
+        )
+      ) {
+        throw new Error(
+          "Select a valid number of meals per day."
+        );
+      }
+
       const { error } = await supabase
         .from("onboarding_assessments")
         .upsert({
@@ -292,6 +315,13 @@ export default function OnboardingPage() {
           dietary_preferences: form.dietary_preferences,
           food_allergies: textList(form.food_allergies_text),
           nutrition_goal: form.nutrition_goal || null,
+          biological_sex: form.biological_sex || null,
+          meals_per_day: mealsPerDay,
+          disliked_foods: textList(form.disliked_foods_text),
+          preferred_foods: textList(form.preferred_foods_text),
+          foods_to_avoid: textList(form.foods_to_avoid_text),
+          cooking_preference: form.cooking_preference || null,
+          nutrition_notes: form.nutrition_notes.trim() || null,
           assessment_status: "pending_review",
           coach_reviewed: false,
           coach_reviewed_at: null,
@@ -763,24 +793,72 @@ export default function OnboardingPage() {
 
           <SectionTitle
             title="Nutrition"
-            text="Nutrition answers can be used when nutrition coaching is part of your assigned service."
+            text="These answers help your coach personalize nutrition targets and, when included in your package, build a custom meal plan around your needs and preferences."
           />
 
-          <Field label="Nutrition Goal">
-            <select
-              name="nutrition_goal"
-              value={form.nutrition_goal}
-              onChange={updateField}
-              style={styles.input}
-            >
-              <option value="">No nutrition goal selected</option>
-              <option value="fat_loss">Fat Loss</option>
-              <option value="muscle_gain">Muscle Gain</option>
-              <option value="maintenance">Maintain Weight</option>
-              <option value="performance">Performance</option>
-              <option value="healthier_habits">Healthier Eating Habits</option>
-            </select>
-          </Field>
+          <div style={styles.twoColumn}>
+            <Field label="Nutrition Goal">
+              <select
+                name="nutrition_goal"
+                value={form.nutrition_goal}
+                onChange={updateField}
+                style={styles.input}
+              >
+                <option value="">No nutrition goal selected</option>
+                <option value="fat_loss">Fat Loss</option>
+                <option value="muscle_gain">Muscle Gain</option>
+                <option value="maintenance">Maintain Weight</option>
+                <option value="performance">Performance</option>
+                <option value="healthier_habits">Healthier Eating Habits</option>
+              </select>
+            </Field>
+
+            <Field label="Biological Sex">
+              <select
+                name="biological_sex"
+                value={form.biological_sex}
+                onChange={updateField}
+                style={styles.input}
+              >
+                <option value="">Prefer not to provide</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </Field>
+          </div>
+
+          <div style={styles.twoColumn}>
+            <Field label="Preferred Meals Per Day">
+              <select
+                name="meals_per_day"
+                value={form.meals_per_day}
+                onChange={updateField}
+                style={styles.input}
+              >
+                <option value="">No preference</option>
+                <option value="2">2 Meals</option>
+                <option value="3">3 Meals</option>
+                <option value="4">4 Meals</option>
+                <option value="5">5 Meals</option>
+                <option value="6">6 Meals</option>
+              </select>
+            </Field>
+
+            <Field label="Cooking Preference">
+              <select
+                name="cooking_preference"
+                value={form.cooking_preference}
+                onChange={updateField}
+                style={styles.input}
+              >
+                <option value="">Select preference</option>
+                <option value="minimal">Minimal Cooking</option>
+                <option value="moderate">Moderate Cooking</option>
+                <option value="meal_prep">Meal Prep</option>
+                <option value="no_preference">No Preference</option>
+              </select>
+            </Field>
+          </div>
 
           <Field label="Dietary Preferences">
             <ChoiceGrid
@@ -800,13 +878,57 @@ export default function OnboardingPage() {
             />
           </Field>
 
-          <Field label="Food Allergies / Foods to Avoid">
+          <Field label="Food Allergies">
             <input
               name="food_allergies_text"
               value={form.food_allergies_text}
               onChange={updateField}
-              placeholder="Separate multiple items with commas"
+              placeholder="Example: peanuts, shellfish, eggs — separate items with commas"
               style={styles.input}
+            />
+          </Field>
+
+          <Field label="Foods You Prefer">
+            <input
+              name="preferred_foods_text"
+              value={form.preferred_foods_text}
+              onChange={updateField}
+              placeholder="Example: chicken, rice, salmon, oats, fruit"
+              style={styles.input}
+            />
+          </Field>
+
+          <Field label="Foods You Dislike">
+            <input
+              name="disliked_foods_text"
+              value={form.disliked_foods_text}
+              onChange={updateField}
+              placeholder="Example: mushrooms, tuna, avocado — separate items with commas"
+              style={styles.input}
+            />
+          </Field>
+
+          <Field label="Other Foods You Want to Avoid">
+            <input
+              name="foods_to_avoid_text"
+              value={form.foods_to_avoid_text}
+              onChange={updateField}
+              placeholder="Religious, personal, digestive, or other foods you choose not to eat"
+              style={styles.input}
+            />
+          </Field>
+
+          <Field label="Additional Nutrition Notes">
+            <textarea
+              name="nutrition_notes"
+              value={form.nutrition_notes}
+              onChange={updateField}
+              placeholder="Meal timing, work schedule, budget, foods you eat often, cooking limitations, or anything else your coach should consider."
+              style={{
+                ...styles.input,
+                minHeight: "110px",
+                resize: "vertical",
+              }}
             />
           </Field>
 

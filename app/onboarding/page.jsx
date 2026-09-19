@@ -1,4 +1,4 @@
-"use client";
+
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -24,6 +24,23 @@ export default function OnboardingPage() {
     workout_location: "",
     activity_level: "",
     limitations: "",
+    training_goals: [],
+    preferred_training_days: [],
+    specific_equipment: [],
+    injuries_or_pain: "",
+    medical_considerations: "",
+    restricted_movements: [],
+    disliked_exercises_text: "",
+    preferred_exercises_text: "",
+    mobility_concerns: [],
+    pain_areas: [],
+    pain_during_exercise: false,
+    needs_exercise_modifications: false,
+    cardio_preference: "",
+    training_notes: "",
+    dietary_preferences: [],
+    food_allergies_text: "",
+    nutrition_goal: "",
   });
 
   useEffect(() => {
@@ -112,6 +129,29 @@ export default function OnboardingPage() {
       ...current,
       [name]: value,
     }));
+  }
+
+  function toggleArrayField(name, value) {
+    setForm((current) => {
+      const values = current[name] || [];
+      return {
+        ...current,
+        [name]: values.includes(value)
+          ? values.filter((item) => item !== value)
+          : [...values, value],
+      };
+    });
+  }
+
+  function updateBooleanField(name, value) {
+    setForm((current) => ({ ...current, [name]: value }));
+  }
+
+  function textList(value) {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
   }
 
   async function handleSubmit(event) {
@@ -230,6 +270,31 @@ export default function OnboardingPage() {
           workout_location: form.workout_location,
           activity_level: form.activity_level,
           limitations: form.limitations.trim() || null,
+          training_goals: form.training_goals,
+          preferred_training_days: form.preferred_training_days,
+          specific_equipment: form.specific_equipment,
+          injuries_or_pain: form.injuries_or_pain.trim() || null,
+          medical_considerations:
+            form.medical_considerations.trim() || null,
+          restricted_movements: form.restricted_movements,
+          disliked_exercises: textList(form.disliked_exercises_text),
+          preferred_exercises: textList(form.preferred_exercises_text),
+          mobility_concerns: form.mobility_concerns,
+          pain_areas: form.pain_areas,
+          pain_during_exercise: form.pain_during_exercise,
+          needs_exercise_modifications:
+            form.needs_exercise_modifications ||
+            form.pain_during_exercise ||
+            form.injuries_or_pain.trim().length > 0 ||
+            form.restricted_movements.length > 0,
+          cardio_preference: form.cardio_preference || null,
+          training_notes: form.training_notes.trim() || null,
+          dietary_preferences: form.dietary_preferences,
+          food_allergies: textList(form.food_allergies_text),
+          nutrition_goal: form.nutrition_goal || null,
+          assessment_status: "pending_review",
+          coach_reviewed: false,
+          updated_at: new Date().toISOString(),
         });
 
       if (error) {
@@ -406,6 +471,8 @@ export default function OnboardingPage() {
                 <option value="3">3 Days</option>
                 <option value="4">4 Days</option>
                 <option value="5">5 Days</option>
+                <option value="6">6 Days</option>
+                <option value="7">7 Days</option>
               </select>
             </Field>
 
@@ -485,6 +552,270 @@ export default function OnboardingPage() {
             />
           </Field>
 
+
+          <SectionTitle
+            title="Training Schedule"
+            text="Choose the days that normally work best. Your coach can use this when building your weekly plan."
+          />
+          <ChoiceGrid
+            values={form.preferred_training_days}
+            options={[
+              ["monday", "Monday"],
+              ["tuesday", "Tuesday"],
+              ["wednesday", "Wednesday"],
+              ["thursday", "Thursday"],
+              ["friday", "Friday"],
+              ["saturday", "Saturday"],
+              ["sunday", "Sunday"],
+            ]}
+            onToggle={(value) =>
+              toggleArrayField("preferred_training_days", value)
+            }
+          />
+
+          <SectionTitle
+            title="Goals"
+            text="Select everything you want your coaching plan to address."
+          />
+          <ChoiceGrid
+            values={form.training_goals}
+            options={[
+              ["fat_loss", "Fat Loss"],
+              ["muscle_gain", "Build Muscle"],
+              ["strength", "Strength"],
+              ["mobility", "Mobility"],
+              ["cardio", "Cardiovascular Fitness"],
+              ["athleticism", "Athleticism"],
+              ["joint_health", "Joint Health"],
+              ["general_fitness", "General Fitness"],
+            ]}
+            onToggle={(value) => toggleArrayField("training_goals", value)}
+          />
+
+          <SectionTitle
+            title="Equipment Details"
+            text="Select equipment you actually have access to."
+          />
+          <ChoiceGrid
+            values={form.specific_equipment}
+            options={[
+              ["bodyweight", "Bodyweight"],
+              ["dumbbells", "Dumbbells"],
+              ["barbell", "Barbell"],
+              ["kettlebells", "Kettlebells"],
+              ["bands", "Resistance Bands"],
+              ["cables", "Cable Machine"],
+              ["machines", "Weight Machines"],
+              ["bench", "Bench"],
+              ["pullup_bar", "Pull-Up Bar"],
+              ["cardio_equipment", "Cardio Equipment"],
+            ]}
+            onToggle={(value) => toggleArrayField("specific_equipment", value)}
+          />
+
+          <SectionTitle
+            title="Injuries, Pain & Movement Screening"
+            text="This information helps your coach identify exercises that may need to be modified or reviewed."
+          />
+
+          <Field label="Current or Previous Injuries / Pain">
+            <textarea
+              name="injuries_or_pain"
+              value={form.injuries_or_pain}
+              onChange={updateField}
+              placeholder="Example: previous right shoulder injury, knee pain during squats, recurring low-back discomfort. Enter none if not applicable."
+              style={{ ...styles.input, minHeight: "110px", resize: "vertical" }}
+            />
+          </Field>
+
+          <Field label="Medical Considerations Your Coach Should Know">
+            <textarea
+              name="medical_considerations"
+              value={form.medical_considerations}
+              onChange={updateField}
+              placeholder="Only share information relevant to exercise programming. Your coach does not diagnose medical conditions."
+              style={{ ...styles.input, minHeight: "100px", resize: "vertical" }}
+            />
+          </Field>
+
+          <Field label="Do you currently experience pain during exercise?">
+            <YesNo
+              value={form.pain_during_exercise}
+              onChange={(value) =>
+                updateBooleanField("pain_during_exercise", value)
+              }
+            />
+          </Field>
+
+          <Field label="Do you need exercise modifications or substitutions?">
+            <YesNo
+              value={form.needs_exercise_modifications}
+              onChange={(value) =>
+                updateBooleanField("needs_exercise_modifications", value)
+              }
+            />
+          </Field>
+
+          <Field label="Pain Areas">
+            <ChoiceGrid
+              values={form.pain_areas}
+              options={[
+                ["neck", "Neck"],
+                ["shoulder", "Shoulder"],
+                ["elbow", "Elbow"],
+                ["wrist_hand", "Wrist / Hand"],
+                ["upper_back", "Upper Back"],
+                ["lower_back", "Lower Back"],
+                ["hip", "Hip"],
+                ["knee", "Knee"],
+                ["ankle_foot", "Ankle / Foot"],
+                ["other", "Other"],
+              ]}
+              onToggle={(value) => toggleArrayField("pain_areas", value)}
+            />
+          </Field>
+
+          <Field label="Movements You Cannot or Should Not Perform">
+            <ChoiceGrid
+              values={form.restricted_movements}
+              options={[
+                ["squat", "Squatting"],
+                ["hinge", "Hip Hinge / Deadlift"],
+                ["lunge", "Lunging"],
+                ["horizontal_push", "Horizontal Pressing"],
+                ["vertical_push", "Overhead Pressing"],
+                ["horizontal_pull", "Horizontal Pulling"],
+                ["vertical_pull", "Pull-Ups / Pulldowns"],
+                ["running", "Running"],
+                ["jumping", "Jumping / Impact"],
+                ["floor_work", "Getting On / Off Floor"],
+              ]}
+              onToggle={(value) =>
+                toggleArrayField("restricted_movements", value)
+              }
+            />
+          </Field>
+
+          <Field label="Mobility Concerns">
+            <ChoiceGrid
+              values={form.mobility_concerns}
+              options={[
+                ["shoulders", "Shoulders"],
+                ["thoracic", "Upper Back"],
+                ["hips", "Hips"],
+                ["hamstrings", "Hamstrings"],
+                ["ankles", "Ankles"],
+                ["general_stiffness", "General Stiffness"],
+                ["balance", "Balance"],
+              ]}
+              onToggle={(value) =>
+                toggleArrayField("mobility_concerns", value)
+              }
+            />
+          </Field>
+
+          <SectionTitle
+            title="Exercise Preferences"
+            text="These answers help personalize your plan without changing the master program for other clients."
+          />
+
+          <Field label="Exercises You Prefer">
+            <input
+              name="preferred_exercises_text"
+              value={form.preferred_exercises_text}
+              onChange={updateField}
+              placeholder="Example: dumbbell bench press, walking, goblet squats"
+              style={styles.input}
+            />
+          </Field>
+
+          <Field label="Exercises You Dislike or Want to Avoid">
+            <input
+              name="disliked_exercises_text"
+              value={form.disliked_exercises_text}
+              onChange={updateField}
+              placeholder="Separate multiple exercises with commas"
+              style={styles.input}
+            />
+          </Field>
+
+          <Field label="Cardio Preference">
+            <select
+              name="cardio_preference"
+              value={form.cardio_preference}
+              onChange={updateField}
+              style={styles.input}
+            >
+              <option value="">No preference</option>
+              <option value="walking">Walking</option>
+              <option value="running">Running / Roadwork</option>
+              <option value="cycling">Cycling</option>
+              <option value="elliptical">Elliptical</option>
+              <option value="rowing">Rowing</option>
+              <option value="mixed">Mixed Cardio</option>
+              <option value="low_impact">Low Impact Only</option>
+            </select>
+          </Field>
+
+          <SectionTitle
+            title="Nutrition"
+            text="Nutrition answers can be used when nutrition coaching is part of your assigned service."
+          />
+
+          <Field label="Nutrition Goal">
+            <select
+              name="nutrition_goal"
+              value={form.nutrition_goal}
+              onChange={updateField}
+              style={styles.input}
+            >
+              <option value="">No nutrition goal selected</option>
+              <option value="fat_loss">Fat Loss</option>
+              <option value="muscle_gain">Muscle Gain</option>
+              <option value="maintenance">Maintain Weight</option>
+              <option value="performance">Performance</option>
+              <option value="healthier_habits">Healthier Eating Habits</option>
+            </select>
+          </Field>
+
+          <Field label="Dietary Preferences">
+            <ChoiceGrid
+              values={form.dietary_preferences}
+              options={[
+                ["none", "No Preference"],
+                ["dairy_free", "Dairy-Free"],
+                ["vegetarian", "Vegetarian"],
+                ["vegan", "Vegan"],
+                ["pescatarian", "Pescatarian"],
+                ["gluten_free", "Gluten-Free"],
+                ["low_sodium", "Lower Sodium"],
+              ]}
+              onToggle={(value) =>
+                toggleArrayField("dietary_preferences", value)
+              }
+            />
+          </Field>
+
+          <Field label="Food Allergies / Foods to Avoid">
+            <input
+              name="food_allergies_text"
+              value={form.food_allergies_text}
+              onChange={updateField}
+              placeholder="Separate multiple items with commas"
+              style={styles.input}
+            />
+          </Field>
+
+          <Field label="Anything Else Your Coach Should Know?">
+            <textarea
+              name="training_notes"
+              value={form.training_notes}
+              onChange={updateField}
+              placeholder="Work schedule, travel, exercise concerns, preferences, or anything else that could affect your plan."
+              style={{ ...styles.input, minHeight: "110px", resize: "vertical" }}
+            />
+          </Field>
+
           {errorMessage && (
             <div style={styles.error}>
               {errorMessage}
@@ -512,6 +843,68 @@ export default function OnboardingPage() {
         </form>
       </div>
     </main>
+  );
+}
+
+
+function SectionTitle({ title, text }) {
+  return (
+    <div style={styles.sectionTitle}>
+      <div style={styles.sectionRule} />
+      <h2 style={styles.sectionHeading}>{title}</h2>
+      <p style={styles.sectionText}>{text}</p>
+    </div>
+  );
+}
+
+function ChoiceGrid({ values = [], options, onToggle }) {
+  return (
+    <div style={styles.choiceGrid}>
+      {options.map(([value, label]) => {
+        const active = values.includes(value);
+        return (
+          <button
+            key={value}
+            type="button"
+            onClick={() => onToggle(value)}
+            style={{
+              ...styles.choice,
+              ...(active ? styles.choiceActive : {}),
+            }}
+          >
+            {active ? "✓ " : ""}
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function YesNo({ value, onChange }) {
+  return (
+    <div style={styles.yesNo}>
+      <button
+        type="button"
+        onClick={() => onChange(false)}
+        style={{
+          ...styles.choice,
+          ...(!value ? styles.choiceActive : {}),
+        }}
+      >
+        No
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange(true)}
+        style={{
+          ...styles.choice,
+          ...(value ? styles.choiceActive : {}),
+        }}
+      >
+        Yes
+      </button>
+    </div>
   );
 }
 
@@ -577,6 +970,61 @@ const styles = {
     gridTemplateColumns:
       "repeat(auto-fit, minmax(220px, 1fr))",
     gap: "16px",
+  },
+
+  sectionTitle: {
+    marginTop: "10px",
+    paddingTop: "8px",
+  },
+
+  sectionRule: {
+    height: "1px",
+    background: "#2A2A2A",
+    marginBottom: "20px",
+  },
+
+  sectionHeading: {
+    margin: 0,
+    fontSize: "22px",
+    fontWeight: "900",
+    color: "#FFFFFF",
+  },
+
+  sectionText: {
+    margin: "7px 0 0",
+    color: "#BDBDBD",
+    fontSize: "13px",
+    lineHeight: "1.6",
+  },
+
+  choiceGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))",
+    gap: "10px",
+  },
+
+  choice: {
+    minHeight: "46px",
+    background: "#050505",
+    color: "#BDBDBD",
+    border: "1px solid #2A2A2A",
+    borderRadius: "10px",
+    padding: "10px 12px",
+    fontWeight: "800",
+    cursor: "pointer",
+    textAlign: "left",
+  },
+
+  choiceActive: {
+    border: "1px solid #F4C20D",
+    color: "#F4C20D",
+    background: "#171300",
+  },
+
+  yesNo: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "10px",
   },
 
   label: {

@@ -1,4 +1,4 @@
-"use client";
+
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -417,6 +417,19 @@ export default function MembersPage() {
   // =========================================================
 
   async function loadMemberWorkout(userId) {
+    // Keep current_week synchronized with the assignment start date
+    // before loading the active program and its current week.
+    const { error: weekSyncError } = await supabase.rpc(
+      "sync_member_program_week",
+      {
+        p_user_id: userId,
+      }
+    );
+
+    if (weekSyncError) {
+      throw weekSyncError;
+    }
+
     // =====================================================
     // NEW WORKOUT ENGINE
     // Member -> Assignment -> Program -> Current Week

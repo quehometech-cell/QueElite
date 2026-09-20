@@ -92,7 +92,7 @@ export default function CoachPage() {
         await supabase
           .from("program_weeks")
           .select(
-            "id, program_id, week_number, name, phase, description, coach_notes"
+            "id, program_id, week_number, name, phase_name, description, coach_notes"
           )
           .eq("program_id", memberProgram.program_id)
           .eq("week_number", currentWeek)
@@ -113,7 +113,7 @@ export default function CoachPage() {
         await supabase
           .from("program_workouts")
           .select(
-            "id, program_week_id, workout_day, name, type, description, estimated_minutes, coach_notes, is_rest_day"
+            "id, program_week_id, workout_day, name, workout_type, description, estimated_minutes, coach_notes, is_rest_day"
           )
           .eq("program_week_id", programWeek.id)
           .order("workout_day", { ascending: true });
@@ -137,7 +137,7 @@ export default function CoachPage() {
       } = await supabase
         .from("program_workout_exercises")
         .select(
-          "id, program_workout_id, exercise_id, exercise_order, sets, reps, rir, rest_seconds, tempo, duration_minutes, distance, pace, notes"
+          "id, program_workout_id, exercise_id, exercise_order, sets, reps, rir, rest_seconds, tempo, duration_seconds, distance_target, distance_unit, pace_target, notes"
         )
         .in("program_workout_id", workoutIds)
         .order("exercise_order", { ascending: true });
@@ -207,7 +207,7 @@ export default function CoachPage() {
               prescription.exercise_order,
             workout_day: workout.workout_day,
             workout_name: workout.name,
-            workout_type: workout.type,
+            workout_type: workout.workout_type,
             workout_description: workout.description,
             workout_estimated_minutes:
               workout.estimated_minutes,
@@ -216,17 +216,28 @@ export default function CoachPage() {
             is_rest_day: workout.is_rest_day,
             week_number: programWeek.week_number,
             week_name: programWeek.name,
-            phase: programWeek.phase,
+            phase: programWeek.phase_name,
+            phase_name: programWeek.phase_name,
             sets: prescription.sets,
             reps: prescription.reps,
             rir: prescription.rir,
             rest_seconds:
               prescription.rest_seconds,
             tempo: prescription.tempo,
+            duration_seconds:
+              prescription.duration_seconds,
             duration_minutes:
-              prescription.duration_minutes,
-            distance: prescription.distance,
-            pace: prescription.pace,
+              prescription.duration_seconds
+                ? Math.round(Number(prescription.duration_seconds) / 60)
+                : null,
+            distance_target:
+              prescription.distance_target,
+            distance_unit:
+              prescription.distance_unit,
+            pace_target:
+              prescription.pace_target,
+            distance: prescription.distance_target,
+            pace: prescription.pace_target,
             notes: prescription.notes,
           };
         }
@@ -273,7 +284,24 @@ export default function CoachPage() {
               item.id === memberProgram?.program_id
           ) || null;
 
-        setProgram(assignedProgram);
+        setProgram(
+          assignedProgram
+            ? {
+                ...assignedProgram,
+                member_program_id: memberProgram?.id || null,
+                assigned_at: memberProgram?.assigned_at || null,
+                start_date: memberProgram?.start_date || null,
+                end_date: memberProgram?.end_date || null,
+                current_week: Math.max(
+                  1,
+                  Number(memberProgram?.current_week || 1)
+                ),
+                assignment_status: memberProgram?.status || null,
+                assignment_type: memberProgram?.assignment_type || null,
+                coach_id: memberProgram?.coach_id || null,
+              }
+            : null
+        );
 
         if (assignedProgram?.id) {
           await loadProgramExercises(memberProgram);

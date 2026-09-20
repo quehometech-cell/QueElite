@@ -70,79 +70,167 @@ export default function CoachPage() {
   const latestCheckIn = checkIns[0] || null;
 
   const loadProgramExercises = useCallback(
-    async (programId) => {
-      if (!programId) {
+    async (memberProgram) => {
+      if (!memberProgram?.program_id) {
         setProgramExercises([]);
         return;
       }
+
+      const currentWeek = Math.max(
+        1,
+        Number(memberProgram.current_week || 1)
+      );
 
       /*
-       * program_exercises stores the prescription.
-       * exercises stores the exercise details.
+       * The current workout system is:
+       * program -> program_weeks -> program_workouts
+       * -> program_workout_exercises -> exercises.
        *
-       * We load both and merge them here so
-       * ClientWorkouts receives one clean array.
+       * Only the client's current assigned week is loaded here.
        */
-      const { data: assignments, error: assignmentError } =
+      const { data: weekRows, error: weekError } =
         await supabase
-          .from("program_exercises")
+          .from("program_weeks")
           .select(
-            "id, program_id, exercise_id, exercise_order, workout_day, sets, reps, rest_seconds, notes"
+            "id, program_id, week_number, name, phase, description, coach_notes"
           )
-          .eq("program_id", programId)
-          .order("workout_day", { ascending: true })
-          .order("exercise_order", { ascending: true });
+          .eq("program_id", memberProgram.program_id)
+          .eq("week_number", currentWeek)
+          .limit(1);
 
-      if (assignmentError) {
-        throw assignmentError;
+      if (weekError) {
+        throw weekError;
       }
 
-      if (!assignments?.length) {
+      const programWeek = weekRows?.[0] || null;
+
+      if (!programWeek?.id) {
         setProgramExercises([]);
         return;
+      }
+
+      const { data: workoutRows, error: workoutError } =
+        await supabase
+          .from("program_workouts")
+          .select(
+            "id, program_week_id, workout_day, name, type, description, estimated_minutes, coach_notes, is_rest_day"
+          )
+          .eq("program_week_id", programWeek.id)
+          .order("workout_day", { ascending: true });
+
+      if (workoutError) {
+        throw workoutError;
+      }
+
+      if (!workoutRows?.length) {
+        setProgramExercises([]);
+        return;
+      }
+
+      const workoutIds = workoutRows.map(
+        (workout) => workout.id
+      );
+
+      const {
+        data: prescriptionRows,
+        error: prescriptionError,
+      } = await supabase
+        .from("program_workout_exercises")
+        .select(
+          "id, program_workout_id, exercise_id, exercise_order, sets, reps, rir, rest_seconds, tempo, duration_minutes, distance, pace, notes"
+        )
+        .in("program_workout_id", workoutIds)
+        .order("exercise_order", { ascending: true });
+
+      if (prescriptionError) {
+        throw prescriptionError;
       }
 
       const exerciseIds = [
         ...new Set(
-          assignments.map((item) => item.exercise_id)
+          (prescriptionRows || [])
+            .map((item) => item.exercise_id)
+            .filter(Boolean)
         ),
       ];
 
-      const { data: exerciseRows, error: exerciseError } =
-        await supabase
-          .from("exercises")
-          .select(
-            "id, name, category, equipment, difficulty, instructions, video_url, muscle_group, is_active"
-          )
-          .in("id", exerciseIds);
+      let exerciseRows = [];
 
-      if (exerciseError) {
-        throw exerciseError;
+      if (exerciseIds.length > 0) {
+        const { data, error: exerciseError } =
+          await supabase
+            .from("exercises")
+            .select(
+              "id, name, category, equipment, difficulty, instructions, video_url, muscle_group, is_active"
+            )
+            .in("id", exerciseIds);
+
+        if (exerciseError) {
+          throw exerciseError;
+        }
+
+        exerciseRows = data || [];
       }
 
       const exerciseMap = new Map(
-        (exerciseRows || []).map((exercise) => [
-          exercise.id,
+        exerciseRows.map((exercise) => [
+          String(exercise.id),
           exercise,
         ])
       );
 
-      const merged = assignments.map((assignment) => {
-        const exercise =
-          exerciseMap.get(assignment.exercise_id) || {};
+      const workoutMap = new Map(
+        workoutRows.map((workout) => [
+          String(workout.id),
+          workout,
+        ])
+      );
 
-        return {
-          ...exercise,
-          program_exercise_id: assignment.id,
-          exercise_id: assignment.exercise_id,
-          exercise_order: assignment.exercise_order,
-          workout_day: assignment.workout_day,
-          sets: assignment.sets,
-          reps: assignment.reps,
-          rest_seconds: assignment.rest_seconds,
-          notes: assignment.notes,
-        };
-      });
+      const merged = (prescriptionRows || []).map(
+        (prescription) => {
+          const workout =
+            workoutMap.get(
+              String(prescription.program_workout_id)
+            ) || {};
+
+          const exercise =
+            exerciseMap.get(
+              String(prescription.exercise_id)
+            ) || {};
+
+          return {
+            ...exercise,
+            program_workout_exercise_id:
+              prescription.id,
+            exercise_id: prescription.exercise_id,
+            exercise_order:
+              prescription.exercise_order,
+            workout_day: workout.workout_day,
+            workout_name: workout.name,
+            workout_type: workout.type,
+            workout_description: workout.description,
+            workout_estimated_minutes:
+              workout.estimated_minutes,
+            workout_coach_notes:
+              workout.coach_notes,
+            is_rest_day: workout.is_rest_day,
+            week_number: programWeek.week_number,
+            week_name: programWeek.name,
+            phase: programWeek.phase,
+            sets: prescription.sets,
+            reps: prescription.reps,
+            rir: prescription.rir,
+            rest_seconds:
+              prescription.rest_seconds,
+            tempo: prescription.tempo,
+            duration_minutes:
+              prescription.duration_minutes,
+            distance: prescription.distance,
+            pace: prescription.pace,
+            notes: prescription.notes,
+          };
+        }
+      );
 
       setProgramExercises(merged);
     },
@@ -164,8 +252,11 @@ export default function CoachPage() {
           error: memberProgramError,
         } = await supabase
           .from("member_programs")
-          .select("id, user_id, program_id, assigned_at")
+          .select(
+            "id, user_id, program_id, assigned_at, start_date, end_date, current_week, status, assignment_type, coach_id"
+          )
           .eq("user_id", clientId)
+          .eq("status", "active")
           .order("assigned_at", { ascending: false })
           .limit(1);
 
@@ -185,9 +276,7 @@ export default function CoachPage() {
         setProgram(assignedProgram);
 
         if (assignedProgram?.id) {
-          await loadProgramExercises(
-            assignedProgram.id
-          );
+          await loadProgramExercises(memberProgram);
         } else {
           setProgramExercises([]);
         }
@@ -678,24 +767,16 @@ export default function CoachPage() {
     router.replace("/login");
   }
 
-  async function handleProgramChanged(
-    programId
-  ) {
-    const nextProgram =
-      programs.find(
-        (item) => item.id === programId
-      ) || null;
+  async function handleProgramChanged() {
+    if (!selectedClientId) return;
 
-    setProgram(nextProgram);
-
-    if (nextProgram) {
-      await loadProgramExercises(
-        nextProgram.id
-      );
-    } else {
-      setProgramExercises([]);
-    }
-
+    /*
+     * ClientWorkouts performs the assignment through the
+     * coach_assign_program RPC. Reload the assignment from
+     * Supabase afterward so the coach UI always reflects the
+     * database source of truth.
+     */
+    await loadClientData(selectedClientId);
     await refreshClientList();
   }
 
@@ -1345,4 +1426,3 @@ const styles = {
     fontSize: "12px",
   },
 };
-

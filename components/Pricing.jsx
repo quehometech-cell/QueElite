@@ -3,11 +3,44 @@
 export default function Pricing() {
   const features = [
     "Personalized workouts",
-    "Corrective mobility",
-    "Nutrition guidance",
+    "Nutrition targets",
     "Progress tracking",
     "Weekly check-ins",
+    "Exercise library",
     "Private member portal",
+  ];
+
+  const packages = [
+    {
+      weeks: 4,
+      name: "Coaching Kickstart",
+      price: 149,
+      description:
+        "A focused start for building structure, consistency, and momentum.",
+    },
+    {
+      weeks: 6,
+      name: "6-Week Coaching",
+      price: 199,
+      description:
+        "More time to build consistency and progress with personalized coaching.",
+    },
+    {
+      weeks: 8,
+      name: "Transformation Coaching",
+      price: 249,
+      badge: "MOST POPULAR",
+      description:
+        "A longer coaching phase designed for measurable progress and stronger habits.",
+    },
+    {
+      weeks: 12,
+      name: "Transformation Coaching",
+      price: 349,
+      badge: "BEST VALUE",
+      description:
+        "Our longest coaching option for clients who want sustained structure, accountability, and progression.",
+    },
   ];
 
   return (
@@ -21,7 +54,7 @@ export default function Pricing() {
     >
       <div
         style={{
-          maxWidth: "1050px",
+          maxWidth: "1200px",
           margin: "0 auto",
         }}
       >
@@ -44,156 +77,195 @@ export default function Pricing() {
             textAlign: "center",
           }}
         >
-          Start Your Transformation
+          Choose Your Coaching Commitment
         </h2>
 
         <p
           style={{
             color: "#999999",
-            maxWidth: "650px",
-            margin: "0 auto 34px",
+            maxWidth: "700px",
+            margin: "0 auto 42px",
             textAlign: "center",
             lineHeight: "1.6",
           }}
         >
-          Personalized online coaching for people who want a structured plan,
-          accountability, and one place to track the work.
+          Personalized online coaching built around your goals, experience,
+          schedule, and available equipment. Choose how long you want to commit
+          and we&apos;ll build the plan around you.
         </p>
 
         <div
           style={{
-            maxWidth: "700px",
-            margin: "0 auto",
-            background: "#111111",
-            padding: "clamp(24px, 5vw, 38px)",
-            border: "1px solid #3A3A3A",
-            borderRadius: "18px",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: "18px",
+            alignItems: "stretch",
           }}
         >
-          <div
-            style={{
-              color: "#F4C20D",
-              fontSize: "11px",
-              fontWeight: "900",
-              letterSpacing: "1.5px",
-            }}
-          >
-            ONLINE TRANSFORMATION COACHING
-          </div>
-
-          <h3
-            style={{
-              fontSize: "28px",
-              margin: "10px 0 6px",
-            }}
-          >
-            Built Around You
-          </h3>
-
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              gap: "7px",
-              marginBottom: "18px",
-            }}
-          >
-            <span
+          {packages.map((pkg) => (
+            <div
+              key={pkg.weeks}
               style={{
-                color: "#F4C20D",
-                fontSize: "38px",
-                fontWeight: "900",
+                position: "relative",
+                display: "flex",
+                flexDirection: "column",
+                background: "#111111",
+                padding: "30px 24px",
+                border:
+                  pkg.weeks === 8
+                    ? "2px solid #F4C20D"
+                    : "1px solid #3A3A3A",
+                borderRadius: "18px",
               }}
             >
-              $129
-            </span>
+              {pkg.badge && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "-13px",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    background: "#F4C20D",
+                    color: "#050505",
+                    padding: "6px 12px",
+                    borderRadius: "999px",
+                    fontSize: "10px",
+                    fontWeight: "900",
+                    letterSpacing: "1px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {pkg.badge}
+                </div>
+              )}
 
-            <span
-              style={{
-                color: "#999999",
-                fontSize: "15px",
-                fontWeight: "700",
-              }}
-            >
-              / month
-            </span>
-          </div>
-
-          <p
-            style={{
-              color: "#A0A0A0",
-              lineHeight: "1.65",
-              marginBottom: "24px",
-            }}
-          >
-            Training, corrective mobility, nutrition guidance, progress
-            tracking, weekly check-ins, and coach support through your private
-            member portal.
-          </p>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
-              gap: "10px",
-              marginBottom: "28px",
-            }}
-          >
-            {features.map((item) => (
               <div
-                key={item}
                 style={{
-                  color: "#D8D8D8",
-                  fontSize: "14px",
+                  color: "#F4C20D",
+                  fontSize: "12px",
+                  fontWeight: "900",
+                  letterSpacing: "1.5px",
+                  marginTop: pkg.badge ? "6px" : "0",
+                }}
+              >
+                {pkg.weeks} WEEKS
+              </div>
+
+              <h3
+                style={{
+                  fontSize: "23px",
+                  margin: "10px 0 8px",
+                }}
+              >
+                {pkg.name}
+              </h3>
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: "7px",
+                  marginBottom: "18px",
                 }}
               >
                 <span
                   style={{
                     color: "#F4C20D",
+                    fontSize: "38px",
                     fontWeight: "900",
-                    marginRight: "8px",
                   }}
                 >
-                  ✓
+                  ${pkg.price}
                 </span>
 
-                {item}
+                <span
+                  style={{
+                    color: "#999999",
+                    fontSize: "13px",
+                    fontWeight: "700",
+                  }}
+                >
+                  total
+                </span>
               </div>
-            ))}
-          </div>
 
-          <a
-            href="/join"
-            style={{
-              width: "100%",
-              minHeight: "56px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "#F4C20D",
-              color: "#050505",
-              borderRadius: "10px",
-              textDecoration: "none",
-              fontWeight: "900",
-              fontSize: "15px",
-              textAlign: "center",
-            }}
-          >
-            START YOUR TRANSFORMATION →
-          </a>
+              <p
+                style={{
+                  color: "#A0A0A0",
+                  lineHeight: "1.6",
+                  fontSize: "14px",
+                  minHeight: "68px",
+                  margin: "0 0 22px",
+                }}
+              >
+                {pkg.description}
+              </p>
 
-          <p
-            style={{
-              color: "#777777",
-              fontSize: "12px",
-              textAlign: "center",
-              margin: "13px 0 0",
-            }}
-          >
-            Create your account first. Secure payment follows during membership
-            setup.
-          </p>
+              <div
+                style={{
+                  display: "grid",
+                  gap: "9px",
+                  marginBottom: "26px",
+                }}
+              >
+                {features.map((item) => (
+                  <div
+                    key={item}
+                    style={{
+                      color: "#D8D8D8",
+                      fontSize: "13px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: "#F4C20D",
+                        fontWeight: "900",
+                        marginRight: "8px",
+                      }}
+                    >
+                      ✓
+                    </span>
+
+                    {item}
+                  </div>
+                ))}
+              </div>
+
+              <a
+                href={`/join?package=${pkg.weeks}`}
+                style={{
+                  width: "100%",
+                  minHeight: "52px",
+                  marginTop: "auto",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#F4C20D",
+                  color: "#050505",
+                  borderRadius: "10px",
+                  textDecoration: "none",
+                  fontWeight: "900",
+                  fontSize: "14px",
+                  textAlign: "center",
+                }}
+              >
+                CHOOSE {pkg.weeks} WEEKS →
+              </a>
+            </div>
+          ))}
         </div>
+
+        <p
+          style={{
+            color: "#777777",
+            fontSize: "12px",
+            textAlign: "center",
+            margin: "22px 0 0",
+          }}
+        >
+          Create your account first. Secure payment follows during membership
+          setup.
+        </p>
       </div>
     </section>
   );

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
 const packages = {
@@ -29,10 +29,9 @@ const packages = {
 
 export default function JoinPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
-  const packageParam = searchParams.get("package");
-  const selectedPackage = packages[packageParam] || null;
+  const [selectedPackage, setSelectedPackage] = useState(null);
+  const [packageLoaded, setPackageLoaded] = useState(false);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -41,6 +40,14 @@ export default function JoinPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const packageParam = params.get("package");
+
+    setSelectedPackage(packages[packageParam] || null);
+    setPackageLoaded(true);
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -92,12 +99,10 @@ export default function JoinPage() {
       }
 
       /*
-        IMPORTANT:
-        We intentionally DO NOT activate membership here.
+        Membership is NOT activated here.
 
-        New members remain inactive until Stripe confirms a successful
-        payment. The selected package is carried forward so the secure
-        payment flow can determine the correct coaching package.
+        Stripe payment confirmation will handle activation.
+        The selected package is carried forward through the flow.
       */
 
       if (data.session) {
@@ -136,7 +141,7 @@ export default function JoinPage() {
           Create your account to begin your Get Cha Right Fitness journey.
         </p>
 
-        {selectedPackage ? (
+        {packageLoaded && selectedPackage && (
           <div className="selected-package">
             <div>
               <span className="package-label">YOUR COACHING PLAN</span>
@@ -151,7 +156,9 @@ export default function JoinPage() {
               <span> total</span>
             </div>
           </div>
-        ) : (
+        )}
+
+        {packageLoaded && !selectedPackage && (
           <div className="package-warning">
             No coaching package selected.{" "}
             <a href="/#pricing">Choose a package</a> before creating your
@@ -235,7 +242,7 @@ export default function JoinPage() {
           <button
             className="submit-button"
             type="submit"
-            disabled={loading || !selectedPackage}
+            disabled={loading || !packageLoaded || !selectedPackage}
           >
             {loading ? "CREATING ACCOUNT..." : "CREATE ACCOUNT & CONTINUE →"}
           </button>

@@ -4,22 +4,80 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
+const PACKAGES = {
+  4: {
+    weeks: 4,
+    name: "Coaching Kickstart",
+    fullName: "4-Week Coaching Kickstart",
+    todayPrice: 149,
+    totalPrice: 149,
+    paymentText: "Paid in full",
+    priceLabel: "paid in full",
+    badge: "KICKSTART",
+  },
+  6: {
+    weeks: 6,
+    name: "6-Week Coaching",
+    fullName: "6-Week Coaching",
+    todayPrice: 199,
+    totalPrice: 199,
+    paymentText: "Paid in full",
+    priceLabel: "paid in full",
+    badge: "COACHING",
+  },
+  8: {
+    weeks: 8,
+    name: "Transformation Coaching",
+    fullName: "8-Week Transformation Coaching",
+    todayPrice: 249,
+    totalPrice: 498,
+    paymentText: "$249 today + $249 second payment",
+    priceLabel: "due today",
+    badge: "MOST POPULAR",
+  },
+  12: {
+    weeks: 12,
+    name: "Transformation Coaching",
+    fullName: "12-Week Transformation Coaching",
+    todayPrice: 349,
+    totalPrice: 698,
+    paymentText: "$349 today + $349 second payment",
+    priceLabel: "due today",
+    badge: "BEST VALUE",
+  },
+};
+
 export default function CheckoutPage() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [user, setUser] = useState(null);
+  const [selectedPackage, setSelectedPackage] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    async function loadUser() {
+    async function loadCheckout() {
+      const params = new URLSearchParams(window.location.search);
+      const packageWeeks = params.get("package");
+      const pkg = PACKAGES[packageWeeks];
+
+      if (!pkg) {
+        setError(
+          "No valid coaching package was selected. Please return to the pricing page and choose a package."
+        );
+        setLoading(false);
+        return;
+      }
+
+      setSelectedPackage(pkg);
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       if (!user) {
-        router.replace("/join");
+        router.replace(`/join?package=${pkg.weeks}`);
         return;
       }
 
@@ -27,10 +85,17 @@ export default function CheckoutPage() {
       setLoading(false);
     }
 
-    loadUser();
+    loadCheckout();
   }, [router]);
 
   async function handleCheckout() {
+    if (!selectedPackage) {
+      setError(
+        "No valid coaching package was selected. Please choose a package first."
+      );
+      return;
+    }
+
     try {
       setCheckoutLoading(true);
       setError("");
@@ -41,7 +106,7 @@ export default function CheckoutPage() {
       } = await supabase.auth.getSession();
 
       if (sessionError || !session?.access_token) {
-        router.replace("/login");
+        router.replace(`/login?package=${selectedPackage.weeks}`);
         return;
       }
 
@@ -49,7 +114,11 @@ export default function CheckoutPage() {
         method: "POST",
         headers: {
           Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          packageWeeks: selectedPackage.weeks,
+        }),
       });
 
       const data = await response.json();
@@ -99,6 +168,120 @@ export default function CheckoutPage() {
     );
   }
 
+  if (!selectedPackage) {
+    return (
+      <main className="page invalid-page">
+        <section className="invalid-card">
+          <a href="/" className="brand">
+            GET CHA RIGHT
+          </a>
+
+          <div className="eyebrow">COACHING PACKAGE</div>
+
+          <h1>Select Your Coaching Plan.</h1>
+
+          <p className="intro">
+            We couldn't determine which coaching package you selected.
+            Return to the website and choose your 4, 6, 8, or 12-week
+            coaching plan.
+          </p>
+
+          {error && <p className="error">{error}</p>}
+
+          <button
+            type="button"
+            className="checkout-button"
+            onClick={() => router.push("/#pricing")}
+          >
+            VIEW COACHING PACKAGES →
+          </button>
+        </section>
+
+        <style jsx>{`
+          * {
+            box-sizing: border-box;
+          }
+
+          .page {
+            min-height: 100vh;
+            width: 100%;
+            background: #050505;
+            color: #ffffff;
+            font-family: Arial, Helvetica, sans-serif;
+            padding: 40px 18px;
+          }
+
+          .invalid-page {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .invalid-card {
+            width: 100%;
+            max-width: 620px;
+            background: #111111;
+            border: 1px solid #363636;
+            border-radius: 18px;
+            padding: 30px;
+          }
+
+          .brand {
+            display: inline-block;
+            color: #f4c20d;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+          }
+
+          .eyebrow {
+            color: #f4c20d;
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+          }
+
+          h1 {
+            margin: 0;
+            font-size: clamp(36px, 8vw, 54px);
+            line-height: 1;
+            letter-spacing: -2px;
+          }
+
+          .intro {
+            color: #bdbdbd;
+            font-size: 16px;
+            line-height: 1.65;
+            margin: 18px 0 22px;
+          }
+
+          .error {
+            color: #ff7777;
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 0 0 18px;
+          }
+
+          .checkout-button {
+            width: 100%;
+            min-height: 56px;
+            border: 0;
+            border-radius: 10px;
+            background: #f4c20d;
+            color: #050505;
+            font-size: 14px;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+          }
+        `}</style>
+      </main>
+    );
+  }
+
   return (
     <main className="page">
       <section className="checkout">
@@ -111,8 +294,8 @@ export default function CheckoutPage() {
         <h1>You're One Step Away.</h1>
 
         <p className="intro">
-          Your account is ready. Complete your membership to unlock your
-          personalized Get Cha Right Fitness coaching experience.
+          Your account is ready. Review your selected coaching package and
+          continue to secure Stripe checkout.
         </p>
 
         <div className="account">
@@ -124,36 +307,44 @@ export default function CheckoutPage() {
           <div className="offer-top">
             <div>
               <div className="popular">GET CHA RIGHT COACHING</div>
-              <h2>Online Transformation Coaching</h2>
+              <h2>{selectedPackage.fullName}</h2>
             </div>
 
-            <div className="badge">COACHING</div>
+            <div className="badge">{selectedPackage.badge}</div>
           </div>
 
           <p className="description">
             Built for people who sit for work but still want to get stronger,
-            move better, and lose body fat.
+            move better, improve consistency, and follow a structured plan
+            built around real life.
           </p>
 
           <div className="price">
-            <strong>$129</strong>
-            <span>/ month</span>
+            <strong>${selectedPackage.todayPrice}</strong>
+            <span>{selectedPackage.priceLabel}</span>
+          </div>
+
+          <div className="payment-summary">
+            <div>
+              <span>PAYMENT STRUCTURE</span>
+              <strong>{selectedPackage.paymentText}</strong>
+            </div>
+
+            <div>
+              <span>TOTAL COACHING COMMITMENT</span>
+              <strong>${selectedPackage.totalPrice}</strong>
+            </div>
           </div>
 
           <div className="features">
             <div>
               <span>✓</span>
-              Personalized training program
+              Personalized workouts
             </div>
 
             <div>
               <span>✓</span>
-              Corrective mobility programming
-            </div>
-
-            <div>
-              <span>✓</span>
-              Nutrition targets and tracking
+              Nutrition targets
             </div>
 
             <div>
@@ -168,12 +359,12 @@ export default function CheckoutPage() {
 
             <div>
               <span>✓</span>
-              Private member dashboard
+              Exercise library
             </div>
 
             <div>
               <span>✓</span>
-              Coach program adjustments
+              Private member portal
             </div>
           </div>
 
@@ -195,13 +386,15 @@ export default function CheckoutPage() {
           >
             {checkoutLoading
               ? "OPENING SECURE CHECKOUT..."
-              : "COMPLETE MEMBERSHIP →"}
+              : `CONTINUE TO STRIPE — $${selectedPackage.todayPrice} →`}
           </button>
 
           {error && <p className="error">{error}</p>}
 
           <p className="temporary">
-            $129/month. Your membership renews monthly until canceled.
+            {selectedPackage.weeks <= 6
+              ? `$${selectedPackage.totalPrice} paid in full for your ${selectedPackage.weeks}-week coaching program.`
+              : `${selectedPackage.paymentText}. Total coaching commitment: $${selectedPackage.totalPrice}.`}
           </p>
         </div>
 
@@ -209,10 +402,11 @@ export default function CheckoutPage() {
           <div>🔒</div>
 
           <div>
-            <strong>Protected membership access</strong>
+            <strong>Protected coaching access</strong>
             <p>
-              Creating an account does not activate paid coaching. Membership
-              access is activated only after a successful payment is confirmed.
+              Creating an account does not activate paid coaching. Coaching
+              access is activated only after a successful payment is
+              confirmed.
             </p>
           </div>
         </div>
@@ -357,7 +551,7 @@ export default function CheckoutPage() {
           display: flex;
           align-items: baseline;
           gap: 7px;
-          margin-bottom: 24px;
+          margin-bottom: 18px;
         }
 
         .price strong {
@@ -369,6 +563,35 @@ export default function CheckoutPage() {
         .price span {
           color: #8d8d8d;
           font-size: 14px;
+        }
+
+        .payment-summary {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+          margin-bottom: 24px;
+        }
+
+        .payment-summary > div {
+          background: #0a0a0a;
+          border: 1px solid #292929;
+          border-radius: 9px;
+          padding: 13px;
+          display: grid;
+          gap: 6px;
+        }
+
+        .payment-summary span {
+          color: #777777;
+          font-size: 9px;
+          font-weight: 900;
+          letter-spacing: 1px;
+        }
+
+        .payment-summary strong {
+          color: #ffffff;
+          font-size: 13px;
+          line-height: 1.4;
         }
 
         .features {
@@ -518,6 +741,10 @@ export default function CheckoutPage() {
 
           .offer-top {
             display: grid;
+          }
+
+          .payment-summary {
+            grid-template-columns: 1fr;
           }
 
           .features {

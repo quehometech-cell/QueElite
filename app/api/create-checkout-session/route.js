@@ -1,6 +1,45 @@
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
+const PACKAGES = {
+  4: {
+    weeks: 4,
+    packageId: 2,
+    name: "4-Week Coaching Kickstart",
+    priceId: "price_1UI5TYAqc3ss0YxT4VQiMh8K",
+    paymentNumber: 1,
+    totalPayments: 1,
+    totalCents: 14900,
+  },
+  6: {
+    weeks: 6,
+    packageId: 3,
+    name: "6-Week Coaching",
+    priceId: "price_1UI5UBAqc3ss0YxTfGcNHEM",
+    paymentNumber: 1,
+    totalPayments: 1,
+    totalCents: 19900,
+  },
+  8: {
+    weeks: 8,
+    packageId: 4,
+    name: "8-Week Transformation Coaching",
+    priceId: "price_1UI5V1Aqc3ss0YxTGynVQvry",
+    paymentNumber: 1,
+    totalPayments: 2,
+    totalCents: 49800,
+  },
+  12: {
+    weeks: 12,
+    packageId: 1,
+    name: "12-Week Transformation Coaching",
+    priceId: "price_1UI5VIAqc3ss0YxTO7Wm4HvN",
+    paymentNumber: 1,
+    totalPayments: 2,
+    totalCents: 69800,
+  },
+};
+
 const getStripe = () => {
   if (!process.env.STRIPE_SECRET_KEY) {
     throw new Error("STRIPE_SECRET_KEY is not configured.");
@@ -14,7 +53,9 @@ const getSupabaseAdmin = () => {
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.SUPABASE_SERVICE_ROLE_KEY
   ) {
-    throw new Error("Supabase server environment variables are not configured.");
+    throw new Error(
+      "Supabase server environment variables are not configured."
+    );
   }
 
   return createClient(
@@ -37,10 +78,7 @@ export async function POST(request) {
     const authorization = request.headers.get("authorization");
 
     if (!authorization?.startsWith("Bearer ")) {
-      return Response.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const accessToken = authorization.replace("Bearer ", "");
@@ -57,12 +95,24 @@ export async function POST(request) {
       );
     }
 
+    const body = await request.json().catch(() => ({}));
+    const selectedWeeks = Number(body?.packageWeeks);
+
+    const selectedPackage = PACKAGES[selectedWeeks];
+
+    if (!selectedPackage) {
+      return Response.json(
+        { error: "Invalid coaching package selected." },
+        { status: 400 }
+      );
+    }
+
     const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
+      mode: "payment",
 
       line_items: [
         {
-          price: "price_1TWedMAqc3ss0YxTG2Fl2HY0",
+          price: selectedPackage.priceId,
           quantity: 1,
         },
       ],
@@ -73,19 +123,31 @@ export async function POST(request) {
 
       metadata: {
         supabase_user_id: user.id,
+        package_id: String(selectedPackage.packageId),
+        package_weeks: String(selectedPackage.weeks),
+        package_name: selectedPackage.name,
+        payment_number: String(selectedPackage.paymentNumber),
+        total_payments: String(selectedPackage.totalPayments),
+        total_commitment_cents: String(selectedPackage.totalCents),
       },
 
-      subscription_data: {
+      payment_intent_data: {
         metadata: {
           supabase_user_id: user.id,
+          package_id: String(selectedPackage.packageId),
+          package_weeks: String(selectedPackage.weeks),
+          package_name: selectedPackage.name,
+          payment_number: String(selectedPackage.paymentNumber),
+          total_payments: String(selectedPackage.totalPayments),
+          total_commitment_cents: String(selectedPackage.totalCents),
         },
       },
 
       success_url:
-        "https://www.getcharightfitness.com/payment-success?session_id={CHECKOUT_SESSION_ID}",
+        `https://www.getcharightfitness.com/payment-success?session_id={CHECKOUT_SESSION_ID}&package=${selectedPackage.weeks}`,
 
       cancel_url:
-        "https://www.getcharightfitness.com/checkout",
+        `https://www.getcharightfitness.com/checkout?package=${selectedPackage.weeks}`,
 
       allow_promotion_codes: true,
     });

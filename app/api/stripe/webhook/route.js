@@ -5,14 +5,10 @@ export const runtime = "nodejs";
 
 function getStripe() {
   if (!process.env.STRIPE_SECRET_KEY) {
-    throw new Error(
-      "STRIPE_SECRET_KEY is not configured."
-    );
+    throw new Error("STRIPE_SECRET_KEY is not configured.");
   }
 
-  return new Stripe(
-    process.env.STRIPE_SECRET_KEY
-  );
+  return new Stripe(process.env.STRIPE_SECRET_KEY);
 }
 
 function getSupabaseAdmin() {
@@ -37,15 +33,23 @@ function getSupabaseAdmin() {
   );
 }
 
+function addDays(date, days) {
+  const result = new Date(date);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result;
+}
+
+function toDateString(date) {
+  return date.toISOString().slice(0, 10);
+}
+
 async function updateMembership(
   supabaseAdmin,
   userId,
   status
 ) {
   if (!userId) {
-    throw new Error(
-      "Missing Supabase user ID."
-    );
+    throw new Error("Missing Supabase user ID.");
   }
 
   const { error } = await supabaseAdmin
@@ -60,81 +64,78 @@ async function updateMembership(
   }
 }
 
-async function findUserIdFromSubscription(
-  supabaseAdmin,
-  subscription
-) {
-  const metadataUserId =
-    subscription?.metadata?.supabase_user_id;
-
-  if (metadataUserId) {
-    return metadataUserId;
-  }
-
-  if (subscription?.id) {
-    const { data, error } =
-      await supabaseAdmin
-        .from("client_packages")
-        .select("user_id")
-        .eq(
-          "stripe_subscription_id",
-          subscription.id
-        )
-        .maybeSingle();
-
-    if (error) {
-      throw error;
-    }
-
-    if (data?.user_id) {
-      return data.user_id;
-    }
-  }
-
-  return null;
-}
-
-async function getPackageFromPrice(
-  supabaseAdmin,
-  priceId
-) {
-  if (!priceId) {
-    return null;
-  }
-
-  const { data, error } =
-    await supabaseAdmin
-      .from("coaching_packages")
-      .select(
-        "id, name, stripe_price_id, duration_weeks, is_active"
-      )
-      .eq("stripe_price_id", priceId)
-      .eq("is_active", true)
-      .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  return data || null;
-}
-
 async function activateClientPackage({
   supabaseAdmin,
   userId,
   packageId,
-  subscriptionId,
+  packageWeeks,
+  session,
 }) {
-  if (!userId || !packageId) {
+  if (!userId || !packageId || !packageWeeks) {
     throw new Error(
-      "Missing user or package for package activation."
+      "Missing user, package, or duration for package activation."
     );
   }
 
   const today = new Date();
-  const startDate = today
-    .toISOString()
-    .slice(0, 10);
+
+  const startDate = toDateString(today);
+  const endDate = toDateString(
+    addDays(today, packageWeeks * 7)
+  );
+
+  const isSplitPayment =
+    packageWeeks === 8 || packageWeeks === 12;
+
+  let nextPaymentDate = null;
+  let nextPaymentAmountCents = null;
+
+  if (packageWeeks === 8) {
+    // Beginning of Week 5 = 4 weeks after start.
+    nextPaymentDate = toDateString(
+      addDays(today, 28)
+    );
+    nextPaymentAmountCents = 24900;
+  }
+
+  if (packageWeeks === 12) {
+    // Beginning of Week 7 = 6 weeks after start.
+    nextPaymentDate = toDateString(
+      addDays(today, 42)
+    );
+    nextPaymentAmountCents = 34900;
+  }
+
+  const stripeCustomerId =
+    typeof session.customer === "string"
+      ? session.customer
+      : session.customer?.id || null;
+
+  const packageData = {
+    status: "active",
+    start_date: startDate,
+    end_date: endDate,
+
+    stripe_customer_id: stripeCustomerId,
+    stripe_checkout_session_id: session.id,
+
+    payment_plan: isSplitPayment
+      ? "split"
+      : "paid_in_full",
+
+    total_payments: isSplitPayment ? 2 : 1,
+    payments_completed: 1,
+
+    next_payment_date: nextPaymentDate,
+    next_payment_amount_cents:
+      nextPaymentAmountCents,
+
+    payment_status: isSplitPayment
+      ? "first_payment_paid"
+      : "paid_in_full",
+
+    updated_at: new Date().toISOString(),
+  };
 
   const { data: existing, error: existingError } =
     await supabaseAdmin
@@ -151,14 +152,7 @@ async function activateClientPackage({
   if (existing?.id) {
     const { error } = await supabaseAdmin
       .from("client_packages")
-      .update({
-        status: "active",
-        start_date: startDate,
-        end_date: null,
-        stripe_subscription_id:
-          subscriptionId || null,
-        updated_at: new Date().toISOString(),
-      })
+      .update(packageData)
       .eq("id", existing.id);
 
     if (error) {
@@ -173,11 +167,7 @@ async function activateClientPackage({
     .insert({
       user_id: userId,
       package_id: packageId,
-      status: "active",
-      start_date: startDate,
-      end_date: null,
-      stripe_subscription_id:
-        subscriptionId || null,
+      ...packageData,
     });
 
   if (error) {
@@ -185,60 +175,80 @@ async function activateClientPackage({
   }
 }
 
-async function deactivateSubscriptionPackage({
+async function handlePackageCheckout({
   supabaseAdmin,
-  userId,
-  subscriptionId,
+  session,
 }) {
+  if (session.payment_status !== "paid") {
+    return;
+  }
+
+  const userId =
+    session.metadata?.supabase_user_id ||
+    session.client_reference_id;
+
+  const packageId = Number(
+    session.metadata?.package_id
+  );
+
+  const packageWeeks = Number(
+    session.metadata?.package_weeks
+  );
+
   if (!userId) {
     throw new Error(
-      "Missing user for package deactivation."
+      "Checkout session is missing the Supabase user ID."
     );
   }
 
-  let query = supabaseAdmin
-    .from("client_packages")
-    .update({
-      status: "inactive",
-      end_date: new Date()
-        .toISOString()
-        .slice(0, 10),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", userId)
-    .eq("status", "active");
-
-  if (subscriptionId) {
-    query = query.eq(
-      "stripe_subscription_id",
-      subscriptionId
+  if (!packageId || !packageWeeks) {
+    throw new Error(
+      "Checkout session is missing package metadata."
     );
   }
 
-  const { error } = await query;
+  const { data: coachingPackage, error } =
+    await supabaseAdmin
+      .from("coaching_packages")
+      .select(
+        "id, name, duration_weeks, is_active"
+      )
+      .eq("id", packageId)
+      .eq("is_active", true)
+      .maybeSingle();
 
   if (error) {
     throw error;
   }
-}
 
-async function getSubscriptionPriceId(
-  stripe,
-  subscriptionId
-) {
-  if (!subscriptionId) {
-    return null;
+  if (!coachingPackage) {
+    throw new Error(
+      `No active coaching package found for package ID ${packageId}.`
+    );
   }
 
-  const subscription =
-    await stripe.subscriptions.retrieve(
-      subscriptionId
+  if (
+    Number(coachingPackage.duration_weeks) !==
+    packageWeeks
+  ) {
+    throw new Error(
+      "Stripe package duration does not match the database package."
     );
+  }
 
-  return (
-    subscription.items?.data?.[0]?.price?.id ||
-    null
+  await updateMembership(
+    supabaseAdmin,
+    userId,
+    "active"
   );
+
+  await activateClientPackage({
+    supabaseAdmin,
+    userId,
+    packageId,
+    packageWeeks,
+    session,
+  });
 }
 
 export async function POST(request) {
@@ -297,172 +307,14 @@ export async function POST(request) {
 
     switch (event.type) {
       case "checkout.session.completed": {
-        const session =
-          event.data.object;
+        const session = event.data.object;
 
-        if (
-          session.mode !== "subscription"
-        ) {
-          break;
-        }
-
-        const userId =
-          session.metadata
-            ?.supabase_user_id ||
-          session.client_reference_id;
-
-        if (!userId) {
-          throw new Error(
-            "Checkout session is missing the Supabase user ID."
-          );
-        }
-
-        if (
-          session.payment_status !== "paid"
-        ) {
-          break;
-        }
-
-        const subscriptionId =
-          typeof session.subscription ===
-          "string"
-            ? session.subscription
-            : session.subscription?.id;
-
-        const priceId =
-          await getSubscriptionPriceId(
-            stripe,
-            subscriptionId
-          );
-
-        const coachingPackage =
-          await getPackageFromPrice(
+        if (session.mode === "payment") {
+          await handlePackageCheckout({
             supabaseAdmin,
-            priceId
-          );
-
-        if (!coachingPackage) {
-          throw new Error(
-            `No active coaching package is configured for Stripe price ${priceId}.`
-          );
-        }
-
-        await updateMembership(
-          supabaseAdmin,
-          userId,
-          "active"
-        );
-
-        await activateClientPackage({
-          supabaseAdmin,
-          userId,
-          packageId:
-            coachingPackage.id,
-          subscriptionId,
-        });
-
-        break;
-      }
-
-      case "customer.subscription.updated": {
-        const subscription =
-          event.data.object;
-
-        const userId =
-          await findUserIdFromSubscription(
-            supabaseAdmin,
-            subscription
-          );
-
-        if (!userId) {
-          console.warn(
-            "Unable to identify Supabase user for subscription:",
-            subscription.id
-          );
-          break;
-        }
-
-        const activeStatuses = [
-          "active",
-          "trialing",
-        ];
-
-        const isActive =
-          activeStatuses.includes(
-            subscription.status
-          );
-
-        await updateMembership(
-          supabaseAdmin,
-          userId,
-          isActive
-            ? "active"
-            : "inactive"
-        );
-
-        if (isActive) {
-          const priceId =
-            subscription.items?.data?.[0]
-              ?.price?.id;
-
-          const coachingPackage =
-            await getPackageFromPrice(
-              supabaseAdmin,
-              priceId
-            );
-
-          if (coachingPackage) {
-            await activateClientPackage({
-              supabaseAdmin,
-              userId,
-              packageId:
-                coachingPackage.id,
-              subscriptionId:
-                subscription.id,
-            });
-          }
-        } else {
-          await deactivateSubscriptionPackage({
-            supabaseAdmin,
-            userId,
-            subscriptionId:
-              subscription.id,
+            session,
           });
         }
-
-        break;
-      }
-
-      case "customer.subscription.deleted": {
-        const subscription =
-          event.data.object;
-
-        const userId =
-          await findUserIdFromSubscription(
-            supabaseAdmin,
-            subscription
-          );
-
-        if (!userId) {
-          console.warn(
-            "Unable to identify Supabase user for deleted subscription:",
-            subscription.id
-          );
-          break;
-        }
-
-        await updateMembership(
-          supabaseAdmin,
-          userId,
-          "inactive"
-        );
-
-        await deactivateSubscriptionPackage({
-          supabaseAdmin,
-          userId,
-          subscriptionId:
-            subscription.id,
-        });
 
         break;
       }

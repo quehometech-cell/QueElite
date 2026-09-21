@@ -14,21 +14,29 @@ export default function Pricing() {
     {
       weeks: 4,
       name: "Coaching Kickstart",
-      price: 149,
+      totalPrice: 149,
+      todayPrice: 149,
+      paymentText: "Paid in full",
+      badge: null,
       description:
         "A focused start for building structure, consistency, and momentum.",
     },
     {
       weeks: 6,
       name: "6-Week Coaching",
-      price: 199,
+      totalPrice: 199,
+      todayPrice: 199,
+      paymentText: "Paid in full",
+      badge: null,
       description:
         "More time to build consistency and progress with personalized coaching.",
     },
     {
       weeks: 8,
       name: "Transformation Coaching",
-      price: 249,
+      totalPrice: 498,
+      todayPrice: 249,
+      paymentText: "$249 today + $249 second payment",
       badge: "MOST POPULAR",
       description:
         "A longer coaching phase designed for measurable progress and stronger habits.",
@@ -36,7 +44,9 @@ export default function Pricing() {
     {
       weeks: 12,
       name: "Transformation Coaching",
-      price: 349,
+      totalPrice: 698,
+      todayPrice: 349,
+      paymentText: "$349 today + $349 second payment",
       badge: "BEST VALUE",
       description:
         "Our longest coaching option for clients who want sustained structure, accountability, and progression.",
@@ -90,8 +100,8 @@ export default function Pricing() {
           }}
         >
           Personalized online coaching built around your goals, experience,
-          schedule, and available equipment. Choose how long you want to commit
-          and we&apos;ll build the plan around you.
+          schedule, and available equipment. Choose the coaching commitment
+          that fits your goals.
         </p>
 
         <div
@@ -162,31 +172,66 @@ export default function Pricing() {
 
               <div
                 style={{
-                  display: "flex",
-                  alignItems: "baseline",
-                  gap: "7px",
+                  marginBottom: "8px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "baseline",
+                    gap: "7px",
+                  }}
+                >
+                  <span
+                    style={{
+                      color: "#F4C20D",
+                      fontSize: "38px",
+                      fontWeight: "900",
+                    }}
+                  >
+                    ${pkg.todayPrice}
+                  </span>
+
+                  <span
+                    style={{
+                      color: "#999999",
+                      fontSize: "13px",
+                      fontWeight: "700",
+                    }}
+                  >
+                    {pkg.weeks <= 6 ? "total" : "to start"}
+                  </span>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "#080808",
+                  border: "1px solid #2A2A2A",
+                  borderRadius: "9px",
+                  padding: "12px",
                   marginBottom: "18px",
                 }}
               >
-                <span
+                <div
                   style={{
-                    color: "#F4C20D",
-                    fontSize: "38px",
-                    fontWeight: "900",
-                  }}
-                >
-                  ${pkg.price}
-                </span>
-
-                <span
-                  style={{
-                    color: "#999999",
+                    color: "#FFFFFF",
                     fontSize: "13px",
-                    fontWeight: "700",
+                    fontWeight: "800",
                   }}
                 >
-                  total
-                </span>
+                  {pkg.paymentText}
+                </div>
+
+                <div
+                  style={{
+                    color: "#777777",
+                    fontSize: "11px",
+                    marginTop: "5px",
+                  }}
+                >
+                  Total coaching commitment: ${pkg.totalPrice}
+                </div>
               </div>
 
               <p
@@ -260,11 +305,14 @@ export default function Pricing() {
             color: "#777777",
             fontSize: "12px",
             textAlign: "center",
-            margin: "22px 0 0",
+            margin: "22px auto 0",
+            maxWidth: "760px",
+            lineHeight: "1.6",
           }}
         >
-          Create your account first. Secure payment follows during membership
-          setup.
+          4-week and 6-week coaching are paid in full. 8-week and 12-week
+          coaching use two scheduled payments. Total commitment is shown
+          before checkout.
         </p>
       </div>
     </section>

@@ -1,11 +1,38 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
+
+const packages = {
+  "4": {
+    weeks: 4,
+    name: "Coaching Kickstart",
+    price: 149,
+  },
+  "6": {
+    weeks: 6,
+    name: "6-Week Coaching",
+    price: 199,
+  },
+  "8": {
+    weeks: 8,
+    name: "Transformation Coaching",
+    price: 249,
+  },
+  "12": {
+    weeks: 12,
+    name: "Transformation Coaching",
+    price: 349,
+  },
+};
 
 export default function JoinPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const packageParam = searchParams.get("package");
+  const selectedPackage = packages[packageParam] || null;
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -21,6 +48,11 @@ export default function JoinPage() {
 
     const cleanName = fullName.trim();
     const cleanEmail = email.trim().toLowerCase();
+
+    if (!selectedPackage) {
+      setError("Please select a coaching package before creating your account.");
+      return;
+    }
 
     if (!cleanName || !cleanEmail || !password || !confirmPassword) {
       setError("Please complete all fields.");
@@ -46,6 +78,7 @@ export default function JoinPage() {
         options: {
           data: {
             full_name: cleanName,
+            selected_package_weeks: selectedPackage.weeks,
           },
         },
       });
@@ -63,12 +96,14 @@ export default function JoinPage() {
         We intentionally DO NOT activate membership here.
 
         New members remain inactive until Stripe confirms a successful
-        payment. Once Stripe access is restored, the secure payment
-        confirmation flow will handle membership activation.
+        payment. The selected package is carried forward so the secure
+        payment flow can determine the correct coaching package.
       */
 
       if (data.session) {
-        router.replace("/membership-required");
+        router.replace(
+          `/membership-required?package=${selectedPackage.weeks}`
+        );
         router.refresh();
         return;
       }
@@ -76,7 +111,7 @@ export default function JoinPage() {
       router.replace(
         `/login?message=${encodeURIComponent(
           "Account created. Check your email to confirm your account, then sign in."
-        )}`
+        )}&package=${selectedPackage.weeks}`
       );
     } catch (err) {
       console.error("Join error:", err);
@@ -100,6 +135,29 @@ export default function JoinPage() {
         <p className="intro">
           Create your account to begin your Get Cha Right Fitness journey.
         </p>
+
+        {selectedPackage ? (
+          <div className="selected-package">
+            <div>
+              <span className="package-label">YOUR COACHING PLAN</span>
+
+              <strong>
+                {selectedPackage.weeks}-Week {selectedPackage.name}
+              </strong>
+            </div>
+
+            <div className="package-price">
+              ${selectedPackage.price}
+              <span> total</span>
+            </div>
+          </div>
+        ) : (
+          <div className="package-warning">
+            No coaching package selected.{" "}
+            <a href="/#pricing">Choose a package</a> before creating your
+            account.
+          </div>
+        )}
 
         <div className="benefits">
           <div>
@@ -174,7 +232,11 @@ export default function JoinPage() {
 
           {error && <div className="error">{error}</div>}
 
-          <button className="submit-button" type="submit" disabled={loading}>
+          <button
+            className="submit-button"
+            type="submit"
+            disabled={loading || !selectedPackage}
+          >
             {loading ? "CREATING ACCOUNT..." : "CREATE ACCOUNT & CONTINUE →"}
           </button>
         </form>
@@ -184,7 +246,16 @@ export default function JoinPage() {
         </p>
 
         <p className="login">
-          Already have an account? <a href="/login">Sign in</a>
+          Already have an account?{" "}
+          <a
+            href={
+              selectedPackage
+                ? `/login?package=${selectedPackage.weeks}`
+                : "/login"
+            }
+          >
+            Sign in
+          </a>
         </p>
       </section>
 
@@ -247,6 +318,64 @@ export default function JoinPage() {
           font-size: 16px;
           line-height: 1.6;
           margin: 16px 0 24px;
+        }
+
+        .selected-package {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 18px;
+          padding: 17px 18px;
+          margin-bottom: 20px;
+          background: rgba(244, 194, 13, 0.07);
+          border: 1px solid rgba(244, 194, 13, 0.4);
+          border-radius: 12px;
+        }
+
+        .selected-package > div:first-child {
+          display: grid;
+          gap: 5px;
+        }
+
+        .package-label {
+          color: #f4c20d;
+          font-size: 10px;
+          font-weight: 900;
+          letter-spacing: 1.4px;
+        }
+
+        .selected-package strong {
+          color: #ffffff;
+          font-size: 15px;
+        }
+
+        .package-price {
+          color: #f4c20d;
+          font-size: 24px;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        .package-price span {
+          color: #888888;
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .package-warning {
+          padding: 14px 16px;
+          margin-bottom: 20px;
+          background: rgba(255, 180, 0, 0.08);
+          border: 1px solid rgba(255, 180, 0, 0.3);
+          border-radius: 10px;
+          color: #d6d6d6;
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        .package-warning a {
+          color: #f4c20d;
+          font-weight: 800;
         }
 
         .benefits {
@@ -382,6 +511,12 @@ export default function JoinPage() {
 
           .brand {
             margin-bottom: 22px;
+          }
+
+          .selected-package {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 10px;
           }
 
           .benefits {

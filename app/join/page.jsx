@@ -8,22 +8,37 @@ const packages = {
   "4": {
     weeks: 4,
     name: "Coaching Kickstart",
-    price: 149,
+    todayPrice: 149,
+    totalPrice: 149,
+    paymentText: "Paid in full",
+    priceLabel: "total",
   },
+
   "6": {
     weeks: 6,
     name: "6-Week Coaching",
-    price: 199,
+    todayPrice: 199,
+    totalPrice: 199,
+    paymentText: "Paid in full",
+    priceLabel: "total",
   },
+
   "8": {
     weeks: 8,
     name: "Transformation Coaching",
-    price: 249,
+    todayPrice: 249,
+    totalPrice: 498,
+    paymentText: "$249 today + $249 second payment",
+    priceLabel: "to start",
   },
+
   "12": {
     weeks: 12,
     name: "Transformation Coaching",
-    price: 349,
+    todayPrice: 349,
+    totalPrice: 698,
+    paymentText: "$349 today + $349 second payment",
+    priceLabel: "to start",
   },
 };
 
@@ -57,17 +72,26 @@ export default function JoinPage() {
     const cleanEmail = email.trim().toLowerCase();
 
     if (!selectedPackage) {
-      setError("Please select a coaching package before creating your account.");
+      setError(
+        "Please select a coaching package before creating your account."
+      );
       return;
     }
 
-    if (!cleanName || !cleanEmail || !password || !confirmPassword) {
+    if (
+      !cleanName ||
+      !cleanEmail ||
+      !password ||
+      !confirmPassword
+    ) {
       setError("Please complete all fields.");
       return;
     }
 
     if (password.length < 8) {
-      setError("Your password must be at least 8 characters.");
+      setError(
+        "Your password must be at least 8 characters."
+      );
       return;
     }
 
@@ -79,23 +103,27 @@ export default function JoinPage() {
     try {
       setLoading(true);
 
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password,
-        options: {
-          data: {
-            full_name: cleanName,
-            selected_package_weeks: selectedPackage.weeks,
+      const { data, error: signUpError } =
+        await supabase.auth.signUp({
+          email: cleanEmail,
+          password,
+          options: {
+            data: {
+              full_name: cleanName,
+              selected_package_weeks:
+                selectedPackage.weeks,
+            },
           },
-        },
-      });
+        });
 
       if (signUpError) {
         throw signUpError;
       }
 
       if (!data?.user) {
-        throw new Error("We couldn't create your account. Please try again.");
+        throw new Error(
+          "We couldn't create your account. Please try again."
+        );
       }
 
       /*
@@ -120,7 +148,10 @@ export default function JoinPage() {
       );
     } catch (err) {
       console.error("Join error:", err);
-      setError(err?.message || "Something went wrong. Please try again.");
+      setError(
+        err?.message ||
+          "Something went wrong. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -133,27 +164,47 @@ export default function JoinPage() {
           GET CHA RIGHT
         </a>
 
-        <div className="eyebrow">ONLINE COACHING</div>
+        <div className="eyebrow">
+          ONLINE COACHING
+        </div>
 
         <h1>Start Your Transformation</h1>
 
         <p className="intro">
-          Create your account to begin your Get Cha Right Fitness journey.
+          Create your account to begin your Get Cha
+          Right Fitness journey.
         </p>
 
         {packageLoaded && selectedPackage && (
           <div className="selected-package">
-            <div>
-              <span className="package-label">YOUR COACHING PLAN</span>
+            <div className="package-info">
+              <span className="package-label">
+                YOUR COACHING PLAN
+              </span>
 
               <strong>
-                {selectedPackage.weeks}-Week {selectedPackage.name}
+                {selectedPackage.weeks}-Week{" "}
+                {selectedPackage.name}
               </strong>
+
+              <div className="payment-details">
+                <span className="payment-text">
+                  {selectedPackage.paymentText}
+                </span>
+
+                <span className="total-commitment">
+                  Total coaching commitment: $
+                  {selectedPackage.totalPrice}
+                </span>
+              </div>
             </div>
 
             <div className="package-price">
-              ${selectedPackage.price}
-              <span> total</span>
+              ${selectedPackage.todayPrice}
+              <span>
+                {" "}
+                {selectedPackage.priceLabel}
+              </span>
             </div>
           </div>
         )}
@@ -161,8 +212,10 @@ export default function JoinPage() {
         {packageLoaded && !selectedPackage && (
           <div className="package-warning">
             No coaching package selected.{" "}
-            <a href="/#pricing">Choose a package</a> before creating your
-            account.
+            <a href="/#pricing">
+              Choose a package
+            </a>{" "}
+            before creating your account.
           </div>
         )}
 
@@ -194,7 +247,9 @@ export default function JoinPage() {
             <input
               type="text"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e) =>
+                setFullName(e.target.value)
+              }
               placeholder="Your full name"
               autoComplete="name"
               disabled={loading}
@@ -206,7 +261,9 @@ export default function JoinPage() {
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
               placeholder="you@example.com"
               autoComplete="email"
               disabled={loading}
@@ -218,7 +275,9 @@ export default function JoinPage() {
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) =>
+                setPassword(e.target.value)
+              }
               placeholder="Minimum 8 characters"
               autoComplete="new-password"
               disabled={loading}
@@ -230,21 +289,33 @@ export default function JoinPage() {
             <input
               type="password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) =>
+                setConfirmPassword(e.target.value)
+              }
               placeholder="Enter password again"
               autoComplete="new-password"
               disabled={loading}
             />
           </label>
 
-          {error && <div className="error">{error}</div>}
+          {error && (
+            <div className="error">
+              {error}
+            </div>
+          )}
 
           <button
             className="submit-button"
             type="submit"
-            disabled={loading || !packageLoaded || !selectedPackage}
+            disabled={
+              loading ||
+              !packageLoaded ||
+              !selectedPackage
+            }
           >
-            {loading ? "CREATING ACCOUNT..." : "CREATE ACCOUNT & CONTINUE →"}
+            {loading
+              ? "CREATING ACCOUNT..."
+              : "CREATE ACCOUNT & CONTINUE →"}
           </button>
         </form>
 
@@ -330,7 +401,7 @@ export default function JoinPage() {
         .selected-package {
           display: flex;
           justify-content: space-between;
-          align-items: center;
+          align-items: flex-start;
           gap: 18px;
           padding: 17px 18px;
           margin-bottom: 20px;
@@ -339,7 +410,7 @@ export default function JoinPage() {
           border-radius: 12px;
         }
 
-        .selected-package > div:first-child {
+        .package-info {
           display: grid;
           gap: 5px;
         }
@@ -354,6 +425,25 @@ export default function JoinPage() {
         .selected-package strong {
           color: #ffffff;
           font-size: 15px;
+        }
+
+        .payment-details {
+          display: grid;
+          gap: 3px;
+          margin-top: 5px;
+        }
+
+        .payment-text {
+          color: #d7d7d7;
+          font-size: 12px;
+          font-weight: 700;
+          line-height: 1.4;
+        }
+
+        .total-commitment {
+          color: #8f8f8f;
+          font-size: 11px;
+          line-height: 1.4;
         }
 
         .package-price {
@@ -521,7 +611,6 @@ export default function JoinPage() {
           }
 
           .selected-package {
-            align-items: flex-start;
             flex-direction: column;
             gap: 10px;
           }

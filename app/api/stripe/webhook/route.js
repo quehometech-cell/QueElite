@@ -251,6 +251,168 @@ async function handlePackageCheckout({
   });
 }
 
+/*
+ * PAYMENT #2 SUCCESS
+ *
+ * The automatic second-payment route will create
+ * a PaymentIntent with:
+ *
+ * payment_number = 2
+ * client_package_id = client_packages.id
+ *
+ * When Stripe confirms that charge, this handler
+ * closes out the split-payment plan.
+ */
+async function handleSecondPaymentSucceeded({
+  supabaseAdmin,
+  paymentIntent,
+}) {
+  if (
+    paymentIntent.metadata?.payment_number !== "2"
+  ) {
+    return;
+  }
+
+  const clientPackageId = Number(
+    paymentIntent.metadata?.client_package_id
+  );
+
+  const userId =
+    paymentIntent.metadata?.supabase_user_id;
+
+  if (!clientPackageId || !userId) {
+    throw new Error(
+      "Second payment is missing client package metadata."
+    );
+  }
+
+  const {
+    data: clientPackage,
+    error: packageError,
+  } = await supabaseAdmin
+    .from("client_packages")
+    .select(
+      "id, user_id, payment_plan, total_payments, payments_completed"
+    )
+    .eq("id", clientPackageId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (packageError) {
+    throw packageError;
+  }
+
+  if (!clientPackage) {
+    throw new Error(
+      `Client package ${clientPackageId} was not found.`
+    );
+  }
+
+  /*
+   * Idempotency protection:
+   * if Stripe retries this webhook after we've
+   * already recorded payment #2, do nothing.
+   */
+  if (
+    Number(clientPackage.payments_completed) >= 2
+  ) {
+    return;
+  }
+
+  const { error: updateError } =
+    await supabaseAdmin
+      .from("client_packages")
+      .update({
+        payments_completed: 2,
+        payment_status: "paid_in_full",
+        next_payment_date: null,
+        next_payment_amount_cents: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", clientPackageId);
+
+  if (updateError) {
+    throw updateError;
+  }
+}
+
+/*
+ * PAYMENT #2 FAILURE
+ *
+ * Do NOT immediately cancel the client's package.
+ * We record the failed payment first so it can be
+ * handled/retried safely.
+ */
+async function handleSecondPaymentFailed({
+  supabaseAdmin,
+  paymentIntent,
+}) {
+  if (
+    paymentIntent.metadata?.payment_number !== "2"
+  ) {
+    return;
+  }
+
+  const clientPackageId = Number(
+    paymentIntent.metadata?.client_package_id
+  );
+
+  const userId =
+    paymentIntent.metadata?.supabase_user_id;
+
+  if (!clientPackageId || !userId) {
+    throw new Error(
+      "Failed second payment is missing client package metadata."
+    );
+  }
+
+  const {
+    data: clientPackage,
+    error: packageError,
+  } = await supabaseAdmin
+    .from("client_packages")
+    .select(
+      "id, user_id, payments_completed"
+    )
+    .eq("id", clientPackageId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (packageError) {
+    throw packageError;
+  }
+
+  if (!clientPackage) {
+    throw new Error(
+      `Client package ${clientPackageId} was not found.`
+    );
+  }
+
+  /*
+   * Don't overwrite a completed plan if Stripe
+   * sends an old/retried failure event.
+   */
+  if (
+    Number(clientPackage.payments_completed) >= 2
+  ) {
+    return;
+  }
+
+  const { error: updateError } =
+    await supabaseAdmin
+      .from("client_packages")
+      .update({
+        payment_status:
+          "second_payment_failed",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", clientPackageId);
+
+  if (updateError) {
+    throw updateError;
+  }
+}
+
 export async function POST(request) {
   try {
     const stripe = getStripe();
@@ -315,6 +477,30 @@ export async function POST(request) {
             session,
           });
         }
+
+        break;
+      }
+
+      case "payment_intent.succeeded": {
+        const paymentIntent =
+          event.data.object;
+
+        await handleSecondPaymentSucceeded({
+          supabaseAdmin,
+          paymentIntent,
+        });
+
+        break;
+      }
+
+      case "payment_intent.payment_failed": {
+        const paymentIntent =
+          event.data.object;
+
+        await handleSecondPaymentFailed({
+          supabaseAdmin,
+          paymentIntent,
+        });
 
         break;
       }

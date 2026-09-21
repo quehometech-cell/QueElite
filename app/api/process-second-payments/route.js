@@ -41,14 +41,6 @@ async function getSavedPaymentMethod(
   stripe,
   customerId
 ) {
-  /*
-   * The first 8/12-week Checkout Session uses
-   * setup_future_usage = "off_session".
-   *
-   * Retrieve the customer's saved card so it can
-   * be used for payment #2.
-   */
-
   const customer =
     await stripe.customers.retrieve(
       customerId
@@ -72,13 +64,6 @@ async function getSavedPaymentMethod(
     return defaultPaymentMethod.id;
   }
 
-  /*
-   * Checkout may have attached the payment
-   * method to the customer without setting it as
-   * the invoice default. If so, use the newest
-   * attached card.
-   */
-
   const paymentMethods =
     await stripe.paymentMethods.list({
       customer: customerId,
@@ -101,10 +86,8 @@ async function processClientPackage({
   clientPackage,
 }) {
   /*
-   * Protection #1:
-   * If payment #2 is already complete, do nothing.
+   * PAYMENT #2 ALREADY COMPLETED
    */
-
   if (
     Number(clientPackage.payments_completed) >= 2
   ) {
@@ -115,11 +98,9 @@ async function processClientPackage({
   }
 
   /*
-   * Protection #2:
-   * If we've already created a PaymentIntent for
-   * this second payment, don't create another one.
+   * A PaymentIntent has already been created
+   * for payment #2.
    */
-
   if (
     clientPackage.second_payment_intent_id
   ) {
@@ -128,16 +109,15 @@ async function processClientPackage({
         clientPackage.second_payment_intent_id
       );
 
+    /*
+     * Repair the database if Stripe says the
+     * payment succeeded but our webhook was
+     * delayed or temporarily failed.
+     */
     if (
       existingPaymentIntent.status ===
       "succeeded"
     ) {
-      /*
-       * Normally the webhook handles this.
-       * This fallback repairs the database if the
-       * webhook was delayed or temporarily failed.
-       */
-
       const { error } = await supabaseAdmin
         .from("client_packages")
         .update({
@@ -159,6 +139,9 @@ async function processClientPackage({
       };
     }
 
+    /*
+     * Do not create another PaymentIntent.
+     */
     return {
       id: clientPackage.id,
       status: existingPaymentIntent.status,
@@ -189,21 +172,14 @@ async function processClientPackage({
     clientPackage.next_payment_amount_cents
   );
 
-  /*
-   * Create payment #2.
-   *
-   * confirm + off_session tells Stripe to attempt
-   * the saved card immediately without requiring
-   * the client to return to Checkout.
-   *
-   * The idempotency key prevents Stripe from
-   * creating duplicate second payments if this
-   * request is accidentally repeated.
-   */
-
   let paymentIntent;
 
   try {
+    /*
+     * Create payment #2 using the payment
+     * method saved during the client's first
+     * Stripe Checkout payment.
+     */
     paymentIntent =
       await stripe.paymentIntents.create(
         {
@@ -243,46 +219,56 @@ async function processClientPackage({
           },
         },
         {
+          /*
+           * Stripe-level duplicate protection.
+           */
           idempotencyKey:
             `client-package-${clientPackage.id}-payment-2`,
         }
       );
   } catch (error) {
     /*
-     * Stripe can return a PaymentIntent inside
-     * certain card/payment errors. Save its ID
-     * when available so we never accidentally
-     * create a duplicate charge.
+     * Some Stripe payment failures return the
+     * PaymentIntent that failed.
      */
-
     const failedPaymentIntent =
       error?.payment_intent;
 
     if (failedPaymentIntent?.id) {
-      await supabaseAdmin
-        .from("client_packages")
-        .update({
-          second_payment_intent_id:
-            failedPaymentIntent.id,
+      const { error: updateError } =
+        await supabaseAdmin
+          .from("client_packages")
+          .update({
+            second_payment_intent_id:
+              failedPaymentIntent.id,
 
-          payment_status:
-            "second_payment_failed",
+            payment_status:
+              "second_payment_failed",
 
-          updated_at:
-            new Date().toISOString(),
-        })
-        .eq("id", clientPackage.id);
+            updated_at:
+              new Date().toISOString(),
+          })
+          .eq("id", clientPackage.id);
+
+      if (updateError) {
+        throw updateError;
+      }
     } else {
-      await supabaseAdmin
-        .from("client_packages")
-        .update({
-          payment_status:
-            "second_payment_failed",
+      const { error: updateError } =
+        await supabaseAdmin
+          .from("client_packages")
+          .update({
+            payment_status:
+              "second_payment_failed",
 
-          updated_at:
-            new Date().toISOString(),
-        })
-        .eq("id", clientPackage.id);
+            updated_at:
+              new Date().toISOString(),
+          })
+          .eq("id", clientPackage.id);
+
+      if (updateError) {
+        throw updateError;
+      }
     }
 
     throw error;
@@ -290,10 +276,10 @@ async function processClientPackage({
 
   /*
    * Save the PaymentIntent immediately.
-   * The webhook will separately confirm the
-   * final success/failure state.
+   *
+   * The Stripe webhook independently confirms
+   * success/failure.
    */
-
   const updateData = {
     second_payment_intent_id:
       paymentIntent.id,
@@ -333,27 +319,23 @@ async function processClientPackage({
 export async function POST(request) {
   try {
     /*
-     * IMPORTANT:
-     * This route cannot be publicly callable.
+     * Vercel Cron authentication.
      *
-     * Later, the automated scheduler will send
-     * this secret when invoking the route.
+     * Vercel sends:
+     * Authorization: Bearer <CRON_SECRET>
      */
-
     const authorization =
       request.headers.get("authorization");
 
-    if (
-      !process.env.SECOND_PAYMENT_SECRET
-    ) {
+    if (!process.env.CRON_SECRET) {
       throw new Error(
-        "SECOND_PAYMENT_SECRET is not configured."
+        "CRON_SECRET is not configured."
       );
     }
 
     if (
       authorization !==
-      `Bearer ${process.env.SECOND_PAYMENT_SECRET}`
+      `Bearer ${process.env.CRON_SECRET}`
     ) {
       return Response.json(
         {
@@ -372,10 +354,13 @@ export async function POST(request) {
     const today = getTodayUTC();
 
     /*
-     * Only retrieve active split-payment plans
-     * whose second payment is due.
+     * Find only:
+     *
+     * - active packages
+     * - split-payment packages
+     * - payment 2 not completed
+     * - payment 2 due today or overdue
      */
-
     const {
       data: duePackages,
       error: duePackagesError,
@@ -409,6 +394,9 @@ export async function POST(request) {
       throw duePackagesError;
     }
 
+    /*
+     * Nothing due = successful run.
+     */
     if (!duePackages?.length) {
       return Response.json({
         success: true,
@@ -420,6 +408,11 @@ export async function POST(request) {
 
     const results = [];
 
+    /*
+     * Process each due package separately so
+     * one failed card does not prevent another
+     * client's payment from being processed.
+     */
     for (const row of duePackages) {
       const coachingPackage =
         Array.isArray(

@@ -10,7 +10,9 @@ const PACKAGES = {
     paymentNumber: 1,
     totalPayments: 1,
     totalCents: 14900,
+    splitPayment: false,
   },
+
   6: {
     weeks: 6,
     packageId: 3,
@@ -19,7 +21,9 @@ const PACKAGES = {
     paymentNumber: 1,
     totalPayments: 1,
     totalCents: 19900,
+    splitPayment: false,
   },
+
   8: {
     weeks: 8,
     packageId: 4,
@@ -28,7 +32,9 @@ const PACKAGES = {
     paymentNumber: 1,
     totalPayments: 2,
     totalCents: 49800,
+    splitPayment: true,
   },
+
   12: {
     weeks: 12,
     packageId: 1,
@@ -37,15 +43,20 @@ const PACKAGES = {
     paymentNumber: 1,
     totalPayments: 2,
     totalCents: 69800,
+    splitPayment: true,
   },
 };
 
 const getStripe = () => {
   if (!process.env.STRIPE_SECRET_KEY) {
-    throw new Error("STRIPE_SECRET_KEY is not configured.");
+    throw new Error(
+      "STRIPE_SECRET_KEY is not configured."
+    );
   }
 
-  return new Stripe(process.env.STRIPE_SECRET_KEY);
+  return new Stripe(
+    process.env.STRIPE_SECRET_KEY
+  );
 };
 
 const getSupabaseAdmin = () => {
@@ -73,41 +84,164 @@ const getSupabaseAdmin = () => {
 export async function POST(request) {
   try {
     const stripe = getStripe();
-    const supabaseAdmin = getSupabaseAdmin();
+    const supabaseAdmin =
+      getSupabaseAdmin();
 
-    const authorization = request.headers.get("authorization");
+    const authorization =
+      request.headers.get("authorization");
 
-    if (!authorization?.startsWith("Bearer ")) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    if (
+      !authorization?.startsWith("Bearer ")
+    ) {
+      return Response.json(
+        {
+          error: "Unauthorized",
+        },
+        {
+          status: 401,
+        }
+      );
     }
 
-    const accessToken = authorization.replace("Bearer ", "");
+    const accessToken =
+      authorization.replace("Bearer ", "");
 
     const {
       data: { user },
       error: userError,
-    } = await supabaseAdmin.auth.getUser(accessToken);
+    } =
+      await supabaseAdmin.auth.getUser(
+        accessToken
+      );
 
     if (userError || !user) {
       return Response.json(
-        { error: "Invalid or expired session" },
-        { status: 401 }
+        {
+          error:
+            "Invalid or expired session",
+        },
+        {
+          status: 401,
+        }
       );
     }
 
-    const body = await request.json().catch(() => ({}));
-    const selectedWeeks = Number(body?.packageWeeks);
+    const body = await request
+      .json()
+      .catch(() => ({}));
 
-    const selectedPackage = PACKAGES[selectedWeeks];
+    const selectedWeeks = Number(
+      body?.packageWeeks
+    );
+
+    const selectedPackage =
+      PACKAGES[selectedWeeks];
 
     if (!selectedPackage) {
       return Response.json(
-        { error: "Invalid coaching package selected." },
-        { status: 400 }
+        {
+          error:
+            "Invalid coaching package selected.",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
-    const session = await stripe.checkout.sessions.create({
+    /*
+     * For 8/12-week split-payment plans we
+     * create/reuse a Stripe Customer.
+     *
+     * This is necessary because payment #2
+     * will be charged later using the saved
+     * payment method from payment #1.
+     */
+
+    let stripeCustomerId = null;
+
+    if (selectedPackage.splitPayment) {
+      /*
+       * First check whether this Supabase
+       * user already has a Stripe customer
+       * stored on a previous package.
+       */
+
+      const {
+        data: existingPackage,
+        error: existingPackageError,
+      } = await supabaseAdmin
+        .from("client_packages")
+        .select("stripe_customer_id")
+        .eq("user_id", user.id)
+        .not(
+          "stripe_customer_id",
+          "is",
+          null
+        )
+        .limit(1)
+        .maybeSingle();
+
+      if (existingPackageError) {
+        throw existingPackageError;
+      }
+
+      stripeCustomerId =
+        existingPackage?.stripe_customer_id ||
+        null;
+
+      /*
+       * If there is no existing Stripe
+       * customer, create one.
+       */
+
+      if (!stripeCustomerId) {
+        const customer =
+          await stripe.customers.create({
+            email: user.email,
+
+            metadata: {
+              supabase_user_id: user.id,
+            },
+          });
+
+        stripeCustomerId = customer.id;
+      }
+    }
+
+    const metadata = {
+      supabase_user_id: user.id,
+
+      package_id: String(
+        selectedPackage.packageId
+      ),
+
+      package_weeks: String(
+        selectedPackage.weeks
+      ),
+
+      package_name:
+        selectedPackage.name,
+
+      payment_number: String(
+        selectedPackage.paymentNumber
+      ),
+
+      total_payments: String(
+        selectedPackage.totalPayments
+      ),
+
+      total_commitment_cents: String(
+        selectedPackage.totalCents
+      ),
+
+      payment_plan:
+        selectedPackage.splitPayment
+          ? "split"
+          : "paid_in_full",
+    };
+
+    const checkoutConfig = {
       mode: "payment",
 
       line_items: [
@@ -117,30 +251,12 @@ export async function POST(request) {
         },
       ],
 
-      customer_email: user.email,
-
       client_reference_id: user.id,
 
-      metadata: {
-        supabase_user_id: user.id,
-        package_id: String(selectedPackage.packageId),
-        package_weeks: String(selectedPackage.weeks),
-        package_name: selectedPackage.name,
-        payment_number: String(selectedPackage.paymentNumber),
-        total_payments: String(selectedPackage.totalPayments),
-        total_commitment_cents: String(selectedPackage.totalCents),
-      },
+      metadata,
 
       payment_intent_data: {
-        metadata: {
-          supabase_user_id: user.id,
-          package_id: String(selectedPackage.packageId),
-          package_weeks: String(selectedPackage.weeks),
-          package_name: selectedPackage.name,
-          payment_number: String(selectedPackage.paymentNumber),
-          total_payments: String(selectedPackage.totalPayments),
-          total_commitment_cents: String(selectedPackage.totalCents),
-        },
+        metadata,
       },
 
       success_url:
@@ -150,19 +266,59 @@ export async function POST(request) {
         `https://www.getcharightfitness.com/checkout?package=${selectedPackage.weeks}`,
 
       allow_promotion_codes: true,
-    });
+    };
+
+    /*
+     * SPLIT PAYMENT
+     *
+     * Attach checkout to the Stripe Customer
+     * and tell Stripe to save the payment
+     * method for future off-session use.
+     */
+
+    if (selectedPackage.splitPayment) {
+      checkoutConfig.customer =
+        stripeCustomerId;
+
+      checkoutConfig.payment_intent_data = {
+        ...checkoutConfig.payment_intent_data,
+
+        setup_future_usage:
+          "off_session",
+      };
+    } else {
+      /*
+       * 4/6-week packages are fully paid
+       * during checkout, so no future
+       * automatic charge is required.
+       */
+
+      checkoutConfig.customer_email =
+        user.email;
+    }
+
+    const session =
+      await stripe.checkout.sessions.create(
+        checkoutConfig
+      );
 
     return Response.json({
       url: session.url,
     });
   } catch (error) {
-    console.error("Stripe checkout error:", error);
+    console.error(
+      "Stripe checkout error:",
+      error
+    );
 
     return Response.json(
       {
-        error: "Unable to create checkout session",
+        error:
+          "Unable to create checkout session",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }

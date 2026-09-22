@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
 const RESET_REDIRECT_URL =
   "https://www.getcharightfitness.com/reset-password";
+
+const VALID_PACKAGES = ["4", "6", "8", "12"];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,6 +18,16 @@ export default function LoginPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("error");
+  const [selectedPackage, setSelectedPackage] = useState(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const packageWeeks = params.get("package");
+
+    if (packageWeeks && VALID_PACKAGES.includes(packageWeeks)) {
+      setSelectedPackage(packageWeeks);
+    }
+  }, []);
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -36,6 +48,18 @@ export default function LoginPage() {
     }
 
     if (data?.user) {
+      /*
+        If the customer came here while purchasing a coaching package,
+        continue that purchase instead of sending them to /members.
+      */
+      if (selectedPackage) {
+        window.location.href = `/checkout?package=${selectedPackage}`;
+        return;
+      }
+
+      /*
+        Normal member login keeps the existing behavior.
+      */
       router.replace("/members");
       router.refresh();
       return;
@@ -131,7 +155,9 @@ export default function LoginPage() {
             lineHeight: "1.6",
           }}
         >
-          Sign in to access your training, nutrition, progress, and coaching.
+          {selectedPackage
+            ? "Sign in to continue with your selected coaching package."
+            : "Sign in to access your training, nutrition, progress, and coaching."}
         </p>
 
         <form
@@ -247,7 +273,11 @@ export default function LoginPage() {
               opacity: busy ? 0.7 : 1,
             }}
           >
-            {loading ? "SIGNING IN..." : "SIGN IN"}
+            {loading
+              ? "SIGNING IN..."
+              : selectedPackage
+                ? "SIGN IN & CONTINUE"
+                : "SIGN IN"}
           </button>
         </form>
 

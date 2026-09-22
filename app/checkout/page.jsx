@@ -57,35 +57,92 @@ export default function CheckoutPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let mounted = true;
+
     async function loadCheckout() {
       const params = new URLSearchParams(window.location.search);
       const packageWeeks = params.get("package");
       const pkg = PACKAGES[packageWeeks];
 
       if (!pkg) {
-        setError(
-          "No valid coaching package was selected. Please return to the pricing page and choose a package."
-        );
-        setLoading(false);
+        if (mounted) {
+          setError(
+            "No valid coaching package was selected. Please return to the pricing page and choose a package."
+          );
+          setLoading(false);
+        }
         return;
       }
 
-      setSelectedPackage(pkg);
+      if (mounted) {
+        setSelectedPackage(pkg);
+      }
 
+      /*
+        Use the browser session as the source of truth here.
+
+        This prevents checkout from immediately sending a recently
+        authenticated customer back to /join while Supabase is restoring
+        the browser auth state.
+      */
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-      if (!user) {
-        router.replace(`/join?package=${pkg.weeks}`);
+      if (sessionError) {
+        console.error("Checkout session error:", sessionError);
+
+        if (mounted) {
+          setError(
+            "We couldn't verify your account session. Please sign in again."
+          );
+          setLoading(false);
+        }
+
         return;
       }
 
-      setUser(user);
-      setLoading(false);
+      if (!session?.user) {
+        /*
+          Give Supabase one short opportunity to finish restoring
+          the persisted browser session before redirecting.
+        */
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        const {
+          data: { session: retrySession },
+          error: retryError,
+        } = await supabase.auth.getSession();
+
+        if (retryError) {
+          console.error("Checkout session retry error:", retryError);
+        }
+
+        if (!retrySession?.user) {
+          router.replace(`/login?package=${pkg.weeks}`);
+          return;
+        }
+
+        if (mounted) {
+          setUser(retrySession.user);
+          setLoading(false);
+        }
+
+        return;
+      }
+
+      if (mounted) {
+        setUser(session.user);
+        setLoading(false);
+      }
     }
 
     loadCheckout();
+
+    return () => {
+      mounted = false;
+    };
   }, [router]);
 
   async function handleCheckout() {
@@ -134,9 +191,12 @@ export default function CheckoutPage() {
       window.location.href = data.url;
     } catch (err) {
       console.error("Checkout error:", err);
+
       setError(
-        "We couldn't open secure checkout. Please try again."
+        err?.message ||
+          "We couldn't open secure checkout. Please try again."
       );
+
       setCheckoutLoading(false);
     }
   }

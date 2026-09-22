@@ -127,19 +127,24 @@ export default function JoinPage() {
       }
 
       /*
-        Membership is NOT activated here.
+        Creating an account does NOT activate membership.
 
-        Stripe payment confirmation will handle activation.
-        The selected package is carried forward through the flow.
+        Stripe payment confirmation handles membership activation.
+        If Supabase created an authenticated session, continue
+        directly to checkout with the selected package.
       */
 
       if (data.session) {
-        router.replace(
-          `/membership-required?package=${selectedPackage.weeks}`
-        );
-        router.refresh();
+        window.location.href =
+          `/checkout?package=${selectedPackage.weeks}`;
         return;
       }
+
+      /*
+        If email confirmation is required, preserve the selected
+        package so the customer can continue the purchase after
+        confirming their account and signing in.
+      */
 
       router.replace(
         `/login?message=${encodeURIComponent(
@@ -148,6 +153,7 @@ export default function JoinPage() {
       );
     } catch (err) {
       console.error("Join error:", err);
+
       setError(
         err?.message ||
           "Something went wrong. Please try again."

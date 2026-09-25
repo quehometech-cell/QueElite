@@ -11,6 +11,7 @@ export default function robots() {
         "/payment-success/",
         "/reset-password/",
         "/membership-required/",
+        "/starter-kit/download/",
       ],
     },
 

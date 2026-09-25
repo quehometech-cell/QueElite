@@ -727,6 +727,9 @@ export default function MembersPage() {
         "id, calorie_target, protein_grams, carb_grams, fat_grams, water_ounces, nutrition_goal, meal_guidance, coach_notes, updated_at"
       )
       .eq("user_id", userId)
+      .eq("coach_approved", true)
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (error) {

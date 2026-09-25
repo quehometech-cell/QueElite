@@ -236,12 +236,8 @@ async function handlePackageCheckout({
     );
   }
 
-  await updateMembership(
-    supabaseAdmin,
-    userId,
-    "active"
-  );
-
+  // Write the paid package before unlocking member access. This avoids
+  // leaving an active membership behind if package activation fails.
   await activateClientPackage({
     supabaseAdmin,
     userId,
@@ -249,6 +245,12 @@ async function handlePackageCheckout({
     packageWeeks,
     session,
   });
+
+  await updateMembership(
+    supabaseAdmin,
+    userId,
+    "active"
+  );
 }
 
 /*

@@ -857,23 +857,44 @@ export default function Workouts({
     setSavingKey(key);
     setMessage("");
 
-    const { error } = await supabase
+    const weight = toNullableNumber(row.weight);
+    const reps = toNullableNumber(row.reps);
+    const rir = toNullableNumber(row.rir);
+
+    if (reps === null || reps <= 0) {
+      setMessage(`Enter the reps completed for set ${row.set_number} before saving.`);
+      setSavingKey("");
+      return;
+    }
+
+    if (rir !== null && (rir < 0 || rir > 10)) {
+      setMessage("RIR must be between 0 and 10.");
+      setSavingKey("");
+      return;
+    }
+
+    const savedAt = new Date().toISOString();
+    const { data: savedRows, error } = await supabase
       .from("workout_set_logs")
       .update({
-        weight: toNullableNumber(row.weight),
-        reps: toNullableNumber(row.reps),
-        rir: toNullableNumber(row.rir),
+        weight,
+        reps,
+        rir,
         completed: true,
-        updated_at: new Date().toISOString(),
+        updated_at: savedAt,
       })
-      .eq("id", row.id);
+      .eq("id", row.id)
+      .select("id, workout_exercise_log_id, set_number, weight, weight_unit, reps, rir, completed, notes, created_at, updated_at");
 
     if (error) {
       console.error("Set save error:", error);
       setMessage(error.message || "Unable to save set.");
+    } else if (!savedRows?.length) {
+      setMessage("This set could not be saved. Refresh the workout and try again.");
     } else {
+      const saved = savedRows[0];
       setSetLogs((current) =>
-        current.map((item) => (item.id === row.id ? { ...item, completed: true } : item))
+        current.map((item) => (item.id === row.id ? { ...item, ...saved } : item))
       );
       setMessage(`Set ${row.set_number} saved.`);
     }

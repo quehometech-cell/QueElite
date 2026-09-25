@@ -1411,8 +1411,8 @@ export async function POST(
       );
 
     const isCoach =
-      requester.role ===
-      "coach";
+      requester.role === "coach" ||
+      requester.role === "admin";
 
     if (
       !isCoach &&

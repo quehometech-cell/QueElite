@@ -70,7 +70,7 @@ export async function POST(request) {
       return errorResponse("Unable to verify coach account.", 403);
     }
 
-    if (profile.role !== "coach") {
+    if (!["coach", "admin"].includes(profile.role)) {
       return errorResponse("Only a coach can approve meal plans.", 403);
     }
 

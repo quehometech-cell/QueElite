@@ -418,6 +418,9 @@ export default function ClientNutrition({
         coach_notes:
           form.coach_notes.trim() || null,
 
+        target_source: "coach",
+        coach_approved: true,
+        coach_approved_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
 

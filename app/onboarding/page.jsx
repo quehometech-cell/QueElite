@@ -335,6 +335,40 @@ export default function OnboardingPage() {
         throw error;
       }
 
+      // The database trigger creates the pending nutrition review record.
+      // Keep this fallback so a completed assessment never reaches the member
+      // portal without nutrition data if that trigger is temporarily missed.
+      const { data: nutritionPlan, error: nutritionLookupError } =
+        await supabase
+          .from("nutrition_plans")
+          .select("id")
+          .eq("user_id", user.id)
+          .limit(1)
+          .maybeSingle();
+
+      if (nutritionLookupError) {
+        throw nutritionLookupError;
+      }
+
+      if (!nutritionPlan) {
+        const { error: nutritionInsertError } = await supabase
+          .from("nutrition_plans")
+          .insert({
+            user_id: user.id,
+            nutrition_goal: form.nutrition_goal || null,
+            meals_per_day: mealsPerDay,
+            dietary_preferences: form.dietary_preferences,
+            food_allergies: textList(form.food_allergies_text),
+            nutrition_notes: form.nutrition_notes.trim() || null,
+            target_source: "assessment",
+            coach_approved: false,
+          });
+
+        if (nutritionInsertError) {
+          throw nutritionInsertError;
+        }
+      }
+
       router.replace("/members");
       router.refresh();
     } catch (error) {

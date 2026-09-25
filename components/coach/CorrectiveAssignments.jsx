@@ -97,6 +97,39 @@ export default function CorrectiveAssignments({
         throw insertError;
       }
 
+      // Corrective work is an optional service. Assigning a routine should
+      // grant access even when the client's base package does not include it.
+      const { data: correctiveService, error: serviceError } = await supabase
+        .from("coaching_services")
+        .select("id")
+        .eq("service_key", "corrective_mobility")
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (serviceError) {
+        throw serviceError;
+      }
+
+      if (correctiveService?.id) {
+        const { error: entitlementError } = await supabase
+          .from("client_service_entitlements")
+          .upsert(
+            {
+              user_id: client.id,
+              service_id: correctiveService.id,
+              enabled: true,
+              source: "coach",
+              notes: "Enabled with active corrective routine.",
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id,service_id" }
+          );
+
+        if (entitlementError) {
+          throw entitlementError;
+        }
+      }
+
       setMessage(
         "Corrective routine assigned successfully."
       );
@@ -196,6 +229,36 @@ export default function CorrectiveAssignments({
 
       if (error) {
         throw error;
+      }
+
+      const { data: correctiveService, error: serviceError } = await supabase
+        .from("coaching_services")
+        .select("id")
+        .eq("service_key", "corrective_mobility")
+        .maybeSingle();
+
+      if (serviceError) {
+        throw serviceError;
+      }
+
+      if (correctiveService?.id) {
+        const { error: entitlementError } = await supabase
+          .from("client_service_entitlements")
+          .upsert(
+            {
+              user_id: client.id,
+              service_id: correctiveService.id,
+              enabled: false,
+              source: "coach",
+              notes: "Disabled because no corrective routine is active.",
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id,service_id" }
+          );
+
+        if (entitlementError) {
+          throw entitlementError;
+        }
       }
 
       setSelectedRoutineId("");

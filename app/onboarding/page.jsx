@@ -401,6 +401,7 @@ export default function OnboardingPage() {
 
   return (
     <main style={styles.page}>
+      <style jsx global>{`\n        @media (max-width: 600px) {\n          .gcr-onboarding-form { padding: 20px 14px !important; border-radius: 14px !important; }\n          .gcr-onboarding-form input, .gcr-onboarding-form select, .gcr-onboarding-form textarea { font-size: 16px !important; min-height: 48px; }\n          .gcr-onboarding-form button { min-height: 48px; }\n        }\n      `}</style>
       <div style={styles.container}>
         <div style={styles.header}>
           <div style={styles.brand}>
@@ -418,7 +419,7 @@ export default function OnboardingPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} style={styles.form}>
+        <form className="gcr-onboarding-form" onSubmit={handleSubmit} style={styles.form}>
           <Field label="Primary Goal">
             <select
               name="goal"
@@ -1082,7 +1083,7 @@ const styles = {
     minHeight: "100vh",
     background: "#050505",
     color: "#FFFFFF",
-    padding: "40px 20px",
+    padding: "clamp(20px, 5vw, 40px) clamp(12px, 4vw, 20px)",
   },
 
   container: {

@@ -1,0 +1,15 @@
+{
+  "name": "Get Cha Right Fitness",
+  "short_name": "Get Cha Right",
+  "description": "Personalized online fitness coaching, workouts, nutrition, progress tracking, and check-ins.",
+  "start_url": "/members",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#F4C20D",
+  "orientation": "portrait-primary",
+  "categories": ["fitness", "health", "lifestyle"],
+  "icons": [
+    {"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}

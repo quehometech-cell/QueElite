@@ -1,3 +1,5 @@
+import PWARegister from "../components/PWARegister";
+
 export const metadata = {
   metadataBase: new URL("https://www.getcharightfitness.com"),
 
@@ -50,6 +52,19 @@ export const metadata = {
       "Personalized online fitness coaching for busy professionals who want to build strength, improve mobility, and lose body fat.",
   },
 
+  manifest: "/manifest.webmanifest",
+
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
+
+  appleWebApp: {
+    capable: true,
+    title: "Get Cha Right",
+    statusBarStyle: "black-translucent",
+  },
+
   robots: {
     index: true,
     follow: true,
@@ -74,6 +89,7 @@ export default function RootLayout({ children }) {
           fontFamily: "Arial, sans-serif",
         }}
       >
+        <PWARegister />
         {children}
       </body>
     </html>

@@ -11,6 +11,7 @@ import Nutrition from "../../components/member/Nutrition";
 import Progress from "../../components/member/Progress";
 import CheckIn from "../../components/member/CheckIn";
 import ExerciseLibrary from "../../components/member/ExerciseLibrary";
+import InstallApp from "../../components/InstallApp";
 
 const CALENDLY_URL =
   "https://calendly.com/getcharighttransformations22/free-15-minute-assessment";

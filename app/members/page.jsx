@@ -1503,6 +1503,7 @@ export default function MembersPage() {
         </aside>
 
         <section className="gcr-member-content" style={styles.content}>
+          <InstallApp />
           {activeTab === "dashboard" && (
             <Dashboard
               activePackage={activePackage}

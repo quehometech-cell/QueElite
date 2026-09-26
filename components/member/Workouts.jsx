@@ -1126,8 +1126,25 @@ export default function Workouts({
   }
 
   return (
-    <div style={styles.page}>
-      <section style={styles.hero}>
+    <div className="gcr-workouts" style={styles.page}>
+      <style>{`
+        @media (max-width: 720px) {
+          .gcr-workouts .gcr-workout-hero { grid-template-columns: 1fr !important; padding: 16px !important; }
+          .gcr-workouts .gcr-day-strip { grid-template-columns: repeat(7, minmax(132px, 1fr)) !important; overflow-x: auto !important; padding-bottom: 6px !important; -webkit-overflow-scrolling: touch; }
+          .gcr-workouts .gcr-exercise-card { padding: 14px !important; }
+          .gcr-workouts .gcr-set-header { display: none !important; }
+          .gcr-workouts .gcr-set-row { grid-template-columns: 34px repeat(3, minmax(58px, 1fr)) !important; }
+          .gcr-workouts .gcr-set-row button { grid-column: 2 / -1; width: 100% !important; min-height: 44px; }
+          .gcr-workouts input, .gcr-workouts select, .gcr-workouts textarea, .gcr-workouts button { min-height: 44px; font-size: 16px !important; }
+          .gcr-workouts .gcr-history-row { align-items: flex-start !important; flex-direction: column !important; }
+          .gcr-workouts .gcr-history-right { justify-items: start !important; }
+        }
+        @media (max-width: 420px) {
+          .gcr-workouts .gcr-exercise-top { gap: 9px !important; }
+          .gcr-workouts .gcr-set-row { grid-template-columns: 30px repeat(3, minmax(52px, 1fr)) !important; gap: 5px !important; }
+        }
+      `}</style>
+      <section className="gcr-workout-hero" style={styles.hero}>
         <div>
           <div style={styles.eyebrow}>YOUR TRAINING PROGRAM</div>
           <h1 style={styles.title}>{program.name}</h1>
@@ -1153,7 +1170,7 @@ export default function Workouts({
 
       {message ? <div style={styles.message}>{message}</div> : null}
 
-      <section style={styles.dayStrip}>
+      <section className="gcr-day-strip" style={styles.dayStrip}>
         {[1, 2, 3, 4, 5, 6, 7].map((day) => {
           const meta = workoutMeta[day];
           const hasExercises = grouped[day]?.length > 0;
@@ -1320,9 +1337,10 @@ export default function Workouts({
               return (
                 <article
                   key={item.program_workout_exercise_id || `${selectedDay}-${index}`}
+                  className="gcr-exercise-card"
                   style={styles.exerciseCard}
                 >
-                  <div style={styles.exerciseTop}>
+                  <div className="gcr-exercise-top" style={styles.exerciseTop}>
                     <div style={styles.orderBadge}>{index + 1}</div>
                     <div style={styles.exerciseMain}>
                       <h3 style={styles.exerciseName}>{performedItem.name}</h3>
@@ -1501,7 +1519,7 @@ export default function Workouts({
                   {selectedSession && log && setBased ? (
                     <div style={styles.logArea}>
                       <div style={styles.logHeading}>LOG YOUR SETS</div>
-                      <div style={styles.setHeader}>
+                      <div className="gcr-set-header" style={styles.setHeader}>
                         <span>SET</span>
                         <span>WEIGHT (LB)</span>
                         <span>REPS</span>
@@ -1510,7 +1528,7 @@ export default function Workouts({
                       </div>
 
                       {loggedSets.map((row) => (
-                        <div key={row.id} style={styles.setRow}>
+                        <div key={row.id} className="gcr-set-row" style={styles.setRow}>
                           <strong style={styles.setNumber}>{row.set_number}</strong>
                           <input
                             type="number"
@@ -1726,14 +1744,14 @@ export default function Workouts({
         {workoutHistory.length ? (
           <div style={styles.historyList}>
             {workoutHistory.slice(0, 8).map((session) => (
-              <div key={session.id} style={styles.historyRow}>
+              <div key={session.id} className="gcr-history-row" style={styles.historyRow}>
                 <div>
                   <strong style={styles.historyName}>{session.workout_name}</strong>
                   <div style={styles.historyMeta}>
                     Week {session.week_number} • {DAY_NAMES[Number(session.workout_day)] || `Day ${session.workout_day}`}
                   </div>
                 </div>
-                <div style={styles.historyRight}>
+                <div className="gcr-history-right" style={styles.historyRight}>
                   <strong>{session.duration_minutes ? `${session.duration_minutes} min` : "Completed"}</strong>
                   <span>
                     {session.completed_at

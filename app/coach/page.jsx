@@ -916,8 +916,21 @@ export default function CoachPage() {
   }
 
   return (
-    <main style={styles.page}>
-      <header style={styles.header}>
+    <main className="gcr-coach" style={styles.page}>
+      <style>{`
+        @media (max-width: 820px) {
+          .gcr-coach .gcr-coach-header { align-items: stretch !important; padding: 16px !important; }
+          .gcr-coach .gcr-coach-actions { width: 100% !important; }
+          .gcr-coach .gcr-coach-actions button { flex: 1 1 150px; min-height: 44px; }
+          .gcr-coach .gcr-coach-shell { display: block !important; }
+          .gcr-coach .gcr-coach-sidebar { width: 100% !important; min-width: 0 !important; border-right: 0 !important; border-bottom: 1px solid #2A2A2A !important; }
+          .gcr-coach .gcr-coach-content { padding: 16px 12px 28px !important; min-width: 0 !important; }
+          .gcr-coach .gcr-coach-nav { overflow-x: auto !important; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; }
+          .gcr-coach .gcr-coach-nav button { min-width: max-content !important; min-height: 44px; }
+          .gcr-coach input, .gcr-coach select, .gcr-coach textarea { font-size: 16px !important; }
+        }
+      `}</style>
+      <header className="gcr-coach-header" style={styles.header}>
         <div>
           <p style={styles.brand}>
             GET CHA RIGHT FITNESS
@@ -934,7 +947,7 @@ export default function CoachPage() {
           </p>
         </div>
 
-        <div style={styles.headerActions}>
+        <div className="gcr-coach-actions" style={styles.headerActions}>
           <button
             type="button"
             onClick={() =>
@@ -955,8 +968,8 @@ export default function CoachPage() {
         </div>
       </header>
 
-      <div style={styles.shell}>
-        <aside style={styles.sidebar}>
+      <div className="gcr-coach-shell" style={styles.shell}>
+        <aside className="gcr-coach-sidebar" style={styles.sidebar}>
           <ClientList
             clients={clients}
             selectedClientId={
@@ -973,7 +986,7 @@ export default function CoachPage() {
           />
         </aside>
 
-        <section style={styles.content}>
+        <section className="gcr-coach-content" style={styles.content}>
           {!selectedClient ? (
             <div style={styles.emptyCard}>
               <p style={styles.goldLabel}>
@@ -1023,7 +1036,7 @@ export default function CoachPage() {
                 </span>
               </div>
 
-              <nav style={styles.nav}>
+              <nav className="gcr-coach-nav" style={styles.nav}>
                 {SECTIONS.map((section) => (
                   <button
                     key={section.id}

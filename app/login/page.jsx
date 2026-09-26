@@ -116,6 +116,7 @@ export default function LoginPage() {
         justifyContent: "center",
         alignItems: "center",
         padding: "20px",
+        boxSizing: "border-box",
       }}
     >
       <div
@@ -125,7 +126,8 @@ export default function LoginPage() {
           background: "#111111",
           border: "1px solid #2A2A2A",
           borderRadius: "16px",
-          padding: "36px",
+          padding: "clamp(22px, 6vw, 36px)",
+          boxSizing: "border-box",
         }}
       >
         <p

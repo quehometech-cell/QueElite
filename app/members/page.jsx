@@ -27,6 +27,16 @@ const VALID_TABS = [
 
 const ACTIVE_TAB_STORAGE_KEY = "gcr-member-active-tab";
 
+const COACH_SELF_SERVICES = [
+  "workouts",
+  "nutrition_targets",
+  "custom_meal_plan",
+  "corrective_mobility",
+  "progress_tracking",
+  "weekly_checkins",
+  "exercise_library",
+];
+
 export default function MembersPage() {
   const router = useRouter();
 
@@ -139,7 +149,12 @@ export default function MembersPage() {
 
       setProfile(profileData);
 
+      const isCoachSelf = ["coach", "admin"].includes(
+        profileData.role
+      );
+
       if (
+        !isCoachSelf &&
         profileData.membership_status !== "active"
       ) {
         router.replace("/membership-required");
@@ -168,7 +183,7 @@ export default function MembersPage() {
         throw onboardingError;
       }
 
-      if (!onboardingData) {
+      if (!onboardingData && !isCoachSelf) {
         router.replace("/onboarding");
         return;
       }
@@ -177,8 +192,17 @@ export default function MembersPage() {
       // 4. PACKAGE + SERVICE ENTITLEMENTS
       // =====================================================
 
-      const entitlementResult =
-        await loadServiceEntitlements(currentUser.id);
+      const entitlementResult = isCoachSelf
+        ? {
+            package: null,
+            services: COACH_SELF_SERVICES,
+          }
+        : await loadServiceEntitlements(currentUser.id);
+
+      if (isCoachSelf) {
+        setActivePackage(null);
+        setServiceEntitlements(COACH_SELF_SERVICES);
+      }
 
       const effectiveServices =
         entitlementResult.services;

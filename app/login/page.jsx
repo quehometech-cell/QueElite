@@ -57,10 +57,17 @@ export default function LoginPage() {
         return;
       }
 
-      /*
-        Normal member login keeps the existing behavior.
-      */
-      router.replace("/members");
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      if (["coach", "admin"].includes(profile?.role)) {
+        router.replace("/coach");
+      } else {
+        router.replace("/members");
+      }
       router.refresh();
       return;
     }
@@ -147,7 +154,7 @@ export default function LoginPage() {
             margin: "8px 0",
           }}
         >
-          MEMBER LOGIN
+          MEMBER & COACH LOGIN
         </h1>
 
         <p

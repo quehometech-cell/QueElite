@@ -586,28 +586,62 @@ export default function CoachPage() {
          * Exclude the currently logged-in coach.
          * Member accounts become the client roster.
          */
-        const {
-          data: profileRows,
-          error: clientsError,
-        } = await supabase
-          .from("profiles")
-          .select(
-            "id, full_name, email, membership_status, role, created_at"
-          )
-          .neq("id", user.id)
-          .order("full_name");
+        /*
+         * TENANT-SAFE CLIENT ROSTER
+         *
+         * Every coach only sees members assigned to their own
+         * workspace. The platform owner uses the same model.
+         */
+        const { data: workspaceRows, error: workspaceError } =
+          await supabase
+            .from("coach_workspaces")
+            .select("id, subscription_status, subscription_tier")
+            .eq("owner_id", user.id)
+            .limit(1);
 
-        if (clientsError) {
-          throw clientsError;
+        if (workspaceError) throw workspaceError;
+
+        const workspace = workspaceRows?.[0] || null;
+
+        if (!workspace) {
+          setFatalError("Your coach workspace is not configured yet.");
+          setLoading(false);
+          return;
         }
 
-        const memberProfiles = (
-          profileRows || []
-        ).filter(
-          (item) =>
-            !item.role ||
-            item.role === "member"
-        );
+        if (
+          profile.role !== "admin" &&
+          !["active", "trialing"].includes(workspace.subscription_status)
+        ) {
+          setFatalError("Your coach platform subscription is not active.");
+          setLoading(false);
+          return;
+        }
+
+        const { data: memberRows, error: memberError } =
+          await supabase
+            .from("workspace_members")
+            .select("user_id")
+            .eq("workspace_id", workspace.id)
+            .eq("workspace_role", "client")
+            .eq("status", "active");
+
+        if (memberError) throw memberError;
+
+        const clientIds = (memberRows || []).map((row) => row.user_id);
+
+        let profileRows = [];
+        if (clientIds.length > 0) {
+          const { data, error: clientsError } = await supabase
+            .from("profiles")
+            .select("id, full_name, email, membership_status, role, created_at")
+            .in("id", clientIds)
+            .order("full_name");
+          if (clientsError) throw clientsError;
+          profileRows = data || [];
+        }
+
+        const memberProfiles = profileRows;
 
         /*
          * Build the client-list summary.

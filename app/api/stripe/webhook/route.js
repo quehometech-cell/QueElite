@@ -265,6 +265,43 @@ async function handlePackageCheckout({
  * When Stripe confirms that charge, this handler
  * closes out the split-payment plan.
  */
+async function syncCoachSubscription({ supabaseAdmin, subscription }) {
+  const workspaceId = subscription.metadata?.workspace_id;
+  if (!workspaceId) return;
+
+  const tier = subscription.metadata?.coach_plan || null;
+  const limit = Number(subscription.metadata?.client_limit) || null;
+  const statusMap = {
+    trialing: "trialing",
+    active: "active",
+    past_due: "past_due",
+    unpaid: "past_due",
+    canceled: "canceled",
+    incomplete: "inactive",
+    incomplete_expired: "inactive",
+    paused: "inactive",
+  };
+  const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id || null;
+
+  const { error } = await supabaseAdmin.from("coach_workspaces").update({
+    subscription_status: statusMap[subscription.status] || "inactive",
+    subscription_tier: tier,
+    client_limit: limit,
+    stripe_customer_id: customerId,
+    stripe_subscription_id: subscription.id,
+    updated_at: new Date().toISOString(),
+  }).eq("id", workspaceId);
+  if (error) throw error;
+}
+
+async function handleCoachCheckout({ supabaseAdmin, stripe, session }) {
+  if (session.metadata?.checkout_type !== "coach_subscription" || !session.subscription) return;
+  const subscription = await stripe.subscriptions.retrieve(
+    typeof session.subscription === "string" ? session.subscription : session.subscription.id
+  );
+  await syncCoachSubscription({ supabaseAdmin, subscription });
+}
+
 async function handleSecondPaymentSucceeded({
   supabaseAdmin,
   paymentIntent,
@@ -474,12 +511,18 @@ export async function POST(request) {
         const session = event.data.object;
 
         if (session.mode === "payment") {
-          await handlePackageCheckout({
-            supabaseAdmin,
-            session,
-          });
+          await handlePackageCheckout({ supabaseAdmin, session });
         }
+        if (session.mode === "subscription") {
+          await handleCoachCheckout({ supabaseAdmin, stripe, session });
+        }
+        break;
+      }
 
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        await syncCoachSubscription({ supabaseAdmin, subscription: event.data.object });
         break;
       }
 

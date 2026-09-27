@@ -381,7 +381,7 @@ function PhotoCard({ photo, getUrl }) {
     let active = true;
     getUrl(photo.storage_path).then((value) => active && setUrl(value));
     return () => { active = false; };
-  }, [photo.storage_path]);
+  }, [photo.storage_path, getUrl]);
   return (
     <div style={styles.measurement}>
       {url ? <img src={url} alt="Private progress" style={{ width: "100%", aspectRatio: "3 / 4", objectFit: "cover", borderRadius: "8px" }} /> : <span style={styles.bodyText}>Loading photo...</span>}

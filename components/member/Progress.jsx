@@ -7,7 +7,9 @@ export default function Progress({ user }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");\n  const [photos, setPhotos] = useState([]);\n  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [message, setMessage] = useState("");
+  const [photos, setPhotos] = useState([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [form, setForm] = useState({
     weight_lbs: "",
@@ -25,7 +27,8 @@ export default function Progress({ user }) {
       return;
     }
 
-    loadProgress();\n    loadPhotos();
+    loadProgress();
+    loadPhotos();
   }, [user?.id]);
 
   async function loadProgress() {

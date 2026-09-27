@@ -12,6 +12,7 @@ import ClientProgress from "../../components/coach/ClientProgress";
 import ClientCheckIns from "../../components/coach/ClientCheckIns";
 import CorrectiveAssignments from "../../components/coach/CorrectiveAssignments";
 import CoachNotes from "../../components/coach/CoachNotes";
+import InviteClient from "../../components/coach/InviteClient";
 
 const SECTIONS = [
   { id: "overview", label: "Overview" },
@@ -1021,6 +1022,7 @@ export default function CoachPage() {
         </aside>
 
         <section className="gcr-coach-content" style={styles.content}>
+          <InviteClient onCreated={refreshClientList} />
           {!selectedClient ? (
             <div style={styles.emptyCard}>
               <p style={styles.goldLabel}>

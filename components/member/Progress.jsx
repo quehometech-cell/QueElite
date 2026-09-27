@@ -7,7 +7,7 @@ export default function Progress({ user }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState("");\n  const [photos, setPhotos] = useState([]);\n  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [form, setForm] = useState({
     weight_lbs: "",
@@ -25,7 +25,7 @@ export default function Progress({ user }) {
       return;
     }
 
-    loadProgress();
+    loadProgress();\n    loadPhotos();
   }, [user?.id]);
 
   async function loadProgress() {
@@ -48,6 +48,52 @@ export default function Progress({ user }) {
 
     setEntries(data || []);
     setLoading(false);
+  }
+
+  async function loadPhotos() {
+    const { data, error } = await supabase
+      .from("progress_photos")
+      .select("id, storage_path, photo_type, notes, recorded_at")
+      .eq("user_id", user.id)
+      .order("recorded_at", { ascending: false });
+    if (!error) setPhotos(data || []);
+  }
+
+  async function uploadPhoto(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !user?.id) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setMessage("Use a JPG, PNG, or WebP progress photo.");
+      return;
+    }
+    setUploadingPhoto(true);
+    setMessage("");
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("progress-photos").upload(path, file, { contentType: file.type, upsert: false });
+    if (uploadError) {
+      setMessage("We couldn't upload that progress photo.");
+      setUploadingPhoto(false);
+      return;
+    }
+    const { error: rowError } = await supabase.from("progress_photos").insert({
+      user_id: user.id, storage_path: path, photo_type: "front"
+    });
+    if (rowError) {
+      await supabase.storage.from("progress-photos").remove([path]);
+      setMessage("We couldn't save that progress photo.");
+    } else {
+      setMessage("Progress photo saved privately.");
+      await loadPhotos();
+    }
+    setUploadingPhoto(false);
+  }
+
+  async function signedPhotoUrl(path) {
+    const { data } = await supabase.storage.from("progress-photos").createSignedUrl(path, 300);
+    return data?.signedUrl || "";
   }
 
   function handleChange(event) {
@@ -176,6 +222,23 @@ export default function Progress({ user }) {
               : "-"
           }
         />
+      </div>
+
+      <div style={styles.formCard}>
+        <p style={styles.goldLabel}>PROGRESS PHOTOS</p>
+        <h3 style={styles.cardTitle}>Private Photo Check-Ins</h3>
+        <p style={styles.bodyText}>
+          Add front, side, or back progress photos when you have them. Photos stay private to your coaching account and coach.
+        </p>
+        <label style={{ ...styles.goldButton, display: "block", textAlign: "center" }}>
+          {uploadingPhoto ? "UPLOADING..." : "ADD PROGRESS PHOTO"}
+          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadPhoto} disabled={uploadingPhoto} style={{ display: "none" }} />
+        </label>
+        <div style={{ ...styles.measurementGrid, marginTop: "14px" }}>
+          {photos.slice(0, 6).map((photo) => (
+            <PhotoCard key={photo.id} photo={photo} getUrl={signedPhotoUrl} />
+          ))}
+        </div>
       </div>
 
       {/* ENTRY FORM */}
@@ -309,6 +372,21 @@ export default function Progress({ user }) {
         )}
       </div>
     </section>
+  );
+}
+
+function PhotoCard({ photo, getUrl }) {
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    let active = true;
+    getUrl(photo.storage_path).then((value) => active && setUrl(value));
+    return () => { active = false; };
+  }, [photo.storage_path]);
+  return (
+    <div style={styles.measurement}>
+      {url ? <img src={url} alt="Private progress" style={{ width: "100%", aspectRatio: "3 / 4", objectFit: "cover", borderRadius: "8px" }} /> : <span style={styles.bodyText}>Loading photo...</span>}
+      <span style={{ ...styles.measurementLabel, marginTop: "8px" }}>{formatDate(photo.recorded_at)}</span>
+    </div>
   );
 }
 

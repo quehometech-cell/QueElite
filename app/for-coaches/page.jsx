@@ -1,4 +1,10 @@
 export default function CoachPlatform() {
+  const plans = [
+    ["Starter", "$19", "Up to 5 clients"],
+    ["Coach", "$39", "Up to 20 clients"],
+    ["Pro", "$69", "Up to 50 clients"],
+    ["Studio", "$119", "Up to 100 clients"],
+  ];
   const features = [
     ["Client Management", "Keep each client organized inside your own private coaching workspace."],
     ["Workout Programming", "Assign training programs and manage client workouts from one dashboard."],
@@ -19,6 +25,7 @@ export default function CoachPlatform() {
     <section style={s.section}><p style={s.eye}>COACH PLATFORM</p><h2 style={s.h2}>Built for your coaching business.</h2>
       <div style={s.grid}>{features.map(([a,b])=><article key={a} style={s.card}><div style={s.icon}>✓</div><h3 style={s.h3}>{a}</h3><p style={s.copy}>{b}</p></article>)}</div>
     </section>
+    <section style={s.section}><p style={s.eye}>SIMPLE MONTHLY PRICING</p><h2 style={s.h2}>Grow your plan as your roster grows.</h2><p style={s.copy}>Every plan starts with a 14-day free trial. Your plan is based primarily on the number of active clients you manage.</p><div style={s.grid}>{plans.map(([name,price,limit])=><article key={name} style={s.card}><p style={s.eye}>{name.toUpperCase()}</p><div style={{fontSize:"42px",fontWeight:900}}>{price}<span style={{fontSize:"14px",color:"#888"}}>/mo</span></div><p style={s.copy}>{limit}</p><a href={"/coach-join?plan="+name.toLowerCase()} style={s.primary}>START 14-DAY TRIAL →</a></article>)}</div></section>
     <section style={s.cta}><h2 style={s.h2}>Ready to build your coach workspace?</h2><p style={s.copy}>Create a coach account. Your clients stay separate from Get Cha Right Fitness coaching clients.</p><a href="/coach-join" style={s.primary}>SIGN UP AS A COACH →</a></section>
   </main>;
 }

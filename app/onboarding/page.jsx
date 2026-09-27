@@ -86,7 +86,20 @@ export default function OnboardingPage() {
           return;
         }
 
-        if (profile.membership_status !== "active") {
+        const { data: workspaceMembership } = await supabase
+          .from("workspace_members")
+          .select("workspace_id, status, coach_workspaces(subscription_status)")
+          .eq("user_id", user.id)
+          .eq("workspace_role", "client")
+          .eq("status", "active")
+          .maybeSingle();
+        const workspaceActive =
+          !!workspaceMembership &&
+          ["active", "trialing"].includes(
+            workspaceMembership.coach_workspaces?.subscription_status
+          );
+
+        if (profile.membership_status !== "active" && !workspaceActive) {
           router.replace("/membership-required");
           return;
         }

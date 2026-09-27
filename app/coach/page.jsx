@@ -58,6 +58,7 @@ export default function CoachPage() {
   const [loading, setLoading] = useState(true);
   const [clientLoading, setClientLoading] = useState(false);
   const [fatalError, setFatalError] = useState("");
+  const [workspaceInfo, setWorkspaceInfo] = useState(null);
 
   const selectedClient = useMemo(
     () =>
@@ -596,13 +597,14 @@ export default function CoachPage() {
         const { data: workspaceRows, error: workspaceError } =
           await supabase
             .from("coach_workspaces")
-            .select("id, subscription_status, subscription_tier")
+            .select("id, subscription_status, subscription_tier, client_limit, stripe_customer_id")
             .eq("owner_id", user.id)
             .limit(1);
 
         if (workspaceError) throw workspaceError;
 
         const workspace = workspaceRows?.[0] || null;
+        setWorkspaceInfo(workspace);
 
         if (!workspace) {
           setFatalError("Your coach workspace is not configured yet.");
@@ -1022,6 +1024,10 @@ export default function CoachPage() {
         </aside>
 
         <section className="gcr-coach-content" style={styles.content}>
+          <div style={{display:"flex",gap:"10px",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",marginBottom:"14px"}}>
+            <div style={{color:"#aaa",fontSize:"13px"}}>PLAN: <b style={{color:"#F4C20D"}}>{String(workspaceInfo?.subscription_tier || "owner").toUpperCase()}</b> · {clients.length}/{workspaceInfo?.client_limit || "∞"} ACTIVE CLIENTS</div>
+            {workspaceInfo?.stripe_customer_id && <button type="button" style={styles.outlineButton} onClick={async()=>{const {data:{session}}=await supabase.auth.getSession();const r=await fetch("/api/coach-billing-portal",{method:"POST",headers:{Authorization:"Bearer "+(session?.access_token||"")}});const x=await r.json();if(x.url)window.location.href=x.url;}}>MANAGE BILLING</button>}
+          </div>
           <InviteClient onCreated={refreshClientList} />
           {!selectedClient ? (
             <div style={styles.emptyCard}>

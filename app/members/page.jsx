@@ -161,6 +161,7 @@ export default function MembersPage() {
 
       if (
         !isCoachSelf &&
+        !isWorkspaceClient &&
         profileData.membership_status !== "active"
       ) {
         router.replace("/membership-required");

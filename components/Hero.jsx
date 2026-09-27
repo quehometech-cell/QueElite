@@ -126,6 +126,18 @@ export default function Hero() {
           >
             MEMBER PORTAL
           </a>
+
+          <a
+            href="/for-coaches"
+            style={{
+              ...buttonBase,
+              background: "#FFFFFF",
+              color: "#050505",
+              border: "1px solid #FFFFFF",
+            }}
+          >
+            FOR COACHES
+          </a>
         </div>
 
         <p

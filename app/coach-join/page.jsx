@@ -29,18 +29,15 @@ export default function CoachJoinPage() {
       router.replace("/login?message=" + encodeURIComponent("Coach account created. Confirm your email, then sign in."));
       return;
     }
-    const { error: profileError } = await supabase.from("profiles").upsert({
-      id: data.user.id, email, full_name: form.fullName.trim(), role: "coach", membership_status: "inactive"
-    }, { onConflict: "id" });
-    if (profileError) { setError("Account created, but coach setup needs attention. Sign in and try again."); setLoading(false); return; }
-    const slug = form.businessName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + "-" + data.user.id.slice(0, 6);
-    const { data: workspace, error: workspaceError } = await supabase.from("coach_workspaces").insert({
-      owner_id: data.user.id, name: form.businessName.trim(), brand_name: form.businessName.trim(), contact_email: email,
-      slug, subscription_status: "inactive", subscription_tier: plan
-    }).select("id").single();
-    if (workspaceError) { setError("Account created, but workspace setup needs attention."); setLoading(false); return; }
-    await supabase.from("workspace_members").insert({ workspace_id: workspace.id, user_id: data.user.id, workspace_role: "owner", status: "active" });
     const { data: { session } } = await supabase.auth.getSession();
+    const setupResponse = await fetch("/api/coach/setup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token || ""}` },
+      body: JSON.stringify({ fullName: form.fullName, businessName: form.businessName, plan }),
+    });
+    const setupResult = await setupResponse.json();
+    if (!setupResponse.ok) { setError(setupResult.error || "Unable to set up coach workspace."); setLoading(false); return; }
+
     const response = await fetch("/api/create-coach-subscription", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token || ""}` },

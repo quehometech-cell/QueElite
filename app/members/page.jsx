@@ -11,6 +11,7 @@ import Nutrition from "../../components/member/Nutrition";
 import Progress from "../../components/member/Progress";
 import CheckIn from "../../components/member/CheckIn";
 import ExerciseLibrary from "../../components/member/ExerciseLibrary";
+import Habits from "../../components/member/Habits";
 import InstallApp from "../../components/InstallApp";
 
 const CALENDLY_URL =
@@ -24,6 +25,7 @@ const VALID_TABS = [
   "progress",
   "checkin",
   "library",
+  "habits",
 ];
 
 const ACTIVE_TAB_STORAGE_KEY = "gcr-member-active-tab";
@@ -36,6 +38,9 @@ const COACH_SELF_SERVICES = [
   "progress_tracking",
   "weekly_checkins",
   "exercise_library",
+  "habit_tracking",
+  "coach_messaging",
+  "progress_photos",
 ];
 
 export default function MembersPage() {
@@ -1461,6 +1466,14 @@ export default function MembersPage() {
               />
             )}
 
+            {hasService("habit_tracking") && (
+              <NavButton
+                label="Habits"
+                active={activeTab === "habits"}
+                onClick={() => changeTab("habits")}
+              />
+            )}
+
             {hasService("weekly_checkins") && (
               <NavButton
                 label="Check-In"
@@ -1608,6 +1621,11 @@ export default function MembersPage() {
             <Progress user={user} />
           )}
 
+          {activeTab === "habits" &&
+            hasService("habit_tracking") && (
+            <Habits user={user} />
+          )}
+
           {activeTab === "checkin" &&
             hasService("weekly_checkins") && (
             <CheckIn user={user} />
@@ -1664,6 +1682,10 @@ function isTabAllowed(
     return services.has(
       "progress_tracking"
     );
+  }
+
+  if (tab === "habits") {
+    return services.has("habit_tracking");
   }
 
   if (tab === "checkin") {

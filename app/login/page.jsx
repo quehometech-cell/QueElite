@@ -57,11 +57,52 @@ export default function LoginPage() {
         return;
       }
 
-      const { data: profile } = await supabase
+      let { data: profile } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", data.user.id)
         .maybeSingle();
+
+      const coachMeta = data.user.user_metadata || {};
+      if (coachMeta.account_type === "coach" && !["coach", "admin"].includes(profile?.role)) {
+        const plan = ["starter", "coach", "pro", "studio"].includes(coachMeta.coach_plan)
+          ? coachMeta.coach_plan
+          : "starter";
+        const setupResponse = await fetch("/api/coach/setup", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${data.session.access_token}`,
+          },
+          body: JSON.stringify({
+            fullName: coachMeta.full_name || data.user.email,
+            businessName: coachMeta.business_name || "My Coaching Business",
+            plan,
+          }),
+        });
+        if (!setupResponse.ok) {
+          const setupResult = await setupResponse.json().catch(() => ({}));
+          setMessage(setupResult.error || "Unable to finish coach account setup.");
+          setLoading(false);
+          return;
+        }
+        const subscriptionResponse = await fetch("/api/create-coach-subscription", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${data.session.access_token}`,
+          },
+          body: JSON.stringify({ plan }),
+        });
+        const subscriptionResult = await subscriptionResponse.json().catch(() => ({}));
+        if (!subscriptionResponse.ok || !subscriptionResult.url) {
+          setMessage(subscriptionResult.error || "Unable to start your coach trial.");
+          setLoading(false);
+          return;
+        }
+        window.location.href = subscriptionResult.url;
+        return;
+      }
 
       if (["coach", "admin"].includes(profile?.role)) {
         router.replace("/coach");

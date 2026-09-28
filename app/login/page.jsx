@@ -66,7 +66,14 @@ export default function LoginPage() {
       if (["coach", "admin"].includes(profile?.role)) {
         router.replace("/coach");
       } else {
-        router.replace("/members");
+        const { data: workspaceClient } = await supabase
+          .from("workspace_members")
+          .select("id")
+          .eq("user_id", data.user.id)
+          .eq("workspace_role", "client")
+          .eq("status", "active")
+          .maybeSingle();
+        router.replace(workspaceClient ? "/coach-client" : "/members");
       }
       router.refresh();
       return;

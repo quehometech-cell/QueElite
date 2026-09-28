@@ -33,6 +33,20 @@ function getSupabaseAdmin() {
   );
 }
 
+
+async function queueOwnerNotification(supabaseAdmin, { eventKey, eventType, subject, body, metadata = {} }) {
+  const { error } = await supabaseAdmin.from("owner_notifications").upsert({
+    event_key: eventKey,
+    event_type: eventType,
+    recipient_email: "getcharighttransformations22@gmail.com",
+    subject,
+    body,
+    metadata,
+    status: "pending",
+  }, { onConflict: "event_key", ignoreDuplicates: true });
+  if (error) console.error("Unable to queue owner notification:", error);
+}
+
 function addDays(date, days) {
   const result = new Date(date);
   result.setUTCDate(result.getUTCDate() + days);
@@ -251,6 +265,15 @@ async function handlePackageCheckout({
     userId,
     "active"
   );
+
+  const { data: profile } = await supabaseAdmin.from("profiles").select("full_name,email").eq("id", userId).maybeSingle();
+  await queueOwnerNotification(supabaseAdmin, {
+    eventKey: `client-payment-${session.id}`,
+    eventType: "client_payment",
+    subject: `New paid coaching client: ${coachingPackage.name}`,
+    body: `${profile?.full_name || "A new client"} (${profile?.email || "email unavailable"}) completed payment for ${coachingPackage.name} (${packageWeeks} weeks). Their membership is now active.`,
+    metadata: { userId, packageId, packageWeeks, checkoutSessionId: session.id },
+  });
 }
 
 /*
@@ -292,6 +315,15 @@ async function syncCoachSubscription({ supabaseAdmin, subscription }) {
     updated_at: new Date().toISOString(),
   }).eq("id", workspaceId);
   if (error) throw error;
+
+  const { data: workspace } = await supabaseAdmin.from("coach_workspaces").select("name,contact_email").eq("id", workspaceId).maybeSingle();
+  await queueOwnerNotification(supabaseAdmin, {
+    eventKey: `coach-subscription-${subscription.id}-${subscription.status}`,
+    eventType: subscription.status === "past_due" || subscription.status === "unpaid" ? "coach_payment_problem" : "coach_subscription",
+    subject: `Coach subscription ${subscription.status}: ${workspace?.name || tier || "coach"}`,
+    body: `${workspace?.name || "A coach workspace"} (${workspace?.contact_email || "email unavailable"}) subscription is now ${subscription.status}. Plan: ${tier || "unknown"}.`,
+    metadata: { workspaceId, subscriptionId: subscription.id, status: subscription.status, tier },
+  });
 }
 
 async function handleCoachCheckout({ supabaseAdmin, stripe, session }) {
@@ -373,6 +405,14 @@ async function handleSecondPaymentSucceeded({
   if (updateError) {
     throw updateError;
   }
+
+  await queueOwnerNotification(supabaseAdmin, {
+    eventKey: `second-payment-success-${paymentIntent.id}`,
+    eventType: "second_payment_success",
+    subject: "Client second payment received",
+    body: `Second payment succeeded for client package #${clientPackageId}.`,
+    metadata: { clientPackageId, userId, paymentIntentId: paymentIntent.id },
+  });
 }
 
 /*
@@ -450,6 +490,14 @@ async function handleSecondPaymentFailed({
   if (updateError) {
     throw updateError;
   }
+
+  await queueOwnerNotification(supabaseAdmin, {
+    eventKey: `second-payment-failed-${paymentIntent.id}`,
+    eventType: "payment_failed",
+    subject: "Client payment needs attention",
+    body: `Second payment failed for client package #${clientPackageId}. Review Stripe and contact the client if needed.`,
+    metadata: { clientPackageId, userId, paymentIntentId: paymentIntent.id },
+  });
 }
 
 export async function POST(request) {

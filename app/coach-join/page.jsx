@@ -22,7 +22,7 @@ export default function CoachJoinPage() {
     setLoading(true);
     const { data, error: authError } = await supabase.auth.signUp({
       email, password: form.password,
-      options: { data: { full_name: form.fullName.trim(), account_type: "coach", business_name: form.businessName.trim() } }
+      options: { data: { full_name: form.fullName.trim(), account_type: "coach", business_name: form.businessName.trim(), coach_plan: plan } }
     });
     if (authError || !data?.user) { setError(authError?.message || "Unable to create coach account."); setLoading(false); return; }
     if (!data.session) {

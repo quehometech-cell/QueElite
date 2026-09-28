@@ -16,6 +16,10 @@ export async function GET(request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!process.env.BREVO_API_KEY) {
+    return Response.json({ error: "BREVO_API_KEY is not configured." }, { status: 503 });
+  }
+
   const db = admin();
   const { data: rows, error } = await db
     .from("owner_notifications")

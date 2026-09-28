@@ -159,6 +159,17 @@ export default function CoachClientPage() {
         profileData.role
       );
 
+      const { data: workspaceMembership, error: workspaceMembershipError } = await supabase
+        .from("workspace_members")
+        .select("workspace_id, workspace_role, status")
+        .eq("user_id", currentUser.id)
+        .eq("workspace_role", "client")
+        .eq("status", "active")
+        .maybeSingle();
+      if (workspaceMembershipError) throw workspaceMembershipError;
+      const isWorkspaceClient = Boolean(workspaceMembership);
+      if (!isWorkspaceClient && !isCoachSelf) { router.replace("/members"); return; }
+
       if (
         !isCoachSelf &&
         !isWorkspaceClient &&
@@ -1356,15 +1367,6 @@ export default function CoachClientPage() {
                 COACH DASHBOARD
               </button>
             )}
-
-          <a
-            href={CALENDLY_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={styles.bookButton}
-          >
-            BOOK WITH QUE
-          </a>
 
           <button
             type="button"

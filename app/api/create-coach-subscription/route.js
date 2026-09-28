@@ -25,8 +25,11 @@ export async function POST(request) {
     if (!selected) return Response.json({ error: "Invalid coach plan" }, { status: 400 });
 
     const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-    const { data: workspace, error: workspaceError } = await admin.from("coach_workspaces").select("id,owner_id,stripe_customer_id").eq("owner_id", user.id).single();
+    const { data: workspace, error: workspaceError } = await admin.from("coach_workspaces").select("id,owner_id,stripe_customer_id,stripe_subscription_id,subscription_status").eq("owner_id", user.id).single();
     if (workspaceError || !workspace) return Response.json({ error: "Coach workspace not found" }, { status: 404 });
+    if (workspace.stripe_subscription_id && ["active", "trialing"].includes(workspace.subscription_status)) {
+      return Response.json({ error: "This coach workspace already has an active subscription.", alreadySubscribed: true }, { status: 409 });
+    }
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const session = await stripe.checkout.sessions.create({

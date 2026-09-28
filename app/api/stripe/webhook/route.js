@@ -317,13 +317,16 @@ async function syncCoachSubscription({ supabaseAdmin, subscription }) {
   if (error) throw error;
 
   const { data: workspace } = await supabaseAdmin.from("coach_workspaces").select("name,contact_email").eq("id", workspaceId).maybeSingle();
-  await queueOwnerNotification(supabaseAdmin, {
-    eventKey: `coach-subscription-${subscription.id}-${subscription.status}`,
-    eventType: subscription.status === "past_due" || subscription.status === "unpaid" ? "coach_payment_problem" : "coach_subscription",
-    subject: `Coach subscription ${subscription.status}: ${workspace?.name || tier || "coach"}`,
-    body: `${workspace?.name || "A coach workspace"} (${workspace?.contact_email || "email unavailable"}) subscription is now ${subscription.status}. Plan: ${tier || "unknown"}.`,
-    metadata: { workspaceId, subscriptionId: subscription.id, status: subscription.status, tier },
-  });
+  const shouldNotify = ["trialing", "active", "past_due", "unpaid", "canceled", "incomplete_expired"].includes(subscription.status);
+  if (shouldNotify) {
+    await queueOwnerNotification(supabaseAdmin, {
+      eventKey: `coach-subscription-${subscription.id}-${subscription.status}`,
+      eventType: subscription.status === "past_due" || subscription.status === "unpaid" ? "coach_payment_problem" : "coach_subscription",
+      subject: `Coach subscription ${subscription.status}: ${workspace?.name || tier || "coach"}`,
+      body: `${workspace?.name || "A coach workspace"} (${workspace?.contact_email || "email unavailable"}) subscription is now ${subscription.status}. Plan: ${tier || "unknown"}.`,
+      metadata: { workspaceId, subscriptionId: subscription.id, status: subscription.status, tier },
+    });
+  }
 }
 
 async function handleCoachCheckout({ supabaseAdmin, stripe, session }) {

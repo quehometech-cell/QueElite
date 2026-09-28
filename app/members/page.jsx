@@ -159,6 +159,17 @@ export default function MembersPage() {
         profileData.role
       );
 
+      const { data: workspaceMembership, error: workspaceMembershipError } = await supabase
+        .from("workspace_members")
+        .select("workspace_id, workspace_role, status")
+        .eq("user_id", currentUser.id)
+        .eq("workspace_role", "client")
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (workspaceMembershipError) throw workspaceMembershipError;
+      const isWorkspaceClient = Boolean(workspaceMembership);
+
       if (
         !isCoachSelf &&
         !isWorkspaceClient &&
@@ -199,14 +210,14 @@ export default function MembersPage() {
       // 4. PACKAGE + SERVICE ENTITLEMENTS
       // =====================================================
 
-      const entitlementResult = isCoachSelf
+      const entitlementResult = (isCoachSelf || isWorkspaceClient)
         ? {
             package: null,
             services: COACH_SELF_SERVICES,
           }
         : await loadServiceEntitlements(currentUser.id);
 
-      if (isCoachSelf) {
+      if (isCoachSelf || isWorkspaceClient) {
         setActivePackage(null);
         setServiceEntitlements(COACH_SELF_SERVICES);
       }

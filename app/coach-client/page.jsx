@@ -14,9 +14,6 @@ import ExerciseLibrary from "../../components/member/ExerciseLibrary";
 import Habits from "../../components/member/Habits";
 import InstallApp from "../../components/InstallApp";
 
-const CALENDLY_URL =
-  "https://calendly.com/getcharighttransformations22/free-15-minute-assessment";
-
 const VALID_TABS = [
   "dashboard",
   "workouts",
@@ -1494,21 +1491,6 @@ export default function CoachClientPage() {
               />
             )}
           </nav>
-
-          <div className="gcr-member-sidebar-bottom" style={styles.sidebarBottom}>
-            <p style={styles.sidebarText}>
-              Need help with your plan?
-            </p>
-
-            <a
-              href={CALENDLY_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={styles.sidebarBookButton}
-            >
-              BOOK WITH QUE
-            </a>
-          </div>
         </aside>
 
         <section className="gcr-member-content" style={styles.content}>

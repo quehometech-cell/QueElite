@@ -1,4 +1,5 @@
 import PWARegister from "../components/PWARegister";
+import LeadAssistant from "../components/LeadAssistant";
 
 export const metadata = {
   metadataBase: new URL("https://www.getcharightfitness.com"),
@@ -91,6 +92,7 @@ export default function RootLayout({ children }) {
       >
         <PWARegister />
         {children}
+        <LeadAssistant />
       </body>
     </html>
   );

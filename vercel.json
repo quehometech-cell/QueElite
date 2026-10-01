@@ -3,10 +3,6 @@
     {
       "path": "/api/process-second-payments",
       "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/process-notifications",
-      "schedule": "0 13 * * *"
     }
   ]
 }

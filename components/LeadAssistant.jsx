@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 
 const steps = [
   { key: "primary_goal", label: "What is your main goal?", options: ["Lose body fat", "Build muscle & strength", "Move better / improve mobility", "Build consistency"] },
@@ -10,6 +11,9 @@ const steps = [
 ];
 
 export default function LeadAssistant() {
+  const pathname = usePathname();
+  const hiddenRoutes = ["/members", "/coach", "/coach-client", "/login", "/checkout", "/payment-success", "/onboarding", "/reset-password", "/membership-required"];
+  const hidden = hiddenRoutes.some((route) => pathname === route || pathname?.startsWith(`${route}/`));
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({ first_name:"", email:"", phone:"", email_consent:false, sms_consent:false });
@@ -25,6 +29,8 @@ export default function LeadAssistant() {
       setDone(true);
     } catch(e){setError(e.message)} finally {setBusy(false)}
   }
+
+  if (hidden) return null;
 
   const s={green:"#F4C20D",black:"#050505",panel:"#111",muted:"#B8B8B8"};
   return <>

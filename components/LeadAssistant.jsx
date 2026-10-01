@@ -12,7 +12,7 @@ const steps = [
 export default function LeadAssistant() {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState({ first_name:"", email:"", phone:"", email_consent:true, sms_consent:false });
+  const [form, setForm] = useState({ first_name:"", email:"", phone:"", email_consent:false, sms_consent:false });
   const [busy,setBusy]=useState(false); const [done,setDone]=useState(false); const [error,setError]=useState("");
 
   function choose(value){ setForm(v=>({...v,[steps[step].key]:value})); setStep(s=>s+1); }
@@ -26,14 +26,14 @@ export default function LeadAssistant() {
     } catch(e){setError(e.message)} finally {setBusy(false)}
   }
 
-  const s={green:"#7CFF00",black:"#050505",panel:"#111",muted:"#B8B8B8"};
+  const s={green:"#F4C20D",black:"#050505",panel:"#111",muted:"#B8B8B8"};
   return <>
     <button aria-label="Open fitness assistant" onClick={()=>setOpen(!open)} style={{position:"fixed",right:20,bottom:20,zIndex:9999,border:0,borderRadius:999,padding:"14px 18px",fontWeight:900,background:s.green,color:"#050505",boxShadow:"0 8px 28px #0008",cursor:"pointer"}}>{open?"CLOSE":"GET CHA RIGHT"}</button>
     {open&&<section style={{position:"fixed",right:20,bottom:78,zIndex:9998,width:"min(380px,calc(100vw - 40px))",maxHeight:"70vh",overflowY:"auto",background:s.panel,border:"1px solid #2b2b2b",borderRadius:18,padding:20,boxShadow:"0 18px 60px #000b"}}>
       <div style={{fontSize:12,fontWeight:900,color:s.green,letterSpacing:1}}>GET CHA RIGHT FITNESS</div>
       {!done && <h3 style={{margin:"8px 0 8px",fontSize:22}}>Let’s find the right starting point.</h3>}
       {!done && <p style={{color:s.muted,lineHeight:1.5,marginTop:0}}>Answer a few quick questions. No pressure and no generic plan.</p>}
-      {done ? <div><h3>You’re in.</h3><p style={{color:s.muted,lineHeight:1.5}}>I saved your goals. Check your email for the next step, or view the coaching options now.</p><a href="/#pricing" style={{display:"inline-block",background:s.green,color:s.black,padding:"12px 16px",borderRadius:10,fontWeight:900,textDecoration:"none"}}>VIEW COACHING</a></div>
+      {done ? <div><h3>You’re in.</h3><p style={{color:s.muted,lineHeight:1.5}}>I saved your goals. You can view the coaching options now or book your free assessment.</p><a href="/#pricing" style={{display:"inline-block",background:s.green,color:s.black,padding:"12px 16px",borderRadius:10,fontWeight:900,textDecoration:"none"}}>VIEW COACHING</a></div>
       : step<steps.length ? <div><div style={{fontWeight:800,marginBottom:12}}>{steps[step].label}</div>{steps[step].options.map(o=><button key={o} onClick={()=>choose(o)} style={{display:"block",width:"100%",textAlign:"left",margin:"8px 0",padding:"12px",borderRadius:10,border:"1px solid #333",background:"#181818",color:"#fff",cursor:"pointer"}}>{o}</button>)}</div>
       : <form onSubmit={submit}>
           <input required placeholder="First name" value={form.first_name} onChange={e=>setForm({...form,first_name:e.target.value})} style={input}/>

@@ -49,7 +49,7 @@ export default function Pricing() {
       paymentText: "$349 today + $349 second payment",
       badge: "BEST VALUE",
       description:
-        "Our flagship 12-week transformation with personalized online coaching plus local in-person coaching available by request, subject to scheduling and location availability.",
+        "Our longest coaching option for clients who want sustained structure, accountability, and progression.",
     },
   ];
 
@@ -253,7 +253,7 @@ export default function Pricing() {
                   marginBottom: "26px",
                 }}
               >
-                {[...features, ...(pkg.weeks === 12 ? ["Local in-person coaching available by request"] : [])].map((item) => (
+                {features.map((item) => (
                   <div
                     key={item}
                     style={{

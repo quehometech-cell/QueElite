@@ -1,15 +1,5 @@
 export default function Testimonials() {
-  const transformations = [
-    {
-      name: "K. Cropper",
-      label: "12-Week Transformation",
-      note: "Client transformation",
-      beforeImage: "/transformations/k-cropper-before.jpg",
-      afterImage: "/transformations/k-cropper-after.jpg",
-      review: "Amazing knowledge and expertise! atmosphere was wonderful as well. Highly recommend",
-      reviewer: "Kevonta Cropper",
-    },
-  ];
+  const transformations = [];
 
   const reviews = [
     {

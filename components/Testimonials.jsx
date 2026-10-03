@@ -4,11 +4,15 @@ export default function Testimonials() {
       name: "Coach Que",
       label: "12-Week Transformation",
       note: "Coach transformation",
+      beforeImage: "/transformations/coach-que-before.jpg",
+      afterImage: "/transformations/coach-que-after.jpg",
     },
     {
       name: "K. Cropper",
       label: "12-Week Transformation",
       note: "Client transformation",
+      beforeImage: "/transformations/k-cropper-before.jpg",
+      afterImage: "/transformations/k-cropper-after.jpg",
       review: "Amazing knowledge and expertise! atmosphere was wonderful as well. Highly recommend",
       reviewer: "Kevonta Cropper",
     },
@@ -54,12 +58,14 @@ export default function Testimonials() {
                 <h3 style={{ fontSize: "26px", margin: "8px 0 5px" }}>{item.name}</h3>
                 <p style={{ color: "#999", margin: "0 0 18px" }}>{item.note}</p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: item.review ? "20px" : 0 }}>
-                  <div style={{ background: "#080808", border: "1px solid #333", borderRadius: "12px", minHeight: "150px", display: "grid", placeItems: "center", textAlign: "center", padding: "18px" }}>
-                    <strong>BEFORE</strong>
-                  </div>
-                  <div style={{ background: "#080808", border: "1px solid #F4C20D", borderRadius: "12px", minHeight: "150px", display: "grid", placeItems: "center", textAlign: "center", padding: "18px" }}>
-                    <strong style={{ color: "#F4C20D" }}>12 WEEKS LATER</strong>
-                  </div>
+                  <figure style={{ margin: 0 }}>
+                    <img src={item.beforeImage} alt={`${item.name} before 12-week transformation`} loading="lazy" style={{ width: "100%", height: "320px", objectFit: "cover", objectPosition: "center top", borderRadius: "12px", border: "1px solid #333", display: "block" }} />
+                    <figcaption style={{ textAlign: "center", fontWeight: 900, marginTop: "8px", fontSize: "12px" }}>BEFORE</figcaption>
+                  </figure>
+                  <figure style={{ margin: 0 }}>
+                    <img src={item.afterImage} alt={`${item.name} after 12-week transformation`} loading="lazy" style={{ width: "100%", height: "320px", objectFit: "cover", objectPosition: "center top", borderRadius: "12px", border: "1px solid #F4C20D", display: "block" }} />
+                    <figcaption style={{ textAlign: "center", fontWeight: 900, marginTop: "8px", fontSize: "12px", color: "#F4C20D" }}>12 WEEKS LATER</figcaption>
+                  </figure>
                 </div>
                 {item.review && (
                   <div style={{ borderTop: "1px solid #2A2A2A", paddingTop: "18px" }}>

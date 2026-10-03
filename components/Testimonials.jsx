@@ -1,13 +1,6 @@
 export default function Testimonials() {
   const transformations = [
     {
-      name: "Coach Que",
-      label: "12-Week Transformation",
-      note: "Coach transformation",
-      beforeImage: "/transformations/coach-que-before.jpg",
-      afterImage: "/transformations/coach-que-after.jpg",
-    },
-    {
       name: "K. Cropper",
       label: "12-Week Transformation",
       note: "Client transformation",

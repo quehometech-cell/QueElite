@@ -1,7 +1,3 @@
-"use client";
-
-import { useSearchParams } from "next/navigation";
-
 const PLAN = {
   "Lose weight / body fat": [
     ["Day 1 · Full Body + Core",["Goblet squat or bodyweight squat · 3 x 10–12","Push-up or machine chest press · 3 x 8–12","One-arm row or cable row · 3 x 10/side","Romanian deadlift · 3 x 10","Dead bug · 3 x 8/side","10-minute brisk walk"]],
@@ -41,53 +37,29 @@ const PLAN = {
 };
 
 function adjustPlan(plan, location, experience, length) {
-  const homeOnly = location === "Home";
-  const short = length === "20–30 minutes";
-  return plan.map(([title, exercises]) => [
-    title,
-    exercises.map((x) => {
-      let v = x;
-      if (homeOnly) v = v.replaceAll("machine chest press","floor press or push-up").replaceAll("leg press","backpack squat").replaceAll("cable row","band row").replaceAll("lat pulldown","band pulldown").replaceAll("cable/dumbbell row","dumbbell or band row");
-      if (experience === "Beginner") v = v.replaceAll("4 x","2 x").replaceAll("3 x","2 x");
-      return v;
-    }).slice(0, short ? 5 : exercises.length)
-  ]);
+  const homeOnly=location==="Home";
+  const short=length==="20–30 minutes";
+  return plan.map(([title,exercises])=>[title,exercises.map(x=>{
+    let v=x;
+    if(homeOnly)v=v.replaceAll("machine chest press","floor press or push-up").replaceAll("leg press","backpack squat").replaceAll("cable row","band row").replaceAll("lat pulldown","band pulldown").replaceAll("cable/dumbbell row","dumbbell or band row");
+    if(experience==="Beginner")v=v.replaceAll("4 x","2 x").replaceAll("3 x","2 x");
+    return v;
+  }).slice(0,short?5:exercises.length)]);
 }
 
-export default function PreviewPage(){
-  const params=useSearchParams();
-  const goal=params.get("goal") || "Get back into working out";
-  const location=params.get("location") || "Home";
-  const experience=params.get("experience") || "Beginner";
-  const length=params.get("length") || "30–45 minutes";
-  const days=params.get("days") || "3 days";
-  const plan=adjustPlan(PLAN[goal] || PLAN["Get back into working out"],location,experience,length);
-
+export default function PreviewPage({searchParams}) {
+  const goal=searchParams?.goal||"Get back into working out";
+  const location=searchParams?.location||"Home";
+  const experience=searchParams?.experience||"Beginner";
+  const length=searchParams?.length||"30–45 minutes";
+  const days=searchParams?.days||"3 days";
+  const plan=adjustPlan(PLAN[goal]||PLAN["Get back into working out"],location,experience,length);
   return <main style={{minHeight:"100vh",background:"#050505",color:"#fff",fontFamily:"Arial,sans-serif",paddingBottom:90}}>
-    <nav style={{padding:"16px 20px",borderBottom:"1px solid #222",display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
-      <a href="/" style={{color:"#F4C20D",fontWeight:900,textDecoration:"none"}}>GET CHA RIGHT</a>
-      <a href="/contact" style={{color:"#ccc",textDecoration:"none"}}>Talk directly with Que</a>
-    </nav>
+    <nav style={{padding:"16px 20px",borderBottom:"1px solid #222",display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}><a href="/" style={{color:"#F4C20D",fontWeight:900,textDecoration:"none"}}>GET CHA RIGHT</a><a href="/contact" style={{color:"#ccc",textDecoration:"none"}}>Talk directly with Que</a></nav>
     <section style={{maxWidth:1000,margin:"0 auto",padding:"55px 20px"}}>
-      <div style={{textAlign:"center"}}>
-        <p style={{color:"#F4C20D",fontWeight:900,letterSpacing:2,fontSize:12}}>YOUR PERSONALIZED SAMPLE</p>
-        <h1 style={{fontSize:"clamp(38px,7vw,68px)",lineHeight:1,margin:"8px 0 18px"}}>YOUR 3-DAY<br/><span style={{color:"#F4C20D"}}>COACHING PREVIEW</span></h1>
-        <p style={{color:"#bbb",fontSize:18,lineHeight:1.6,maxWidth:720,margin:"0 auto"}}>This sample was built around <strong style={{color:"#fff"}}>{goal.toLowerCase()}</strong>, {location.toLowerCase()} training, {experience.toLowerCase()} experience, {length.toLowerCase()} sessions, and about {days.toLowerCase()}.</p>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16,marginTop:38}}>
-        {plan.map(([title,items])=><article key={title} style={{background:"#111",border:"1px solid #2d2d2d",borderRadius:18,padding:24}}>
-          <h2 style={{margin:"0 0 18px",fontSize:22}}>{title}</h2>
-          <div style={{display:"grid",gap:10}}>{items.map((x,i)=><div key={i} style={{background:"#080808",border:"1px solid #242424",borderRadius:10,padding:12,color:"#ddd",lineHeight:1.45}}>{x}</div>)}</div>
-        </article>)}
-      </div>
-      <section style={{background:"#F4C20D",color:"#050505",borderRadius:18,padding:"30px 24px",marginTop:28,textAlign:"center"}}>
-        <h2 style={{margin:"0 0 10px"}}>Like the structure?</h2>
-        <p style={{maxWidth:650,margin:"0 auto 20px",lineHeight:1.6}}>Full coaching goes beyond a sample. I build your plan around your goals, equipment, schedule, progress, and coaching needs.</p>
-        <div style={{display:"flex",justifyContent:"center",gap:10,flexWrap:"wrap"}}>
-          <a href="https://calendly.com/getcharighttransformations22/free-15-minute-assessment" target="_blank" rel="noopener noreferrer" style={{background:"#050505",color:"#fff",padding:"14px 20px",borderRadius:10,textDecoration:"none",fontWeight:900}}>BOOK FREE ASSESSMENT</a>
-          <a href="/#pricing" style={{background:"#fff",color:"#050505",padding:"14px 20px",borderRadius:10,textDecoration:"none",fontWeight:900}}>SEE COACHING PLANS</a>
-        </div>
-      </section>
+      <div style={{textAlign:"center"}}><p style={{color:"#F4C20D",fontWeight:900,letterSpacing:2,fontSize:12}}>YOUR PERSONALIZED SAMPLE</p><h1 style={{fontSize:"clamp(38px,7vw,68px)",lineHeight:1,margin:"8px 0 18px"}}>YOUR 3-DAY<br/><span style={{color:"#F4C20D"}}>COACHING PREVIEW</span></h1><p style={{color:"#bbb",fontSize:18,lineHeight:1.6,maxWidth:720,margin:"0 auto"}}>This sample was built around <strong style={{color:"#fff"}}>{goal.toLowerCase()}</strong>, {location.toLowerCase()} training, {experience.toLowerCase()} experience, {length.toLowerCase()} sessions, and about {days.toLowerCase()}.</p></div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16,marginTop:38}}>{plan.map(([title,items])=><article key={title} style={{background:"#111",border:"1px solid #2d2d2d",borderRadius:18,padding:24}}><h2 style={{margin:"0 0 18px",fontSize:22}}>{title}</h2><div style={{display:"grid",gap:10}}>{items.map((x,i)=><div key={i} style={{background:"#080808",border:"1px solid #242424",borderRadius:10,padding:12,color:"#ddd",lineHeight:1.45}}>{x}</div>)}</div></article>)}</div>
+      <section style={{background:"#F4C20D",color:"#050505",borderRadius:18,padding:"30px 24px",marginTop:28,textAlign:"center"}}><h2 style={{margin:"0 0 10px"}}>Like the structure?</h2><p style={{maxWidth:650,margin:"0 auto 20px",lineHeight:1.6}}>Full coaching goes beyond a sample. I build your plan around your goals, equipment, schedule, progress, and coaching needs.</p><div style={{display:"flex",justifyContent:"center",gap:10,flexWrap:"wrap"}}><a href="https://calendly.com/getcharighttransformations22/free-15-minute-assessment" target="_blank" rel="noopener noreferrer" style={{background:"#050505",color:"#fff",padding:"14px 20px",borderRadius:10,textDecoration:"none",fontWeight:900}}>BOOK FREE ASSESSMENT</a><a href="/#pricing" style={{background:"#fff",color:"#050505",padding:"14px 20px",borderRadius:10,textDecoration:"none",fontWeight:900}}>SEE COACHING PLANS</a></div></section>
       <p style={{color:"#666",fontSize:12,lineHeight:1.5,textAlign:"center",marginTop:25}}>This is a general coaching sample, not a medical or individualized exercise assessment. Use appropriate form, choose manageable resistance, and stop if an exercise causes pain.</p>
     </section>
   </main>;

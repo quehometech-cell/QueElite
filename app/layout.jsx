@@ -92,7 +92,6 @@ export default function RootLayout({ children }) {
       >
         <PWARegister />
         {children}
-        <LeadAssistant />
 
         <div
           style={{

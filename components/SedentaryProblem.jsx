@@ -120,7 +120,7 @@ export default function SedentaryProblem() {
             textDecoration: "none",
           }}
         >
-          START MY FREE 3-DAY RESET
+          TRY MY COACHING FREE FOR 3 DAYS
         </a>
 
         {/* SEO INTERNAL LINKS */}
@@ -147,7 +147,7 @@ export default function SedentaryProblem() {
           </a>
 
           <a
-            href="/personal-trainer-georgia"
+            href="/starter-kit"
             style={{
               color: "#F4C20D",
               textDecoration: "none",
@@ -155,7 +155,7 @@ export default function SedentaryProblem() {
               fontSize: "14px",
             }}
           >
-            PERSONAL TRAINING IN GEORGIA →
+            PERSONALIZED COACHING FOR YOUR GOAL →
           </a>
         </div>
       </div>

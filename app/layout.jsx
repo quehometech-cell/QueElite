@@ -94,89 +94,95 @@ export default function RootLayout({ children }) {
         {children}
         <LeadAssistant />
 
-        <details
+        <div
           style={{
             position: "fixed",
             left: "12px",
-            bottom: "20px",
+            right: "12px",
+            bottom: "calc(76px + env(safe-area-inset-bottom))",
             zIndex: 9998,
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "8px",
+            maxWidth: "520px",
+            margin: "0 auto",
           }}
         >
-          <summary
+          <details style={{ position: "relative", minWidth: 0 }}>
+            <summary
+              style={{
+                listStyle: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: "48px",
+                boxSizing: "border-box",
+                background: "#F4C20D",
+                color: "#050505",
+                borderRadius: "999px",
+                padding: "0 12px",
+                fontWeight: 900,
+                boxShadow: "0 6px 20px rgba(0,0,0,.28)",
+                fontSize: "13px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              💬 MESSAGE QUE
+            </summary>
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                bottom: "58px",
+                width: "min(320px, calc(100vw - 24px))",
+                boxSizing: "border-box",
+                background: "#111111",
+                color: "#FFFFFF",
+                border: "1px solid #333333",
+                borderRadius: "16px",
+                padding: "18px",
+                boxShadow: "0 12px 30px rgba(0,0,0,.45)",
+              }}
+            >
+              <div style={{ fontWeight: 900, fontSize: "17px", marginBottom: "6px" }}>
+                Talk directly with Que
+              </div>
+              <p style={{ color: "#B8B8B8", lineHeight: 1.5, margin: "0 0 14px", fontSize: "13px" }}>
+                Human support. You are contacting Que directly, not an AI bot.
+              </p>
+              <div style={{ display: "grid", gap: "8px" }}>
+                <a href="sms:+14704854575" style={{ display: "block", textAlign: "center", background: "#F4C20D", color: "#050505", padding: "11px", borderRadius: "10px", textDecoration: "none", fontWeight: 900 }}>
+                  TEXT QUE
+                </a>
+                <a href="mailto:que@getcharightfitness.com" style={{ display: "block", textAlign: "center", background: "#1B1B1B", color: "#FFFFFF", border: "1px solid #333333", padding: "11px", borderRadius: "10px", textDecoration: "none", fontWeight: 900 }}>
+                  EMAIL QUE
+                </a>
+              </div>
+            </div>
+          </details>
+          <a
+            href="/starter-kit"
             style={{
-              listStyle: "none",
-              cursor: "pointer",
-              display: "inline-flex",
+              display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              minHeight: "48px",
+              boxSizing: "border-box",
               background: "#F4C20D",
               color: "#050505",
               borderRadius: "999px",
-              padding: "12px 18px",
+              padding: "0 12px",
               fontWeight: 900,
-              boxShadow: "0 8px 24px rgba(0,0,0,.35)",
-              fontSize: "14px",
+              boxShadow: "0 6px 20px rgba(0,0,0,.28)",
+              fontSize: "13px",
+              textDecoration: "none",
               whiteSpace: "nowrap",
             }}
           >
-            💬 MESSAGE QUE
-          </summary>
-          <div
-            style={{
-              position: "absolute",
-              left: 0,
-              bottom: "56px",
-              width: "min(320px, calc(100vw - 24px))",
-              boxSizing: "border-box",
-              background: "#111111",
-              color: "#FFFFFF",
-              border: "1px solid #333333",
-              borderRadius: "16px",
-              padding: "20px",
-              boxShadow: "0 12px 30px rgba(0,0,0,.45)",
-            }}
-          >
-            <div style={{ fontWeight: 900, fontSize: "18px", marginBottom: "6px" }}>
-              Talk directly with Que
-            </div>
-            <p style={{ color: "#B8B8B8", lineHeight: 1.5, margin: "0 0 16px", fontSize: "14px" }}>
-              Human support. You are contacting Que directly, not an AI bot.
-            </p>
-            <div style={{ display: "grid", gap: "10px" }}>
-              <a
-                href="sms:+14704854575"
-                style={{
-                  display: "block",
-                  textAlign: "center",
-                  background: "#F4C20D",
-                  color: "#050505",
-                  padding: "12px",
-                  borderRadius: "10px",
-                  textDecoration: "none",
-                  fontWeight: 900,
-                }}
-              >
-                TEXT QUE
-              </a>
-              <a
-                href="mailto:que@getcharightfitness.com"
-                style={{
-                  display: "block",
-                  textAlign: "center",
-                  background: "#1B1B1B",
-                  color: "#FFFFFF",
-                  border: "1px solid #333333",
-                  padding: "12px",
-                  borderRadius: "10px",
-                  textDecoration: "none",
-                  fontWeight: 900,
-                }}
-              >
-                EMAIL QUE
-              </a>
-            </div>
-          </div>
-        </details>
+            3-DAY PREVIEW
+          </a>
+        </div>
       </body>
     </html>
   );

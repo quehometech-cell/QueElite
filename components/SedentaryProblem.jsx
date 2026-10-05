@@ -30,7 +30,7 @@ export default function SedentaryProblem() {
             fontSize: "12px",
           }}
         >
-          BUILT FOR PEOPLE WHO SIT FOR WORK
+          BUILT FOR REAL LIFE
         </p>
 
         <h2
@@ -51,9 +51,8 @@ export default function SedentaryProblem() {
             margin: "0 auto 32px",
           }}
         >
-          You work at a desk, drive all day, work from home, or spend most of
-          your shift sitting. By the end of the day, your body feels like it
-          needs more movement.
+          Whether you work at a desk, stay active all day, or are simply trying to
+          get back into a routine, your training should fit your real life.
         </p>
 
         <div
@@ -98,10 +97,10 @@ export default function SedentaryProblem() {
             marginBottom: "28px",
           }}
         >
-          You don&apos;t need to become a gym person.
+          You don't need a perfect schedule.
           <br />
           <span style={{ color: "#F4C20D" }}>
-            You need a plan that fits your life.
+            You need a plan you can actually follow.
           </span>
         </p>
 
@@ -123,41 +122,8 @@ export default function SedentaryProblem() {
           TRY MY COACHING FREE FOR 3 DAYS
         </a>
 
-        {/* SEO INTERNAL LINKS */}
-        <div
-          style={{
-            marginTop: "32px",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "12px 22px",
-          }}
-        >
-          <a
-            href="/fitness-for-desk-workers"
-            style={{
-              color: "#F4C20D",
-              textDecoration: "none",
-              fontWeight: "800",
-              fontSize: "14px",
-            }}
-          >
-            FITNESS FOR DESK WORKERS →
-          </a>
-
-          <a
-            href="/starter-kit"
-            style={{
-              color: "#F4C20D",
-              textDecoration: "none",
-              fontWeight: "800",
-              fontSize: "14px",
-            }}
-          >
-            PERSONALIZED COACHING FOR YOUR GOAL →
-          </a>
-        </div>
+        <p style={{color:"#777",fontSize:"13px",lineHeight:1.6,marginTop:"28px"}}>Desk workers and people who sit for long hours can benefit from this approach too, but you do not have to fit that description to work with me.</p>
+      </div>
       </div>
     </section>
   );

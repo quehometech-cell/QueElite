@@ -97,15 +97,18 @@ export default function RootLayout({ children }) {
         <div
           style={{
             position: "fixed",
-            left: "12px",
-            right: "12px",
-            bottom: "calc(76px + env(safe-area-inset-bottom))",
+            left: 0,
+            right: 0,
+            bottom: "calc(50px + env(safe-area-inset-bottom))",
             zIndex: 9998,
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
             gap: "8px",
-            maxWidth: "520px",
-            margin: "0 auto",
+            padding: "8px 12px",
+            boxSizing: "border-box",
+            background: "rgba(5,5,5,.97)",
+            borderTop: "1px solid #292929",
+            backdropFilter: "blur(10px)",
           }}
         >
           <details style={{ position: "relative", minWidth: 0 }}>

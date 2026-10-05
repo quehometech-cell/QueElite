@@ -467,7 +467,7 @@ export default function OnlinePersonalTrainerForBeginners() {
           </a>
 
           <a
-            href="https://calendly.com/getcharighttransformations22/free-15-minute-assessment"
+            href="https://calendly.com/quehometech/30min"
             target="_blank"
             rel="noopener noreferrer"
             style={secondaryButton}

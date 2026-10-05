@@ -97,30 +97,37 @@ export default function RootLayout({ children }) {
         <details
           style={{
             position: "fixed",
-            left: "18px",
-            bottom: "18px",
+            left: "12px",
+            bottom: "20px",
             zIndex: 9998,
-            width: "min(340px, calc(100vw - 36px))",
           }}
         >
           <summary
             style={{
               listStyle: "none",
               cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
               background: "#F4C20D",
               color: "#050505",
               borderRadius: "999px",
-              padding: "14px 20px",
+              padding: "12px 18px",
               fontWeight: 900,
               boxShadow: "0 8px 24px rgba(0,0,0,.35)",
-              textAlign: "center",
+              fontSize: "14px",
+              whiteSpace: "nowrap",
             }}
           >
             💬 MESSAGE QUE
           </summary>
           <div
             style={{
-              marginTop: "10px",
+              position: "absolute",
+              left: 0,
+              bottom: "56px",
+              width: "min(320px, calc(100vw - 24px))",
+              boxSizing: "border-box",
               background: "#111111",
               color: "#FFFFFF",
               border: "1px solid #333333",

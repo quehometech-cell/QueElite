@@ -10,7 +10,7 @@ export default function Hero() {
         <a href="/join" style={{...buttonBase,background:"#F4C20D",color:"#050505",border:"1px solid #F4C20D"}}>START COACHING →</a>
         <a href="/starter-kit" style={{...buttonBase,background:"transparent",color:"#fff",border:"1px solid #3A3A3A"}}>TRY MY COACHING FREE FOR 3 DAYS</a>
       </div>
-      <p style={{color:"#777",marginTop:18,fontSize:13}}>Want to talk first? <a href="https://calendly.com/getcharighttransformations22/free-15-minute-assessment" target="_blank" rel="noopener noreferrer" style={{color:"#fff",fontWeight:800}}>Book a free 15-minute assessment.</a></p>
+      <p style={{color:"#777",marginTop:18,fontSize:13}}>Want to talk first? <a href="https://calendly.com/quehometech/30min" target="_blank" rel="noopener noreferrer" style={{color:"#fff",fontWeight:800}}>Book a free 15-minute assessment.</a></p>
     </div>
   </section>;
 }

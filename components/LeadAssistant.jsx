@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 const steps=[
@@ -15,6 +15,7 @@ export default function LeadAssistant(){
  const hiddenRoutes=["/members","/coach","/coach-client","/login","/checkout","/payment-success","/onboarding","/reset-password","/membership-required"];
  const hidden=hiddenRoutes.some(r=>pathname===r||pathname?.startsWith(r+"/"));
  const [open,setOpen]=useState(false),[step,setStep]=useState(0),[form,setForm]=useState({first_name:"",email:"",phone:"",email_consent:false,sms_consent:false}),[busy,setBusy]=useState(false),[error,setError]=useState("");
+ useEffect(()=>{if(!hidden&&new URLSearchParams(window.location.search).get("preview")==="1")setOpen(true)},[hidden]);
  if(hidden)return null;
  const gold="#F4C20D",muted="#B8B8B8";
  function choose(v){setForm(f=>({...f,[steps[step].key]:v}));setStep(s=>s+1)}

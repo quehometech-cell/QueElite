@@ -1,22 +1,20 @@
 import PWARegister from "../components/PWARegister";
-import LeadAssistant from "../components/LeadAssistant";
-
 export const metadata = {
   metadataBase: new URL("https://www.getcharightfitness.com"),
 
   title: {
-    default: "Get Cha Right Fitness | Online Personal Training",
+    default: "Get Cha Right Fitness | Personalized Fitness Coaching",
     template: "%s | Get Cha Right Fitness",
   },
 
   description:
-    "Online personal training for busy professionals and adults who spend most of their day sitting. Build strength, lose body fat, improve mobility, and stay consistent with personalized coaching.",
+    "Personalized online and hybrid fitness coaching for adults who want to lose body fat, build muscle, get stronger, move better, and stay consistent.",
 
   keywords: [
     "online personal trainer",
     "online fitness coach",
-    "personal trainer Georgia",
-    "personal trainer for busy professionals",
+    "personalized fitness coaching",
+    "online personal training",
     "fitness for desk workers",
     "sedentary lifestyle fitness",
     "strength training",
@@ -37,9 +35,9 @@ export const metadata = {
   publisher: "Get Cha Right Fitness",
 
   openGraph: {
-    title: "Get Cha Right Fitness | Online Personal Training",
+    title: "Get Cha Right Fitness | Personalized Fitness Coaching",
     description:
-      "Get stronger, move better, and lose body fat with personalized online fitness coaching built for people who spend most of their workday sitting.",
+      "Personalized fitness coaching built around your goal, schedule, experience, and training setup. Online and hybrid options available.",
     url: "https://www.getcharightfitness.com",
     siteName: "Get Cha Right Fitness",
     type: "website",
@@ -48,9 +46,9 @@ export const metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title: "Get Cha Right Fitness | Online Personal Training",
+    title: "Get Cha Right Fitness | Personalized Fitness Coaching",
     description:
-      "Personalized online fitness coaching for busy professionals who want to build strength, improve mobility, and lose body fat.",
+      "Personalized online and hybrid fitness coaching for adults who want to build strength, lose body fat, improve conditioning, and move better.",
   },
 
   manifest: "/manifest.webmanifest",
@@ -93,12 +91,12 @@ export default function RootLayout({ children }) {
         <PWARegister />
         {children}
 
-        <div
+        <div className="site-action-bar"
           style={{
             position: "fixed",
             left: 0,
             right: 0,
-            bottom: "calc(50px + env(safe-area-inset-bottom))",
+            bottom: "env(safe-area-inset-bottom)",
             zIndex: 9998,
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
@@ -108,6 +106,7 @@ export default function RootLayout({ children }) {
             background: "rgba(5,5,5,.97)",
             borderTop: "1px solid #292929",
             backdropFilter: "blur(10px)",
+            paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
           }}
         >
           <details style={{ position: "relative", minWidth: 0 }}>
@@ -185,6 +184,13 @@ export default function RootLayout({ children }) {
             3-DAY PREVIEW
           </a>
         </div>
+        <style>{`
+          body { padding-bottom: 78px; }
+          @media (min-width: 768px) {
+            .site-action-bar { display: none !important; }
+            body { padding-bottom: 0; }
+          }
+        `}</style>
       </body>
     </html>
   );

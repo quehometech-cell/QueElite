@@ -1,109 +1,20 @@
 export default function Testimonials() {
-  const transformations = [];
-
-  const reviews = [
-    {
-      name: "Kevonta Cropper",
-      text: "Amazing knowledge and expertise! atmosphere was wonderful as well. Highly recommend",
-    },
-    {
-      name: "Nolyt Ylrae",
-      text: "Laquince gone get you right . Great motivation and dedication",
-    },
+  const transformations=[
+    {name:"Coach Que",label:"PERSONAL TRANSFORMATION",beforeImage:"/transformations/coach-que-before.jpg",afterImage:"/transformations/coach-que-after.jpg"},
+    {name:"Kevonta Cropper",label:"CLIENT PROGRESS",beforeImage:"/transformations/k-cropper-before.jpg",afterImage:"/transformations/k-cropper-after.jpg"},
   ];
-
-  const steps = [
-    ["Create Your Account", "Start your Get Cha Right account and choose your coaching path."],
-    ["Complete Your Assessment", "Tell us your goals, experience, equipment, and schedule."],
-    ["Get Your Program", "Your training plan is assigned based on your onboarding and coaching needs."],
-    ["Train & Track", "Log workouts, nutrition, mobility work, and progress from your member portal."],
-    ["Check In", "Use weekly check-ins so your coach can review progress and make adjustments."],
+  const reviews=[
+    {name:"Kevonta Cropper",text:"Amazing knowledge and expertise! atmosphere was wonderful as well. Highly recommend"},
+    {name:"Nolyt Ylrae",text:"Laquince gone get you right. Great motivation and dedication"},
   ];
-
-  return (
-    <>
-      <section style={{ padding: "80px 20px", background: "#050505", color: "#FFFFFF" }}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <p style={{ color: "#F4C20D", fontWeight: "900", letterSpacing: "2px", fontSize: "12px", textAlign: "center" }}>
-            REAL PEOPLE. REAL PROGRESS.
-          </p>
-          <h2 style={{ fontSize: "clamp(34px, 5vw, 52px)", margin: "8px 0 12px", textAlign: "center" }}>
-            12-Week Transformations
-          </h2>
-          <p style={{ color: "#999", maxWidth: "680px", margin: "0 auto 34px", textAlign: "center", lineHeight: 1.6 }}>
-            Real progress built through structured training, consistency, nutrition, and accountability.
-          </p>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "18px" }}>
-            {transformations.map((item) => (
-              <article key={item.name} style={{ background: "#111", border: "1px solid #2A2A2A", borderRadius: "18px", padding: "26px" }}>
-                <div style={{ color: "#F4C20D", fontWeight: 900, fontSize: "12px", letterSpacing: "1.5px" }}>{item.label.toUpperCase()}</div>
-                <h3 style={{ fontSize: "26px", margin: "8px 0 5px" }}>{item.name}</h3>
-                <p style={{ color: "#999", margin: "0 0 18px" }}>{item.note}</p>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: item.review ? "20px" : 0 }}>
-                  <figure style={{ margin: 0 }}>
-                    <img src={item.beforeImage} alt={`${item.name} before 12-week transformation`} loading="lazy" style={{ width: "100%", height: "320px", objectFit: "cover", objectPosition: "center top", borderRadius: "12px", border: "1px solid #333", display: "block" }} />
-                    <figcaption style={{ textAlign: "center", fontWeight: 900, marginTop: "8px", fontSize: "12px" }}>BEFORE</figcaption>
-                  </figure>
-                  <figure style={{ margin: 0 }}>
-                    <img src={item.afterImage} alt={`${item.name} after 12-week transformation`} loading="lazy" style={{ width: "100%", height: "320px", objectFit: "cover", objectPosition: "center top", borderRadius: "12px", border: "1px solid #F4C20D", display: "block" }} />
-                    <figcaption style={{ textAlign: "center", fontWeight: 900, marginTop: "8px", fontSize: "12px", color: "#F4C20D" }}>12 WEEKS LATER</figcaption>
-                  </figure>
-                </div>
-                {item.review && (
-                  <div style={{ borderTop: "1px solid #2A2A2A", paddingTop: "18px" }}>
-                    <div aria-label="5 out of 5 stars" style={{ color: "#F4C20D", letterSpacing: "2px", marginBottom: "9px" }}>★★★★★</div>
-                    <p style={{ color: "#DDD", lineHeight: 1.6, margin: "0 0 8px" }}>&ldquo;{item.review}&rdquo;</p>
-                    <small style={{ color: "#888" }}>{item.reviewer} · Google Review</small>
-                  </div>
-                )}
-              </article>
-            ))}
-          </div>
-
-          <p style={{ color: "#777", fontSize: "11px", lineHeight: 1.6, textAlign: "center", maxWidth: "760px", margin: "22px auto 0" }}>
-            Individual results vary. Results depend on starting point, consistency, nutrition, training, lifestyle, and other individual factors.
-          </p>
-
-          <div style={{ marginTop: "54px" }}>
-            <p style={{ color: "#F4C20D", fontWeight: "900", letterSpacing: "2px", fontSize: "12px", textAlign: "center" }}>WHAT CLIENTS SAY</p>
-            <h2 style={{ fontSize: "clamp(30px, 4vw, 44px)", margin: "8px 0 28px", textAlign: "center" }}>5-Star Google Reviews</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "18px" }}>
-              {reviews.map((review) => (
-                <blockquote key={review.name} style={{ margin: 0, background: "#111", border: "1px solid #2A2A2A", borderRadius: "16px", padding: "24px" }}>
-                  <div aria-label="5 out of 5 stars" style={{ color: "#F4C20D", letterSpacing: "2px", marginBottom: "12px" }}>★★★★★</div>
-                  <p style={{ color: "#DDD", lineHeight: 1.65, margin: "0 0 14px" }}>&ldquo;{review.text}&rdquo;</p>
-                  <footer style={{ color: "#999", fontSize: "13px", fontWeight: 700 }}>{review.name} · Google Review</footer>
-                </blockquote>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ textAlign: "center", marginTop: "34px" }}>
-            <a href="/join?package=12" style={{ display: "inline-flex", minHeight: "52px", alignItems: "center", justifyContent: "center", background: "#F4C20D", color: "#050505", padding: "0 24px", borderRadius: "10px", textDecoration: "none", fontWeight: 900 }}>
-              START YOUR 12-WEEK TRANSFORMATION →
-            </a>
-          </div>
-        </div>
-      </section>
-
-      <section style={{ padding: "80px 20px", background: "#0D0D0D", color: "#FFFFFF" }}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <p style={{ color: "#F4C20D", fontWeight: "900", letterSpacing: "2px", fontSize: "12px", textAlign: "center" }}>SIMPLE FROM DAY ONE</p>
-          <h2 style={{ fontSize: "clamp(34px, 5vw, 52px)", margin: "8px 0 38px", textAlign: "center" }}>How It Works</h2>
-          <div style={{ display: "grid", gap: "12px" }}>
-            {steps.map(([title, description], index) => (
-              <div key={title} style={{ display: "grid", gridTemplateColumns: "52px 1fr", gap: "16px", alignItems: "start", background: "#151515", padding: "20px", border: "1px solid #2A2A2A", borderRadius: "12px" }}>
-                <div style={{ width: "44px", height: "44px", borderRadius: "50%", background: "#F4C20D", color: "#050505", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "900" }}>{index + 1}</div>
-                <div>
-                  <h3 style={{ margin: "2px 0 7px", fontSize: "18px" }}>{title}</h3>
-                  <p style={{ margin: 0, color: "#999999", lineHeight: "1.55", fontSize: "14px" }}>{description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    </>
-  );
+  const steps=[["Create Your Account","Start your Get Cha Right account and choose your coaching path."],["Complete Your Assessment","Tell me your goals, experience, equipment, and schedule."],["Get Your Program","Your training plan is built around your goal and coaching needs."],["Train & Track","Log workouts, nutrition, mobility work, and progress."],["Check In","Use check-ins so your plan can be adjusted as you progress."]];
+  const card={background:"#111",border:"1px solid #2A2A2A",borderRadius:18,padding:24};
+  return <>
+    <section style={{padding:"75px 20px",background:"#050505",color:"#fff"}}><div style={{maxWidth:1100,margin:"0 auto"}}>
+      <p style={{color:"#F4C20D",fontWeight:900,letterSpacing:2,fontSize:12,textAlign:"center"}}>PROGRESS YOU CAN SEE</p><h2 style={{fontSize:"clamp(34px,5vw,52px)",margin:"8px 0 12px",textAlign:"center"}}>Transformations & progress</h2><p style={{color:"#999",maxWidth:680,margin:"0 auto 34px",textAlign:"center",lineHeight:1.6}}>Training works best when the plan is consistent and the process is tracked. Here are real progress photos already approved for the site.</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:18}}>{transformations.map(item=><article key={item.name} style={card}><div style={{color:"#F4C20D",fontWeight:900,fontSize:12,letterSpacing:1.5}}>{item.label}</div><h3 style={{fontSize:24,margin:"8px 0 18px"}}>{item.name}</h3><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><figure style={{margin:0}}><img src={item.beforeImage} alt={`${item.name} before`} loading="lazy" style={{width:"100%",height:320,objectFit:"cover",objectPosition:"center top",borderRadius:12,border:"1px solid #333",display:"block"}}/><figcaption style={{textAlign:"center",fontWeight:900,marginTop:8,fontSize:11}}>BEFORE</figcaption></figure><figure style={{margin:0}}><img src={item.afterImage} alt={`${item.name} after`} loading="lazy" style={{width:"100%",height:320,objectFit:"cover",objectPosition:"center top",borderRadius:12,border:"1px solid #F4C20D",display:"block"}}/><figcaption style={{textAlign:"center",fontWeight:900,marginTop:8,fontSize:11,color:"#F4C20D"}}>AFTER</figcaption></figure></div></article>)}</div>
+    </div></section>
+    <section style={{padding:"75px 20px",background:"#0d0d0d",color:"#fff"}}><div style={{maxWidth:1100,margin:"0 auto"}}><p style={{color:"#F4C20D",fontWeight:900,letterSpacing:2,fontSize:12,textAlign:"center"}}>WHAT CLIENTS SAY</p><h2 style={{fontSize:"clamp(30px,4vw,44px)",margin:"8px 0 28px",textAlign:"center"}}>Client reviews</h2><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:18}}>{reviews.map(review=><blockquote key={review.name} style={{...card,margin:0}}><div style={{color:"#F4C20D",letterSpacing:2,marginBottom:12}}>★★★★★</div><p style={{color:"#DDD",lineHeight:1.65,margin:"0 0 14px"}}>“{review.text}”</p><footer style={{color:"#999",fontSize:13,fontWeight:700}}>{review.name} · Google Review</footer></blockquote>)}</div></div></section>
+    <section style={{padding:"75px 20px",background:"#050505",color:"#fff"}}><div style={{maxWidth:900,margin:"0 auto"}}><p style={{color:"#F4C20D",fontWeight:900,letterSpacing:2,fontSize:12,textAlign:"center"}}>SIMPLE FROM DAY ONE</p><h2 style={{fontSize:"clamp(34px,5vw,52px)",margin:"8px 0 38px",textAlign:"center"}}>How it works</h2><div style={{display:"grid",gap:12}}>{steps.map(([title,description],index)=><div key={title} style={{display:"grid",gridTemplateColumns:"52px 1fr",gap:16,alignItems:"start",background:"#111",padding:20,border:"1px solid #2A2A2A",borderRadius:12}}><div style={{width:44,height:44,borderRadius:"50%",background:"#F4C20D",color:"#050505",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}}>{index+1}</div><div><h3 style={{margin:"2px 0 7px",fontSize:18}}>{title}</h3><p style={{margin:0,color:"#999",lineHeight:1.55,fontSize:14}}>{description}</p></div></div>)}</div></div></section>
+  </>;
 }

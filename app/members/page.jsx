@@ -15,7 +15,7 @@ import Habits from "../../components/member/Habits";
 import InstallApp from "../../components/InstallApp";
 
 const CALENDLY_URL =
-  "https://calendly.com/getcharighttransformations22/free-15-minute-assessment";
+  "https://calendly.com/quehometech/30min";
 
 const VALID_TABS = [
   "dashboard",

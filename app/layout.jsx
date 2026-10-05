@@ -93,6 +93,83 @@ export default function RootLayout({ children }) {
         <PWARegister />
         {children}
         <LeadAssistant />
+
+        <details
+          style={{
+            position: "fixed",
+            left: "18px",
+            bottom: "18px",
+            zIndex: 9998,
+            width: "min(340px, calc(100vw - 36px))",
+          }}
+        >
+          <summary
+            style={{
+              listStyle: "none",
+              cursor: "pointer",
+              background: "#F4C20D",
+              color: "#050505",
+              borderRadius: "999px",
+              padding: "14px 20px",
+              fontWeight: 900,
+              boxShadow: "0 8px 24px rgba(0,0,0,.35)",
+              textAlign: "center",
+            }}
+          >
+            💬 MESSAGE QUE
+          </summary>
+          <div
+            style={{
+              marginTop: "10px",
+              background: "#111111",
+              color: "#FFFFFF",
+              border: "1px solid #333333",
+              borderRadius: "16px",
+              padding: "20px",
+              boxShadow: "0 12px 30px rgba(0,0,0,.45)",
+            }}
+          >
+            <div style={{ fontWeight: 900, fontSize: "18px", marginBottom: "6px" }}>
+              Talk directly with Que
+            </div>
+            <p style={{ color: "#B8B8B8", lineHeight: 1.5, margin: "0 0 16px", fontSize: "14px" }}>
+              Human support. You are contacting Que directly, not an AI bot.
+            </p>
+            <div style={{ display: "grid", gap: "10px" }}>
+              <a
+                href="sms:+14704854575"
+                style={{
+                  display: "block",
+                  textAlign: "center",
+                  background: "#F4C20D",
+                  color: "#050505",
+                  padding: "12px",
+                  borderRadius: "10px",
+                  textDecoration: "none",
+                  fontWeight: 900,
+                }}
+              >
+                TEXT QUE
+              </a>
+              <a
+                href="mailto:que@getcharightfitness.com"
+                style={{
+                  display: "block",
+                  textAlign: "center",
+                  background: "#1B1B1B",
+                  color: "#FFFFFF",
+                  border: "1px solid #333333",
+                  padding: "12px",
+                  borderRadius: "10px",
+                  textDecoration: "none",
+                  fontWeight: 900,
+                }}
+              >
+                EMAIL QUE
+              </a>
+            </div>
+          </div>
+        </details>
       </body>
     </html>
   );

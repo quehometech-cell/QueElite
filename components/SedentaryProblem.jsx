@@ -124,7 +124,6 @@ export default function SedentaryProblem() {
 
         <p style={{color:"#777",fontSize:"13px",lineHeight:1.6,marginTop:"28px"}}>Desk workers and people who sit for long hours can benefit from this approach too, but you do not have to fit that description to work with me.</p>
       </div>
-      </div>
     </section>
   );
 }

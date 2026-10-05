@@ -35,7 +35,7 @@ export default function RootLayout({ children }) {
               </div>
             </div>
           </details>
-          <a href="/starter-kit" style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"48px", boxSizing:"border-box", background:"#F4C20D", color:"#050505", borderRadius:"999px", padding:"0 12px", fontWeight:900, boxShadow:"0 6px 20px rgba(0,0,0,.28)", fontSize:"13px", textDecoration:"none", whiteSpace:"nowrap" }}>3-DAY PREVIEW</a>
+          <a href="https://calendly.com/quehometech/30min" target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"48px", boxSizing:"border-box", background:"#F4C20D", color:"#050505", borderRadius:"999px", padding:"0 12px", fontWeight:900, boxShadow:"0 6px 20px rgba(0,0,0,.28)", fontSize:"13px", textDecoration:"none", whiteSpace:"nowrap" }}>BOOK ASSESSMENT</a>
         </div>
         <style>{`
           body { padding-bottom: 78px; }

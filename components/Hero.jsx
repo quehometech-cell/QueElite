@@ -7,10 +7,8 @@ export default function Hero() {
       <p style={{maxWidth:760,color:"#BDBDBD",fontSize:"clamp(17px, 2vw, 20px)",lineHeight:1.65,margin:0}}>Lose weight or body fat, build muscle, gain healthy weight and size, get stronger, improve conditioning, move better, or get back into working out. You do not have to be sedentary to train with Get Cha Right Fitness.</p>
       <p style={{color:"#fff",fontSize:16,fontWeight:800,marginTop:18}}>Beginner to experienced. Home or gym. Most workouts 30–60 minutes. Your training days are built around your schedule.</p>
       <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:30}}>
-        <a href="/join" style={{...buttonBase,background:"#F4C20D",color:"#050505",border:"1px solid #F4C20D"}}>START YOUR TRANSFORMATION →</a>
+        <a href="/join" style={{...buttonBase,background:"#F4C20D",color:"#050505",border:"1px solid #F4C20D"}}>START COACHING →</a>
         <a href="/starter-kit" style={{...buttonBase,background:"transparent",color:"#fff",border:"1px solid #3A3A3A"}}>TRY MY COACHING FREE FOR 3 DAYS</a>
-        <a href="/members" style={{...buttonBase,background:"transparent",color:"#F4C20D",border:"1px solid #F4C20D"}}>MEMBER PORTAL</a>
-        <a href="/for-coaches" style={{...buttonBase,background:"#fff",color:"#050505",border:"1px solid #fff"}}>FOR COACHES</a>
       </div>
       <p style={{color:"#777",marginTop:18,fontSize:13}}>Want to talk first? <a href="https://calendly.com/getcharighttransformations22/free-15-minute-assessment" target="_blank" rel="noopener noreferrer" style={{color:"#fff",fontWeight:800}}>Book a free 15-minute assessment.</a></p>
     </div>

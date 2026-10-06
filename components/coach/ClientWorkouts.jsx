@@ -78,6 +78,31 @@ export default function ClientWorkouts({
     }
   }
 
+  async function unassignProgram() {
+    const assignmentId = program?.member_program_id || program?.assignment_id;
+    if (!client?.id || !assignmentId || saving) return;
+    if (!window.confirm(`Unassign ${program.name} from ${client.full_name || client.email || "this client"}? Workout history will be kept.`)) return;
+    setSaving(true);
+    setMessage("");
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error("Please sign in again before changing this assignment.");
+      const { data, error } = await supabase.from("member_programs")
+        .update({ status: "cancelled", coach_id: user.id, updated_at: new Date().toISOString() })
+        .eq("id", assignmentId).eq("user_id", client.id).eq("status", "active")
+        .select("id");
+      if (error) throw error;
+      if (!data?.length) throw new Error("This assignment changed or you do not have access. Refresh and try again.");
+      setSelectedProgramId("");
+      setMessage("Program unassigned. Workout history has been kept.");
+      if (onProgramChanged) await onProgramChanged();
+    } catch (error) {
+      setMessage(error.message || "Unable to unassign program.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const styles = {
     page: {
       display: "grid",
@@ -274,10 +299,18 @@ export default function ClientWorkouts({
                 : styles.button
             }
           >
-            {saving ? "Assigning..." : "Assign Program"}
+            {saving ? "Saving..." : "Assign Program"}
           </button>
 
-          {message && <div style={styles.message}>{message}</div>}
+          {program && (
+            <button type="button" onClick={unassignProgram}
+              disabled={saving || !(program.member_program_id || program.assignment_id)}
+              style={{ ...styles.button, marginLeft: "10px", background: "#292929", color: "#fff", border: "1px solid #666" }}>
+              Unassign Program
+            </button>
+          )}
+
+          {message && <div role="status" style={styles.message}>{message}</div>}
         </div>
       </div>
 

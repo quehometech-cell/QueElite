@@ -48,6 +48,7 @@ export default function MembersPage() {
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [sectionWarnings, setSectionWarnings] = useState([]);
 
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -110,6 +111,7 @@ export default function MembersPage() {
   async function initializePortal() {
     setLoading(true);
     setLoadError("");
+    setSectionWarnings([]);
 
     try {
       // =====================================================
@@ -165,6 +167,7 @@ export default function MembersPage() {
         .eq("user_id", currentUser.id)
         .eq("workspace_role", "client")
         .eq("status", "active")
+        .limit(1)
         .maybeSingle();
 
       if (workspaceMembershipError) throw workspaceMembershipError;
@@ -257,7 +260,7 @@ export default function MembersPage() {
       const currentProgramId =
         await loadMemberWorkout(currentUser.id);
 
-      await Promise.all([
+      const optionalResults = await Promise.allSettled([
         loadExerciseLibrary(),
         loadNutrition(currentUser.id),
         loadCorrectiveRoutine(currentUser.id),
@@ -274,6 +277,12 @@ export default function MembersPage() {
         loadLatestProgress(currentUser.id),
         loadLatestCheckIn(currentUser.id),
       ]);
+      const sectionNames = ["Exercise library", "Nutrition", "Mobility", "Workout history", "Mobility history", "Nutrition history", "Progress", "Check-ins"];
+      setSectionWarnings(optionalResults.flatMap((result, index) => {
+        if (result.status === "fulfilled") return [];
+        console.error(`${sectionNames[index]} load failed`, result.reason);
+        return [sectionNames[index]];
+      }));
     } catch (error) {
       console.error(
         "Member portal initialization error:",
@@ -281,7 +290,7 @@ export default function MembersPage() {
       );
 
       setLoadError(
-        "We couldn't load your member portal. Please refresh and try again."
+        "We couldn't load your account or training program. Please try again or contact your coach."
       );
     } finally {
       setLoading(false);
@@ -461,7 +470,7 @@ export default function MembersPage() {
   async function loadMemberWorkout(userId) {
     // Keep current_week synchronized with the assignment start date
     // before loading the active program and its current week.
-    const { error: weekSyncError } = await supabase.rpc(
+    const { data: syncedWeek, error: weekSyncError } = await supabase.rpc(
       "sync_member_program_week",
       {
         p_user_id: userId,
@@ -521,7 +530,7 @@ export default function MembersPage() {
 
     const currentWeek = Math.max(
       1,
-      Number(assignment.current_week || 1)
+      Number(syncedWeek || assignment.current_week || 1)
     );
 
     const programWithAssignment = {
@@ -1210,6 +1219,7 @@ export default function MembersPage() {
 
   return (
     <main style={styles.page}>
+      {sectionWarnings.length > 0 && <p role="status" style={{padding:16,color:"#F4C20D"}}>Your training is available. Temporarily unable to load: {sectionWarnings.join(", ")}. Please refresh to retry those sections.</p>}
       <style jsx global>{`
         * {
           box-sizing: border-box;
@@ -1453,8 +1463,7 @@ export default function MembersPage() {
             )}
 
             {(hasService("nutrition_targets") ||
-              hasService("custom_meal_plan")) &&
-              nutritionPlan && (
+              hasService("custom_meal_plan")) && (
               <NavButton
                 label="Nutrition"
                 active={
@@ -1626,6 +1635,12 @@ export default function MembersPage() {
                 handleNutritionChange
               }
             />
+          )}
+          {activeTab === "nutrition" && !nutritionPlan && (
+            <section style={{padding:24}}><h2>Nutrition not assigned yet</h2><p>Your workouts are ready to use. Your coach can add nutrition guidance when needed.</p></section>
+          )}
+          {activeTab === "corrective" && !correctiveRoutine && (
+            <section style={{padding:24}}><h2>Mobility routine not assigned yet</h2><p>You can continue with your training program.</p></section>
           )}
 
           {activeTab === "progress" &&

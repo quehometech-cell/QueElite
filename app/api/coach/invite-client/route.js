@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 function userClient(token) {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false, autoRefreshToken: false },
@@ -55,7 +55,8 @@ export async function POST(req) {
     const email = String(body.email || "").trim().toLowerCase();
     const fullName = String(body.fullName || "").trim();
 
-    if (!email || !email.includes("@")) {
+    if (!fullName) return Response.json({ error: "Enter the client's name." }, { status: 400 });
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return Response.json({ error: "Enter a valid client email." }, { status: 400 });
     }
 
@@ -76,11 +77,19 @@ export async function POST(req) {
       .maybeSingle();
 
     if (existingProfile?.id) {
+      if (existingProfile.id === user.id || ["coach", "admin"].includes(existingProfile.role)) {
+        return Response.json({error:"This is a coach account. Manage your own training from your client list."},{status:400});
+      }
+      const { error: signInEmailError } = await authed.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: false, emailRedirectTo: setupUrl },
+      });
+      if (signInEmailError) return Response.json({error:signInEmailError.message,inviteUrl:setupUrl},{status:400});
       return Response.json({
         success: true,
-        emailSent: false,
+        emailSent: true,
         inviteUrl: setupUrl,
-        message: "Invite created. This email already has an account, so send them the setup link or have them sign in first.",
+        message: `Sign-in invitation emailed to ${email}.`,
       });
     }
 

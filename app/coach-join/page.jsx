@@ -52,7 +52,7 @@ export default function CoachJoinPage() {
     <a href="/" style={s.brand}>GET CHA RIGHT</a><p style={s.eye}>COACH PLATFORM</p>
     <h1 style={s.h1}>Run Your Coaching Business</h1>
     <p style={s.plan}>Selected plan: <b>{plan.toUpperCase()}</b> · 14-day free trial</p>
-    <p style={s.copy}>This signup is for independent coaches using Get Cha Right to manage their own clients. Looking for personal coaching? <a href="/#pricing" style={s.link}>View Que&apos;s coaching plans.</a></p>
+    <p style={s.copy}>This signup is for independent coaches using Get Cha Right to manage their own clients. Looking for personal coaching? <a href="/pricing" style={s.link}>View Que&apos;s coaching plans.</a></p>
     <div style={s.notice}><b>Coach account</b><br/>Your workspace and clients stay separate from Que&apos;s personal coaching clients. Coach platform billing is separate from client coaching packages.</div>
     <form onSubmit={submit} style={s.form}>
       <Field label="Your Name" name="fullName" value={form.fullName} onChange={change}/>

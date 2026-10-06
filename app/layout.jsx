@@ -1,3 +1,4 @@
+import MarketingChrome from "../components/MarketingChrome";
 import PWARegister from "../components/PWARegister";
 import LeadAssistant from "../components/LeadAssistant";
 
@@ -22,6 +23,7 @@ export default function RootLayout({ children }) {
       <body style={{ margin: 0, background: "#050505", color: "#FFFFFF", fontFamily: "Arial, sans-serif" }}>
         <PWARegister />
         {children}
+        <MarketingChrome>
         <LeadAssistant />
         <div className="site-action-bar" style={{ position:"fixed", left:0, right:0, bottom:"env(safe-area-inset-bottom)", zIndex:9998, display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px", padding:"8px 12px", boxSizing:"border-box", background:"rgba(5,5,5,.97)", borderTop:"1px solid #292929", backdropFilter:"blur(10px)", paddingBottom:"calc(8px + env(safe-area-inset-bottom))" }}>
           <details style={{ position:"relative", minWidth:0 }}>
@@ -41,6 +43,7 @@ export default function RootLayout({ children }) {
           body { padding-bottom: 78px; }
           @media (min-width: 768px) { .site-action-bar { display:none !important; } body { padding-bottom:0; } }
         `}</style>
+        </MarketingChrome>
       </body>
     </html>
   );

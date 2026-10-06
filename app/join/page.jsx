@@ -218,7 +218,7 @@ export default function JoinPage() {
         {packageLoaded && !selectedPackage && (
           <div className="package-warning">
             No coaching package selected.{" "}
-            <a href="/#pricing">
+            <a href="/pricing">
               Choose a package
             </a>{" "}
             before creating your account.

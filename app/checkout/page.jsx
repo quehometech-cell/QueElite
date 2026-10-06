@@ -211,7 +211,7 @@ export default function CheckoutPage() {
   }
 
   function returnToPricing() {
-    router.push("/#pricing");
+    router.push("/pricing");
   }
 
   const isError = status === "error";

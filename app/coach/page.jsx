@@ -631,7 +631,7 @@ export default function CoachPage() {
 
         if (memberError) throw memberError;
 
-        const clientIds = (memberRows || []).map((row) => row.user_id);
+        const clientIds = [...new Set([user.id, ...(memberRows || []).map((row) => row.user_id)])];
 
         let profileRows = [];
         if (clientIds.length > 0) {

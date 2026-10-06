@@ -217,9 +217,13 @@ export default function Workouts({
         .select("id, week_number, name, phase_name, description, coach_notes")
         .eq("program_id", program.id)
         .eq("week_number", currentWeek)
-        .single();
+        .maybeSingle();
 
       if (weekError) throw weekError;
+      if (!weekData) {
+        setLiveExercises([]);
+        return;
+      }
 
       const { data: workoutRows, error: workoutError } = await supabase
         .from("program_workouts")

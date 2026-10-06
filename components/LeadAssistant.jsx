@@ -32,8 +32,8 @@ export default function LeadAssistant(){
   }catch(e){setError(e.message);setBusy(false)}
  }
  return <>
-  <button aria-label="Open 3-day coaching preview" onClick={()=>setOpen(!open)} style={{position:"fixed",right:20,bottom:20,zIndex:9999,border:0,borderRadius:999,padding:"14px 18px",fontWeight:900,background:gold,color:"#050505",boxShadow:"0 8px 28px #0008",cursor:"pointer"}}>{open?"CLOSE":"3-DAY PREVIEW"}</button>
-  {open&&<section style={{position:"fixed",right:20,bottom:78,zIndex:9998,width:"min(390px,calc(100vw - 40px))",maxHeight:"72vh",overflowY:"auto",background:"#111",border:"1px solid #2b2b2b",borderRadius:18,padding:20,boxShadow:"0 18px 60px #000b"}}>
+  <style>{`@media(max-width:767px){.preview-launcher{bottom:90px!important}.preview-panel{bottom:148px!important;max-height:60vh!important}}`}</style><button className="preview-launcher" aria-label="Open 3-day coaching preview" onClick={()=>setOpen(!open)} style={{position:"fixed",right:20,bottom:20,zIndex:9999,border:0,borderRadius:999,padding:"14px 18px",fontWeight:900,background:gold,color:"#050505",boxShadow:"0 8px 28px #0008",cursor:"pointer"}}>{open?"CLOSE":"3-DAY PREVIEW"}</button>
+  {open&&<section className="preview-panel" style={{position:"fixed",right:20,bottom:78,zIndex:9998,width:"min(390px,calc(100vw - 40px))",maxHeight:"72vh",overflowY:"auto",background:"#111",border:"1px solid #2b2b2b",borderRadius:18,padding:20,boxShadow:"0 18px 60px #000b"}}>
    <div style={{fontSize:12,fontWeight:900,color:gold,letterSpacing:1}}>FREE 3-DAY COACHING PREVIEW</div>
    <h3 style={{margin:"8px 0",fontSize:22}}>See what my coaching is like.</h3>
    <p style={{color:muted,lineHeight:1.5,marginTop:0}}>Choose your goal and answer a few quick questions. You'll get an actual 3-day workout preview based on your answers.</p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
 export default function ClientWorkouts({
@@ -16,6 +16,8 @@ export default function ClientWorkouts({
   );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+
+  useEffect(() => { setSelectedProgramId(program?.id || ""); }, [program?.id, client?.id]);
 
   const groupedWorkouts = useMemo(() => {
     const grouped = {};

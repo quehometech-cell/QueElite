@@ -89,6 +89,7 @@ export default function Workouts({
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [message, setMessage] = useState("");
   const [liveExercises, setLiveExercises] = useState([]);
+  const [workoutDays, setWorkoutDays] = useState([]);
   const [loadingWorkoutPlan, setLoadingWorkoutPlan] = useState(true);
   const [exerciseLogs, setExerciseLogs] = useState([]);
   const [setLogs, setSetLogs] = useState([]);
@@ -151,6 +152,9 @@ export default function Workouts({
 
   const workoutMeta = useMemo(() => {
     const result = {};
+    workoutDays.forEach(day => {
+      result[day.workout_day] = { id: day.id, name: day.name, type: day.workout_type, description: day.description, minutes: day.estimated_minutes, coachNotes: day.coach_notes, isRestDay: day.is_rest_day };
+    });
     displayExercises.forEach((item) => {
       const day = Number(item.workout_day || 1);
       if (!result[day]) {
@@ -167,7 +171,7 @@ export default function Workouts({
       }
     });
     return result;
-  }, [displayExercises]);
+  }, [displayExercises, workoutDays]);
 
   useEffect(() => {
     loadCustomizationData();
@@ -210,6 +214,7 @@ export default function Workouts({
     }
 
     setLoadingWorkoutPlan(true);
+    setWorkoutDays([]);
 
     try {
       const { data: weekData, error: weekError } = await supabase
@@ -232,6 +237,7 @@ export default function Workouts({
         .order("workout_day", { ascending: true });
 
       if (workoutError) throw workoutError;
+      setWorkoutDays(workoutRows || []);
 
       const workoutIds = (workoutRows || []).map((row) => row.id);
 
@@ -1200,7 +1206,7 @@ export default function Workouts({
                 <span style={styles.dayDate}>{formatScheduleDate(scheduledDateFor(day))}</span>
               ) : null}
               <span style={styles.dayWorkoutName}>
-                {meta?.name || (hasExercises ? "Training" : "Rest / Active Recovery")}
+                {meta?.name || (hasExercises ? "Training" : "Not assigned yet")}
               </span>
               <span
                 style={{
@@ -1220,7 +1226,7 @@ export default function Workouts({
         <div>
           <div style={styles.eyebrow}>{DAY_NAMES[selectedDay]} • DAY {selectedDay}</div>
           <h2 style={styles.workoutTitle}>
-            {selectedMeta.name || "Rest / Active Recovery"}
+            {selectedMeta.name || "Workout not assigned yet"}
           </h2>
           {selectedMeta.description ? (
             <p style={styles.muted}>{selectedMeta.description}</p>
@@ -1263,10 +1269,9 @@ export default function Workouts({
       {selectedExercises.length === 0 ? (
         <section style={styles.restCard}>
           <div style={styles.restIcon}>✓</div>
-          <h3 style={styles.exerciseName}>Recovery day</h3>
+          <h3 style={styles.exerciseName}>{selectedMeta.isRestDay ? "Recovery day" : "No exercises assigned yet"}</h3>
           <p style={styles.muted}>
-            No prescribed exercises today. Use this day for rest, light movement, walking,
-            mobility, hydration, and recovery as needed.
+            {selectedMeta.isRestDay ? "Your coach has scheduled rest and recovery for today." : "Your coach has not added exercises for this day yet."}
           </p>
         </section>
       ) : (

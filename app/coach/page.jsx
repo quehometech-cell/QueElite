@@ -1028,6 +1028,7 @@ export default function CoachPage() {
             <div style={{color:"#aaa",fontSize:"13px"}}>PLAN: <b style={{color:"#F4C20D"}}>{String(workspaceInfo?.subscription_tier || "owner").toUpperCase()}</b> · {clients.length}/{workspaceInfo?.client_limit || "∞"} ACTIVE CLIENTS</div>
             {workspaceInfo?.stripe_customer_id && <button type="button" style={styles.outlineButton} onClick={async()=>{const {data:{session}}=await supabase.auth.getSession();const r=await fetch("/api/coach-billing-portal",{method:"POST",headers:{Authorization:"Bearer "+(session?.access_token||"")}});const x=await r.json();if(x.url)window.location.href=x.url;}}>MANAGE BILLING</button>}
           </div>
+          {workspaceInfo?.subscription_tier === "owner" && <a href="/coach/workouts" style={{ ...styles.outlineButton, display: "inline-block", marginBottom: 16 }}>ADD / EDIT WORKOUTS →</a>}
           <InviteClient onCreated={refreshClientList} />
           {!selectedClient ? (
             <div style={styles.emptyCard}>

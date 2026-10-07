@@ -858,7 +858,7 @@ export default function Workouts({
 
   function updateLocalSet(setId, field, value) {
     setSetLogs((current) =>
-      current.map((row) => (row.id === setId ? { ...row, [field]: value } : row))
+      current.map((row) => (row.id === setId ? { ...row, [field]: value, completed: false } : row))
     );
   }
 
@@ -913,7 +913,7 @@ export default function Workouts({
 
   function updateLocalExerciseLog(logId, field, value) {
     setExerciseLogs((current) =>
-      current.map((row) => (row.id === logId ? { ...row, [field]: value } : row))
+      current.map((row) => (row.id === logId ? { ...row, [field]: value, completed: false } : row))
     );
   }
 
@@ -975,18 +975,14 @@ export default function Workouts({
   }
 
   async function completeWorkout() {
-    if (!selectedSession || selectedSession.status === "completed") return;
+    if (!selectedSession || selectedSession.status === "completed" || savingKey) return;
 
     const sessionExerciseLogs = exerciseLogs.filter(
       (row) => Number(row.workout_session_id) === Number(selectedSession.id)
     );
 
-    if (!sessionExerciseLogs.length) {
-      setMessage("Start the workout and log your exercises before completing it.");
-      return;
-    }
-
     const incompleteNames = [];
+    const completedSetLogIds = [];
 
     selectedExercises.forEach((item) => {
       const log = sessionExerciseLogs.find(
@@ -1011,33 +1007,25 @@ export default function Workouts({
         ).length;
 
         if (completedSets < requiredSets) incompleteNames.push(item.name);
+        else completedSetLogIds.push(log.id);
       } else if (!log.completed) {
         incompleteNames.push(item.name);
       }
     });
 
     if (incompleteNames.length) {
-      setMessage(
-        `Finish the remaining work before completing this workout: ${incompleteNames.join(", ")}.`
-      );
-      return;
+      if (!window.confirm(`${incompleteNames.length} exercise(s) are not fully logged: ${incompleteNames.join(", ")}.\n\nFinish this workout anyway? Only saved performance will be kept. Unlogged sets will stay incomplete, and this session will be locked.`)) {
+        setMessage("Workout is still open. Save your sets, or choose Complete Workout again to finish with incomplete logs.");
+        return;
+      }
     }
 
     setSavingKey("complete");
     setMessage("");
 
     try {
-      // Snapshot all set-based exercises as completed BEFORE locking the session.
-      const setBasedLogIds = sessionExerciseLogs
-        .filter((log) => {
-          const item = selectedExercises.find(
-            (exercise) =>
-              String(exercise.program_workout_exercise_id) ===
-              String(log.program_workout_exercise_id)
-          );
-          return item && isSetBasedExercise(effectiveExercise(item, log));
-        })
-        .map((log) => log.id);
+      // Mark only fully logged exercises complete before locking the session.
+      const setBasedLogIds = completedSetLogIds;
 
       if (setBasedLogIds.length) {
         const { error: exerciseCompleteError } = await supabase
@@ -1060,7 +1048,7 @@ export default function Workouts({
         Math.round((completedAt.getTime() - startedAt.getTime()) / 60000)
       );
 
-      const { error: sessionCompleteError } = await supabase
+      const { data: completedSession, error: sessionCompleteError } = await supabase
         .from("workout_sessions")
         .update({
           status: "completed",
@@ -1069,13 +1057,17 @@ export default function Workouts({
           workout_notes: workoutNotes || null,
           updated_at: completedAt.toISOString(),
         })
-        .eq("id", selectedSession.id);
+        .eq("id", selectedSession.id)
+        .eq("user_id", user.id)
+        .select("id,status")
+        .single();
 
       if (sessionCompleteError) throw sessionCompleteError;
+      if (completedSession?.status !== "completed") throw new Error("Workout was not saved. Please try again.");
 
       await loadSessions();
       await loadHistoryAndPreviousPerformance();
-      setMessage("Workout completed. Your performance is now saved in history.");
+      setMessage(incompleteNames.length ? "Workout completed with incomplete logs. Your saved performance is in history." : "Workout completed. Your performance is now saved in history.");
       if (onCompletionChange) onCompletionChange();
     } catch (error) {
       console.error("Complete workout error:", error);
@@ -1724,7 +1716,7 @@ export default function Workouts({
                 <button
                   type="button"
                   disabled={
-                    selectedSession.status === "completed" || savingKey === "complete"
+                    selectedSession.status === "completed" || Boolean(savingKey)
                   }
                   onClick={completeWorkout}
                   style={styles.completeButton}
@@ -1736,6 +1728,7 @@ export default function Workouts({
                       : "Complete Workout"}
                 </button>
               </div>
+              {message && <p role="status" aria-live="polite" style={{ color: "#F4C20D", lineHeight: 1.5 }}>{message}</p>}
             </section>
           ) : null}
         </>

@@ -17,6 +17,7 @@ export default function ClientNutrition({
     nutrition_goal: "",
     meal_guidance: "",
     coach_notes: "",
+    dietary_preferences: "", food_allergies: "", nutrition_notes: "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -41,6 +42,9 @@ export default function ClientNutrition({
       nutrition_goal: nutritionPlan?.nutrition_goal ?? "",
       meal_guidance: nutritionPlan?.meal_guidance ?? "",
       coach_notes: nutritionPlan?.coach_notes ?? "",
+      dietary_preferences: (nutritionPlan?.dietary_preferences || []).join(", "),
+      food_allergies: (nutritionPlan?.food_allergies || []).join(", "),
+      nutrition_notes: nutritionPlan?.nutrition_notes || "",
     });
 
     setMessage("");
@@ -386,6 +390,9 @@ export default function ClientNutrition({
     setErrorMessage("");
 
     try {
+      for (const key of ["calorie_target", "protein_grams", "carb_grams", "fat_grams", "water_ounces"]) {
+        if (form[key] !== "" && (!Number.isFinite(Number(form[key])) || Number(form[key]) < 0)) throw new Error("Nutrition targets must be zero or positive numbers.");
+      }
       const payload = {
         user_id: client.id,
 
@@ -418,6 +425,9 @@ export default function ClientNutrition({
         coach_notes:
           form.coach_notes.trim() || null,
 
+        dietary_preferences: form.dietary_preferences.split(",").map(v => v.trim()).filter(Boolean),
+        food_allergies: form.food_allergies.split(",").map(v => v.trim()).filter(Boolean),
+        nutrition_notes: form.nutrition_notes.trim() || null,
         target_source: "coach",
         coach_approved: true,
         coach_approved_at: new Date().toISOString(),
@@ -796,6 +806,12 @@ export default function ClientNutrition({
         </div>
       )}
 
+      <div style={styles.sectionCard}>
+        <h3>Client nutrition preferences</h3>
+        <p>Nutrition is optional. Edit targets and guidance below only when you want to assign nutrition coaching.</p>
+        {[["dietary_preferences", "Dietary preferences (comma separated)"], ["food_allergies", "Food allergies (comma separated)"], ["nutrition_notes", "Nutrition needs and restrictions"]].map(([key,label]) => <label key={key} style={{display: "block"}}>{label}<textarea style={styles.textareaSmall} value={form[key]} onChange={e => updateField(key,e.target.value)}/></label>)}
+        <p>Save these changes with the nutrition targets below. Review the client’s assessment and allergies before publishing any meal plan.</p>
+      </div>
       <div style={styles.sectionCard}>
         <p style={styles.goldLabel}>
           DAILY TARGETS

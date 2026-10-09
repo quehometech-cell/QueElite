@@ -596,6 +596,7 @@ export default function CoachClientPage() {
       .select(
         "id, program_workout_id, exercise_id, exercise_order, sets, reps, rir, rest_seconds, tempo, duration_seconds, distance_target, distance_unit, pace_target, notes"
       )
+      .eq("is_active", true)
       .in("program_workout_id", workoutIds)
       .order("exercise_order", {
         ascending: true,

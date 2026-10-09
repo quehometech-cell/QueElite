@@ -1,3 +1,4 @@
+import { coachOwnsClient } from "../../../lib/coach-access";
 import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
@@ -103,6 +104,8 @@ export async function POST(request) {
     if (!mealPlan) {
       return errorResponse("Meal plan not found.", 404);
     }
+
+    if (!(await coachOwnsClient(supabaseAdmin, user.id, mealPlan.user_id))) return errorResponse("This client is not in your workspace.", 403);
 
     if (mealPlan.status !== "pending_review") {
       return errorResponse(

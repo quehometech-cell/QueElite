@@ -1,3 +1,4 @@
+import { coachOwnsClient } from "../../../lib/coach-access";
 import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
@@ -1219,7 +1220,7 @@ async function nutritionPlan(
       .from(
         "nutrition_plans"
       )
-      .select("id")
+      .select("id,target_source,coach_approved")
       .eq(
         "user_id",
         userId
@@ -1236,6 +1237,8 @@ async function nutritionPlan(
   if (existingError) {
     throw existingError;
   }
+
+  if (existing?.target_source === "coach" && existing?.coach_approved) return existing.id;
 
   const payload = {
     calorie_target:
@@ -1432,6 +1435,8 @@ export async function POST(
         ? requestedId
         : user.id;
 
+    if (isCoach && !(await coachOwnsClient(database, user.id, clientId))) return fail("This client is not in your workspace.", 403);
+
     const client =
       await profile(
         database,
@@ -1480,6 +1485,16 @@ export async function POST(
       );
     }
 
+    const { data: savedNutrition, error: nutritionError } = await database.from("nutrition_plans").select("*").eq("user_id", clientId).order("created_at", {ascending: false}).limit(1).maybeSingle();
+    if (nutritionError) throw nutritionError;
+    if (savedNutrition?.target_source === "coach") {
+      // Never discard an assessment allergy while incorporating coach additions.
+      assessmentData.food_allergies = uniq([...arr(assessmentData.food_allergies), ...arr(savedNutrition.food_allergies)]);
+      assessmentData.dietary_preferences = uniq([...arr(assessmentData.dietary_preferences), ...arr(savedNutrition.dietary_preferences)]);
+      assessmentData.nutrition_notes = [assessmentData.nutrition_notes, savedNutrition.nutrition_notes].filter(Boolean).join("; ");
+    }
+    const unsupportedAllergies = arr(assessmentData.food_allergies).filter(value => !/^(none|no|n\/a)$/i.test(clean(value)) && normalizeAllergens([value]).length === 0);
+    if (unsupportedAllergies.length) return fail("Some allergies need manual food-library review before a meal plan can be generated.", 409, {requires_coach_review: true});
     const allergyList =
       normalizeAllergens(
         assessmentData.food_allergies
@@ -1490,6 +1505,11 @@ export async function POST(
         assessmentData
       );
 
+    if (savedNutrition?.target_source === "coach" && savedNutrition.coach_approved) {
+      for (const [field, target] of [["calorie_target", "calories"], ["protein_grams", "protein"], ["carb_grams", "carbs"], ["fat_grams", "fat"]]) {
+        if (savedNutrition[field] !== null && Number.isFinite(Number(savedNutrition[field]))) nutritionTargets[target] = Number(savedNutrition[field]);
+      }
+    }
     const mealsPerDay =
       clamp(
         Number(

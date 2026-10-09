@@ -14,6 +14,7 @@ export default function ClientWorkouts({
   const [selectedProgramId, setSelectedProgramId] = useState(
     program?.id || ""
   );
+  const [copying, setCopying] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -40,6 +41,18 @@ export default function ClientWorkouts({
 
     return grouped;
   }, [exercises]);
+
+  async function customizeProgram() {
+    if (!selectedProgramId || !client?.id) return;
+    const name = window.prompt("Name this client’s private program copy:", `${programs.find(p => p.id === selectedProgramId)?.name || "Training"} — Custom`);
+    if (!name?.trim()) return;
+    setCopying(true); setMessage("");
+    try {
+      const { data, error } = await supabase.rpc("owner_copy_client_program", { p_client_id: client.id, p_program_id: selectedProgramId, p_name: name.trim() });
+      if (error) throw error;
+      window.location.href = `/coach/workouts?program=${encodeURIComponent(data)}`;
+    } catch(e) { setMessage(e.message); setCopying(false); }
+  }
 
   async function changeProgram() {
     if (!client?.id) {
@@ -282,7 +295,7 @@ export default function ClientWorkouts({
           >
             <option value="">Select a program</option>
 
-            {programs.map((item) => (
+            {programs.filter(item => !item.client_id || item.client_id === client?.id).map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
               </option>
@@ -310,6 +323,9 @@ export default function ClientWorkouts({
             </button>
           )}
 
+          <button type="button" onClick={customizeProgram} disabled={saving || copying || !selectedProgramId} style={{...styles.button, marginTop: 12}}>{copying ? "Creating copy…" : "Create client-specific copy"}</button>
+          <p style={styles.subtitle}>Owner: copy a program, customize it in the builder, then return here to assign the finished copy. Assignment starts at Week 1; previous workout history is kept.</p>
+          {program?.id && <a href={`/coach/workouts?program=${encodeURIComponent(program.id)}`} style={{color: "#F4C20D"}}>Edit assigned program {program.client_id ? "(client copy)" : "(shared template)"}</a>}
           {message && <div role="status" style={styles.message}>{message}</div>}
         </div>
       </div>

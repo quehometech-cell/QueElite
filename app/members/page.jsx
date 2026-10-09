@@ -13,12 +13,14 @@ import CheckIn from "../../components/member/CheckIn";
 import ExerciseLibrary from "../../components/member/ExerciseLibrary";
 import Habits from "../../components/member/Habits";
 import InstallApp from "../../components/InstallApp";
+import ClientMessages from "../../components/ClientMessages";
 
 const CALENDLY_URL =
   "https://calendly.com/quehometech/30min";
 
 const VALID_TABS = [
   "dashboard",
+  "messages",
   "workouts",
   "corrective",
   "nutrition",
@@ -1439,6 +1441,12 @@ export default function MembersPage() {
               }
             />
 
+            <NavButton
+              label="Messages"
+              active={activeTab === "messages"}
+              onClick={() => changeTab("messages")}
+            />
+
             {hasService("workouts") && program && (
               <NavButton
                 label="My Workouts"
@@ -1591,6 +1599,10 @@ export default function MembersPage() {
             />
           )}
 
+          {activeTab === "messages" && user && (
+            <ClientMessages clientId={user.id} currentUser={user} />
+          )}
+
           {activeTab === "workouts" &&
             hasService("workouts") &&
             program && (
@@ -1681,7 +1693,7 @@ function isTabAllowed(
   tab,
   entitlements = []
 ) {
-  if (tab === "dashboard") {
+  if (tab === "dashboard" || tab === "messages") {
     return true;
   }
 

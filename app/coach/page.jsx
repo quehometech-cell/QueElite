@@ -14,6 +14,7 @@ import CorrectiveAssignments from "../../components/coach/CorrectiveAssignments"
 import CoachNotes from "../../components/coach/CoachNotes";
 import InviteClient from "../../components/coach/InviteClient";
 import OwnerNotifications from "../../components/coach/OwnerNotifications";
+import ClientMessages from "../../components/ClientMessages";
 
 const SECTIONS = [
   { id: "overview", label: "Overview" },
@@ -22,6 +23,7 @@ const SECTIONS = [
   { id: "corrective", label: "Corrective" },
   { id: "progress", label: "Progress" },
   { id: "checkins", label: "Check-Ins" },
+  { id: "messages", label: "Messages" },
   { id: "notes", label: "Private Notes" },
 ];
 
@@ -1229,6 +1231,15 @@ export default function CoachPage() {
                       onCheckInUpdated={
                         handleCheckInUpdated
                       }
+                    />
+                  )}
+
+                  {activeSection === "messages" && (
+                    <ClientMessages
+                      clientId={selectedClient.id}
+                      currentUser={coachUser}
+                      conversationName={selectedClient.full_name || selectedClient.email}
+                      isCoach
                     />
                   )}
 

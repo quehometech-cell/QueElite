@@ -16,7 +16,7 @@ export async function POST(req){
   await admin.from("owner_notifications").upsert({
     event_key:`coach-signup-${user.id}`,
     event_type:"coach_signup",
-    recipient_email:"getcharighttransformations22@gmail.com",
+    recipient_email:"que@getcharightfitness.com",
     subject:"New coach signed up",
     body:`${fullName.trim()} (${user.email || "email unavailable"}) created the coach business "${businessName.trim()}" and selected the ${plan} plan.`,
     metadata:{userId:user.id,workspaceId,plan,businessName:businessName.trim()},

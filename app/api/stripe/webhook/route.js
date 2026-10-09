@@ -38,7 +38,7 @@ async function queueOwnerNotification(supabaseAdmin, { eventKey, eventType, subj
   const { error } = await supabaseAdmin.from("owner_notifications").upsert({
     event_key: eventKey,
     event_type: eventType,
-    recipient_email: "getcharighttransformations22@gmail.com",
+    recipient_email: "que@getcharightfitness.com",
     subject,
     body,
     metadata,

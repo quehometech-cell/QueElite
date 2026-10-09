@@ -13,6 +13,7 @@ import ClientCheckIns from "../../components/coach/ClientCheckIns";
 import CorrectiveAssignments from "../../components/coach/CorrectiveAssignments";
 import CoachNotes from "../../components/coach/CoachNotes";
 import InviteClient from "../../components/coach/InviteClient";
+import OwnerNotifications from "../../components/coach/OwnerNotifications";
 
 const SECTIONS = [
   { id: "overview", label: "Overview" },
@@ -1007,6 +1008,7 @@ export default function CoachPage() {
         </div>
       </header>
 
+      {coachUser?.id === "31f26f66-f9be-47a4-aed9-bb3013755f51" && <OwnerNotifications />}
       <div className="gcr-coach-shell" style={styles.shell}>
         <aside className="gcr-coach-sidebar" style={styles.sidebar}>
           <ClientList

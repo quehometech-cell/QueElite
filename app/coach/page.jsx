@@ -1085,6 +1085,15 @@ export default function CoachPage() {
                 </span>
               </div>
 
+              <button
+                type="button"
+                onClick={() => setActiveSection("messages")}
+                style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,width:"100%",margin:"14px 0",padding:"16px 20px",background:activeSection==="messages"?"#f4c20d":"#191919",color:activeSection==="messages"?"#141414":"#f4c20d",border:"2px solid #f4c20d",borderRadius:12,fontWeight:800,fontSize:16,cursor:"pointer",textAlign:"left"}}
+                aria-label={`Open private chat with ${selectedClient.full_name || "client"}`}
+              >
+                <span>💬 Private chat with {selectedClient.full_name || "client"}</span>
+                <span>{activeSection==="messages"?"Chat open":"Open messages →"}</span>
+              </button>
               <nav className="gcr-coach-nav" style={styles.nav}>
                 {SECTIONS.map((section) => (
                   <button

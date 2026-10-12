@@ -1,9 +1,19 @@
+const businessSchema = {
+  "@context": "https://schema.org",
+  "@type": "ProfessionalService",
+  name: "Get Cha Right Fitness",
+  url: "https://www.getcharightfitness.com",
+  description: "Personal training, strength and conditioning, corrective exercise, nutrition coaching, and online and hybrid fitness coaching.",
+  areaServed: [{ "@type": "Place", name: "Villa Rica, Georgia" }, { "@type": "Place", name: "West Atlanta, Georgia" }],
+  founder: { "@type": "Person", name: "Que Kirby", jobTitle: "Certified Personal Trainer" },
+  hasOfferCatalog: { "@type": "OfferCatalog", name: "Personal Training and Fitness Coaching" }
+};
 const gold="#F4C20D";
 const page={maxWidth:1100,margin:"0 auto",padding:"0 20px"};
 const button={display:"inline-flex",alignItems:"center",justifyContent:"center",minHeight:54,padding:"0 22px",borderRadius:10,fontWeight:900,fontSize:15,textDecoration:"none"};
 
 export default function Home(){
-  return <main style={{background:"#050505",minHeight:"100vh",color:"#fff",fontFamily:"Arial,sans-serif"}}>
+  return <><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(businessSchema)}} /><main style={{background:"#050505",minHeight:"100vh",color:"#fff",fontFamily:"Arial,sans-serif"}}>
     <nav style={{padding:"16px 20px",borderBottom:"1px solid #222",display:"flex",justifyContent:"space-between",alignItems:"center",gap:16,flexWrap:"wrap",position:"sticky",top:0,zIndex:20,background:"rgba(5,5,5,.96)",backdropFilter:"blur(10px)"}}>
       <a href="/" style={{color:gold,fontWeight:900,textDecoration:"none",letterSpacing:1}}>GET CHA RIGHT</a>
       <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:14}}><a href="/services" style={{color:"#ccc",textDecoration:"none"}}>Services</a><a href="/pricing" style={{color:"#ccc",textDecoration:"none"}}>Pricing</a><a href="/about" style={{color:"#ccc",textDecoration:"none"}}>About</a><a href="/personal-trainer-georgia" style={{color:"#ccc",textDecoration:"none"}}>Georgia Training</a><a href="/members" style={{color:gold,textDecoration:"none",fontWeight:800}}>Members</a></div>
@@ -22,5 +32,5 @@ export default function Home(){
     <section style={{...page,paddingTop:75,paddingBottom:75}}><p style={{color:gold,fontWeight:900,letterSpacing:2,fontSize:12,textAlign:"center"}}>CLIENT FEEDBACK</p><h2 style={{fontSize:"clamp(32px,5vw,48px)",textAlign:"center",margin:"8px 0 30px"}}>What clients say</h2><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>{[["Kevonta Cropper","Amazing knowledge and expertise! atmosphere was wonderful as well. Highly recommend"],["Nolyt Ylrae","Laquince gone get you right. Great motivation and dedication"]].map(([n,t])=><blockquote key={n} style={{margin:0,background:"#111",border:"1px solid #292929",borderRadius:16,padding:24}}><div style={{color:gold,letterSpacing:2,marginBottom:12}}>★★★★★</div><p style={{color:"#ddd",lineHeight:1.7}}>“{t}”</p><footer style={{color:"#888",fontSize:13,fontWeight:800}}>{n} · Google Review</footer></blockquote>)}</div></section>
 
     <section style={{background:gold,color:"#050505",padding:"65px 20px",textAlign:"center"}}><div style={{...page}}><h2 style={{fontSize:"clamp(32px,5vw,52px)",margin:"0 0 12px"}}>Stop guessing. Start training with a plan.</h2><p style={{fontSize:17,maxWidth:650,margin:"0 auto 24px",lineHeight:1.6}}>Try the 3-day coaching preview and see how Get Cha Right can fit your goal and schedule.</p><a href="/starter-kit" style={{...button,background:"#050505",color:"#fff"}}>START MY 3-DAY PREVIEW →</a></div></section>
-  </main>
+  </main></>;
 }

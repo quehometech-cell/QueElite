@@ -8,6 +8,10 @@ export default function sitemap() {
       changeFrequency: "weekly",
       priority: 1,
     },
+    { url: `${baseUrl}/about`, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${baseUrl}/services`, changeFrequency: "monthly", priority: 0.9 },
+    { url: `${baseUrl}/pricing`, changeFrequency: "monthly", priority: 0.9 },
+    { url: `${baseUrl}/contact`, changeFrequency: "monthly", priority: 0.8 },
     {
       url: `${baseUrl}/online-personal-training`,
       lastModified: new Date(),

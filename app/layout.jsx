@@ -4,13 +4,14 @@ import LeadAssistant from "../components/LeadAssistant";
 
 export const metadata = {
   metadataBase: new URL("https://www.getcharightfitness.com"),
-  title: { default: "Get Cha Right Fitness | Personalized Fitness Coaching", template: "%s | Get Cha Right Fitness" },
-  description: "Personalized online and hybrid fitness coaching for adults who want to lose body fat, build muscle, get stronger, move better, and stay consistent.",
+  title: { default: "Personal Trainer in Villa Rica, GA | Get Cha Right Fitness", template: "%s | Get Cha Right Fitness" },
+  description: "Train with Coach Que, an ISSA-certified personal trainer. Strength, fat loss, corrective exercise, nutrition coaching and online or hybrid training.",
   authors: [{ name: "Que Kirby" }],
   creator: "Get Cha Right Fitness",
   publisher: "Get Cha Right Fitness",
-  openGraph: { title: "Get Cha Right Fitness | Personalized Fitness Coaching", description: "Personalized fitness coaching built around your goal, schedule, experience, and training setup. Online and hybrid options available.", url: "https://www.getcharightfitness.com", siteName: "Get Cha Right Fitness", type: "website", locale: "en_US" },
-  twitter: { card: "summary_large_image", title: "Get Cha Right Fitness | Personalized Fitness Coaching", description: "Personalized online and hybrid fitness coaching for adults who want to build strength, lose body fat, improve conditioning, and move better." },
+  alternates: { canonical: "/" },
+  openGraph: { title: "Personal Trainer in Villa Rica, GA | Get Cha Right Fitness", description: "Personal training, strength and conditioning, corrective exercise, and online coaching with ISSA-certified Coach Que.", url: "https://www.getcharightfitness.com", siteName: "Get Cha Right Fitness", type: "website", locale: "en_US" },
+  twitter: { card: "summary_large_image", title: "Personal Trainer in Villa Rica, GA | Get Cha Right Fitness", description: "Personal training, corrective exercise, strength and conditioning, and nutrition coaching with Coach Que." },
   manifest: "/manifest.webmanifest",
   icons: { icon: "/icon.svg", apple: "/icon.svg" },
   appleWebApp: { capable: true, title: "Get Cha Right", statusBarStyle: "black-translucent" },

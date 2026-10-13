@@ -1011,6 +1011,15 @@ export default function CoachPage() {
       </header>
 
       {coachUser?.id === "31f26f66-f9be-47a4-aed9-bb3013755f51" && <OwnerNotifications />}
+      {clients.length > 0 && <section aria-label="Coach action center" style={{background:"#111",border:"1px solid #343434",borderRadius:14,padding:20,margin:"18px 0"}}>
+        <h2 style={{margin:"0 0 6px",color:"#F4C20D"}}>Coach Action Center</h2>
+        <p style={{color:"#aaa",margin:"0 0 14px",fontSize:14}}>Client follow-ups based on current workout assignments, weekly activity, and submitted check-ins. Review each situation before contacting clients.</p>
+        {clients.filter(c=>c.needs_attention).length===0 ? <p style={{color:"#a9d5a9"}}>No clients currently flagged for follow-up.</p> :
+        <div style={{display:"grid",gap:9}}>{clients.filter(c=>c.needs_attention).map(c=><div key={c.id} style={{display:"flex",gap:12,justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",background:"#1a1a1a",border:"1px solid #303030",padding:12,borderRadius:10}}>
+          <div><strong>{c.full_name||c.email||"Client"}</strong><div style={{color:"#bbb",fontSize:13,marginTop:4}}>{(c.attention_reasons||[]).join(" · ")}</div></div>
+          <button type="button" onClick={()=>{setSelectedClientId(c.id);setActiveSection((c.attention_reasons||[]).includes("No training program assigned")?"workouts":(c.attention_reasons||[]).includes("Check-in needs response")?"checkins":"messages");}} style={{background:"#F4C20D",color:"#111",border:0,padding:"10px 14px",borderRadius:9,cursor:"pointer",fontWeight:900}}>REVIEW CLIENT →</button>
+        </div>)}</div>}
+      </section>}
       <div className="gcr-coach-shell" style={styles.shell}>
         <aside className="gcr-coach-sidebar" style={styles.sidebar}>
           <ClientList

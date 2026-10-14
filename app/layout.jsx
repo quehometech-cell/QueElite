@@ -22,6 +22,21 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body style={{ margin: 0, background: "#050505", color: "#FFFFFF", fontFamily: "Arial, sans-serif" }}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "HealthAndBeautyBusiness",
+            "name": "Get Cha Right Fitness",
+            "url": "https://www.getcharightfitness.com",
+            "email": "que@getcharightfitness.com",
+            "telephone": "+1-470-485-4575",
+            "description": "Personalized online and hybrid fitness coaching for adults who want to build strength, lose body fat, improve conditioning, mobility, and consistency.",
+            "areaServed": ["Villa Rica, GA", "Douglasville, GA", "Powder Springs, GA", "West Atlanta, GA", "Georgia"],
+            "serviceType": ["Personal Training", "Online Personal Training", "Strength Training", "Corrective Exercise", "Mobility Training", "Nutrition Coaching", "Hybrid Personal Training"],
+            "founder": { "@type": "Person", "name": "Que Kirby" }
+          }) }}
+        />
         <PWARegister />
         {children}
         <MarketingChrome>

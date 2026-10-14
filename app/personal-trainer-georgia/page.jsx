@@ -1,14 +1,14 @@
 export const metadata = {
-  title: "Personal Trainer in Georgia | Online & In-Person Training",
+  title: "Personal Trainer in Villa Rica & West Atlanta, GA | Get Cha Right Fitness",
   description:
-    "Personal training in Georgia for busy adults and professionals. Get personalized strength training, mobility work, fat-loss support, nutrition guidance, and online or in-person coaching.",
+    "Personal training in Villa Rica and West Atlanta, Georgia, plus online coaching anywhere. Get personalized strength training, mobility work, fat-loss support, nutrition guidance, and hybrid coaching.",
   alternates: {
     canonical: "/personal-trainer-georgia",
   },
   openGraph: {
-    title: "Personal Trainer in Georgia | Get Cha Right Fitness",
+    title: "Personal Trainer in Villa Rica & West Atlanta, GA | Get Cha Right Fitness",
     description:
-      "Personalized online and in-person fitness coaching for busy adults and professionals in Georgia.",
+      "Personalized online and in-person fitness coaching for adults in Villa Rica, West Atlanta, and across Georgia.",
     url: "/personal-trainer-georgia",
     type: "website",
   },
@@ -72,7 +72,7 @@ export default function PersonalTrainerGeorgia() {
         >
           PERSONAL TRAINING
           <br />
-          <span style={{ color: "#F4C20D" }}>IN GEORGIA</span>
+          <span style={{ color: "#F4C20D" }}>VILLA RICA & WEST ATLANTA</span>
         </h1>
 
         <p
@@ -114,7 +114,7 @@ export default function PersonalTrainerGeorgia() {
           </a>
 
           <a href="/starter-kit" style={secondaryButton}>
-            TRY THE FREE 3-DAY RESET
+            TRY THE FREE 3-DAY PREVIEW
           </a>
         </div>
       </section>

@@ -317,6 +317,42 @@ export default function Dashboard({
         ))}
       </div>
 
+
+
+      {hasCorrective && (
+        <section style={styles.recoverySection}>
+          <p style={styles.goldLabel}>MOBILITY & RECOVERY</p>
+          <h3 style={styles.sectionTitle}>Move Better. Recover Better.</h3>
+          <p style={styles.sectionText}>
+            Your mobility work can be used before training, after training, or on recovery days.
+          </p>
+          <div style={styles.recoveryGrid}>
+            <RecoveryCard
+              title="Dynamic Warm-Up"
+              text="Controlled movement to raise your temperature, prepare your joints, and get you ready to train."
+              examples="Leg swings • Hip openers • Arm circles • Walking lunges"
+            />
+            <RecoveryCard
+              title="Static Stretching"
+              text="Slower stretches used after training or when you want to work on flexibility."
+              examples="Hamstrings • Quads • Hip flexors • Chest • Calves"
+            />
+            <RecoveryCard
+              title="At-Home Recovery"
+              text="A simple 10–20 minute routine for rest days, long workdays, or whenever your body needs movement."
+              examples="Easy walking • Mobility • Gentle stretching • Breathing"
+            />
+          </div>
+          <button
+            type="button"
+            style={styles.goldButton}
+            onClick={() => setActiveTab?.("corrective")}
+          >
+            OPEN MY MOBILITY & RECOVERY
+          </button>
+        </section>
+      )}
+
       <div style={styles.coachCard}>
         <div>
           <p style={styles.goldLabel}>GET CHA RIGHT FITNESS</p>
@@ -328,6 +364,16 @@ export default function Dashboard({
         </div>
       </div>
     </section>
+  );
+}
+
+function RecoveryCard({ title, text, examples }) {
+  return (
+    <div style={styles.recoveryCard}>
+      <span style={styles.recoveryTitle}>{title}</span>
+      <p style={styles.recoveryText}>{text}</p>
+      <span style={styles.recoveryExamples}>{examples}</span>
+    </div>
   );
 }
 
@@ -479,6 +525,12 @@ const styles = {
   actionTitle: { color: "#FFFFFF", fontSize: "18px", margin: "8px 0" },
   actionText: { color: "#BDBDBD", fontSize: "13px", lineHeight: 1.5, flex: 1 },
   actionButton: { width: "100%", background: "#050505", color: "#FFFFFF", border: "1px solid #2A2A2A", borderRadius: "8px", padding: "11px", fontWeight: "900", fontSize: "10px", cursor: "pointer", marginTop: "10px" },
+  recoverySection: { background: "#0D0D0D", border: "1px solid #2A2A2A", borderRadius: "15px", padding: "22px", marginTop: "25px" },
+  recoveryGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "12px", marginTop: "15px", marginBottom: "15px" },
+  recoveryCard: { background: "#111111", border: "1px solid #2A2A2A", borderRadius: "12px", padding: "17px" },
+  recoveryTitle: { color: "#FFFFFF", fontSize: "17px", fontWeight: "900" },
+  recoveryText: { color: "#BDBDBD", fontSize: "12px", lineHeight: 1.55, margin: "8px 0" },
+  recoveryExamples: { color: "#F4C20D", fontSize: "10px", lineHeight: 1.5 },
   coachCard: { background: "#111111", borderLeft: "4px solid #F4C20D", borderRadius: "10px", padding: "22px", marginTop: "25px" },
   coachTitle: { color: "#FFFFFF", fontSize: "22px", margin: "7px 0 5px" },
 };

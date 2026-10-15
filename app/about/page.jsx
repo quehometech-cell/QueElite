@@ -1,6 +1,6 @@
 export const metadata = {
   title: "About Que Kirby | Get Cha Right Fitness",
-  description: "Meet Que Kirby, ISSA Certified Personal Trainer and founder of Get Cha Right Fitness.",
+  description: "Meet Que Kirby, U.S. Army veteran and ISSA-certified coach in personal training, corrective exercise, strength and conditioning, and nutrition.",
   alternates: { canonical: "/about" },
 };
 
@@ -22,7 +22,8 @@ export default function About() {
         <p style={{ fontSize: "clamp(20px, 3vw, 26px)", lineHeight: 1.6, color: "#ddd", maxWidth: 760 }}>I built Get Cha Right Fitness around one idea: your training should fit your real life.</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14, margin: "34px 0" }}>
           {[
-            ["ISSA CERTIFIED", "Personal Trainer"],
+            ["ISSA CERTIFICATIONS", "Personal Training · Corrective Exercise · Strength & Conditioning · Nutrition"],
+            ["BACKGROUND", "U.S. Army veteran · Full Stack Network Professional (FSNP)"],
             ["COACHING STYLE", "Strength + mobility + conditioning"],
             ["TRAINING", "Home, gym, online + hybrid"],
           ].map(([title, value]) => (
@@ -32,8 +33,9 @@ export default function About() {
             </div>
           ))}
         </div>
-        <p style={{ color: "#bbb", fontSize: 17, lineHeight: 1.8 }}>I work with beginners and experienced adults who want to get stronger, lose body fat, build muscle, improve conditioning, move better, or get back into a consistent routine.</p>
+        <p style={{ color: "#bbb", fontSize: 17, lineHeight: 1.8 }}>I work with beginners and experienced adults who want to get stronger, lose body fat, build muscle, gain healthy weight, improve conditioning, move better, or get back into a consistent routine.</p>
         <p style={{ color: "#bbb", fontSize: 17, lineHeight: 1.8 }}>You do not need to know exactly what to do when you walk into the gym. That is what coaching is for. I build the plan, teach the movements, adjust the work, and keep you accountable.</p>
+        <p style={{ color: "#bbb", fontSize: 17, lineHeight: 1.8 }}>My Army experience informs my approach to discipline and accountability. My technical background as a Full Stack Network Professional informs how I organize training, track progress, and make adjustments. You get clear steps and support built around your starting point.</p>
         <div style={{ background: "#111", border: "1px solid #2d2d2d", borderRadius: 18, padding: 26, marginTop: 30 }}>
           <h2 style={{ marginTop: 0 }}>What you can expect</h2>
           <ul style={{ color: "#bbb", lineHeight: 2, paddingLeft: 22 }}>
@@ -44,7 +46,7 @@ export default function About() {
             <li>Home, gym, online, or hybrid options</li>
           </ul>
         </div>
-        <a href="/starter-kit" style={{ background: "#F4C20D", color: "#050505", padding: "14px 22px", borderRadius: 10, fontWeight: 900, textDecoration: "none", display: "inline-block", marginTop: 30 }}>TRY THE 3-DAY PREVIEW</a>
+        <a href="/contact?plan=personalized" style={{ background: "#F4C20D", color: "#050505", padding: "14px 22px", borderRadius: 10, fontWeight: 900, textDecoration: "none", display: "inline-block", marginTop: 30 }}>TALK TO QUE ABOUT COACHING</a>
       </section>
     </main>
   );

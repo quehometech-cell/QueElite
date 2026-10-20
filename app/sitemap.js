@@ -8,6 +8,7 @@ export default function sitemap() {
       changeFrequency: "weekly",
       priority: 1,
     },
+    { url: `${baseUrl}/calculator`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${baseUrl}/about`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${baseUrl}/services`, changeFrequency: "monthly", priority: 0.9 },
     { url: `${baseUrl}/pricing`, changeFrequency: "monthly", priority: 0.9 },

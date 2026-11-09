@@ -423,7 +423,7 @@ export default function ClientNutrition({
       setMessage("Meal plan declined and archived. It has been removed from Needs Review.");
       setMealPlan(result.meal_plan || null);
       setMealPlanMeals([]);
-      if (onNutritionUpdated) await onNutritionUpdated(result.meal_plan);
+      if (onNutritionUpdated) await onNutritionUpdated();
     } catch (error) {
       setErrorMessage(error?.message || "Unable to decline this meal plan.");
     } finally {

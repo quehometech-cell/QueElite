@@ -26,7 +26,13 @@ export default function OwnerNotifications() {
     } catch (e) { setError(e.message || "Unable to load notifications."); }
     finally { setLoading(false); }
   }, []);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, 60000);
+    return () => window.clearInterval(timer);
+  }, [load]);
   const visible = items.filter(item => !dismissedIds.includes(item.id));
   const unread = visible.filter(item => !readIds.includes(item.id)).length;
   const pending = visible.filter(item => item.status === "pending").length;

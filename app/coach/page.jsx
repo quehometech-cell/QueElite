@@ -636,7 +636,7 @@ export default function CoachPage() {
 
         if (memberError) throw memberError;
 
-        const clientIds = [...new Set([user.id, ...(memberRows || []).map((row) => row.user_id)])];
+        const clientIds = [...new Set((memberRows || []).map((row) => row.user_id).filter((id) => id && id !== user.id))];
 
         let profileRows = [];
         if (clientIds.length > 0) {
@@ -787,13 +787,11 @@ export default function CoachPage() {
 
         setClients(enrichedClients);
 
-        if (enrichedClients.length > 0) {
-          setSelectedClientId(
-            (current) =>
-              current ||
-              enrichedClients[0].id
-          );
-        }
+        setSelectedClientId((current) =>
+          enrichedClients.some((client) => client.id === current)
+            ? current
+            : (enrichedClients[0]?.id || null)
+        );
       } catch (error) {
         console.error(
           "Coach portal load error:",
@@ -910,11 +908,28 @@ export default function CoachPage() {
   }
 
   async function refreshClientList() {
-    /*
-     * Rebuild the full coach portal summary.
-     * Client selection is preserved by state.
-     */
     await loadCoachPortal();
+  }
+
+  async function handleRemoveClient(client) {
+    if (!client?.id) throw new Error("Select a client first.");
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session?.access_token) throw new Error("Your session expired. Sign in again.");
+
+    const response = await fetch("/api/coach/remove-client", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ clientId: client.id }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Unable to remove client.");
+
+    setSelectedClientId((current) => current === client.id ? null : current);
+    await loadCoachPortal();
+    return result;
   }
 
   if (loading) {
@@ -967,8 +982,8 @@ export default function CoachPage() {
           .gcr-coach .gcr-coach-shell { display: block !important; }
           .gcr-coach .gcr-coach-sidebar { width: 100% !important; min-width: 0 !important; border-right: 0 !important; border-bottom: 1px solid #2A2A2A !important; }
           .gcr-coach .gcr-coach-content { padding: 16px 12px 28px !important; min-width: 0 !important; }
-          .gcr-coach .gcr-coach-nav { overflow-x: auto !important; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; }
-          .gcr-coach .gcr-coach-nav button { min-width: max-content !important; min-height: 44px; }
+           .gcr-coach .gcr-coach-nav { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; overflow: visible !important; flex-wrap: initial !important; gap: 8px !important; }
+          .gcr-coach .gcr-coach-nav button { width: 100% !important; min-width: 0 !important; min-height: 48px !important; font-size: 11px !important; touch-action: manipulation; }
           .gcr-coach input, .gcr-coach select, .gcr-coach textarea { font-size: 16px !important; }
         }
       `}</style>
@@ -1042,6 +1057,7 @@ export default function CoachPage() {
                     : "overview"
               );
             }}
+            onRemoveClient={handleRemoveClient}
           />
         </aside>
 

@@ -36,9 +36,10 @@ async function notifyOwner(admin, lead) {
 
   if (queueError) {
     console.error("Unable to queue preview lead notification:", queueError);
-    return;
+    return { queued: false, error: String(queueError.message || queueError).slice(0, 500) };
   }
-  if (!queued?.id || !process.env.BREVO_API_KEY) return;
+  if (!queued?.id) return { queued: false, error: "Notification queue did not return an ID." };
+  if (!process.env.BREVO_API_KEY) return { queued: true, emailStatus: "pending" };
 
   try {
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -63,6 +64,7 @@ async function notifyOwner(admin, lead) {
       attempts: 1,
       last_error: null,
     }).eq("id", queued.id);
+    return { queued: true, emailStatus: "sent" };
   } catch (error) {
     console.error("Preview lead email failed; leaving notification queued:", error);
     await admin.from("owner_notifications").update({
@@ -70,6 +72,7 @@ async function notifyOwner(admin, lead) {
       attempts: 1,
       last_error: String(error?.message || error).slice(0, 1000),
     }).eq("id", queued.id);
+    return { queued: true, emailStatus: "pending", error: String(error?.message || error).slice(0, 500) };
   }
 }
 
@@ -80,7 +83,7 @@ export async function POST(req) {
     const email = clean(body.email, 320)?.toLowerCase();
 
     if (!first_name) return Response.json({ error: "Enter your first name." }, { status: 400 });
-    if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return Response.json({ error: "Enter a valid email." }, { status: 400 });
     }
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -117,9 +120,9 @@ export async function POST(req) {
       .single();
 
     if (error) throw error;
-    await notifyOwner(admin, data);
+    const notification = await notifyOwner(admin, data);
 
-    return Response.json({ ok: true, id: data.id, notificationQueued: true });
+    return Response.json({ ok: true, id: data.id, notificationQueued: Boolean(notification?.queued), notificationEmailStatus: notification?.emailStatus || "not_queued", notificationError: notification?.error || null });
   } catch (error) {
     console.error("lead capture", error);
     return Response.json({ error: "We couldn't save that right now. Please try again." }, { status: 500 });

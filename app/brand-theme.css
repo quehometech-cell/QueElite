@@ -244,3 +244,81 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   color: var(--gcr-text) !important;
   border-color: var(--gcr-border) !important;
 }
+
+
+/* Portal-wide light-theme cleanup.
+   Legacy screens use inline RGB backgrounds, so normalize every element type,
+   not only div/section wrappers. Keep branded gold buttons and status colors intact. */
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(0, 0, 0)"],
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(5, 5, 5)"],
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(8, 8, 8)"],
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(11, 11, 11)"],
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(17, 17, 17)"],
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(21, 21, 21)"],
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(25, 25, 25)"],
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(26, 26, 26)"],
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(27, 27, 27)"],
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(34, 34, 34)"],
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(42, 42, 42)"],
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(51, 51, 51)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(0, 0, 0)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(5, 5, 5)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(8, 8, 8)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(11, 11, 11)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(17, 17, 17)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(21, 21, 21)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(25, 25, 25)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(26, 26, 26)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(27, 27, 27)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(34, 34, 34)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(42, 42, 42)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(51, 51, 51)"] {
+  background: #fff !important;
+  color: var(--gcr-text) !important;
+  border-color: var(--gcr-border) !important;
+  box-shadow: var(--gcr-shadow);
+}
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background-color: rgb(5, 5, 5)"],
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background-color: rgb(8, 8, 8)"],
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background-color: rgb(11, 11, 11)"],
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background-color: rgb(17, 17, 17)"],
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background-color: rgb(21, 21, 21)"],
+.gcr-coach :is(div,section,article,aside,header,nav,main,footer,form)[style*="background-color: rgb(25, 25, 25)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background-color: rgb(5, 5, 5)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background-color: rgb(8, 8, 8)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background-color: rgb(11, 11, 11)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background-color: rgb(17, 17, 17)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background-color: rgb(21, 21, 21)"],
+.gcr-member :is(div,section,article,aside,header,nav,main,footer,form)[style*="background-color: rgb(25, 25, 25)"] {
+  background-color: #fff !important;
+  color: var(--gcr-text) !important;
+  border-color: var(--gcr-border) !important;
+}
+.gcr-coach [style*="color: rgb(255, 255, 255)"],
+.gcr-coach [style*="color: rgb(244, 194, 13)"],
+.gcr-coach [style*="color: rgb(221, 221, 221)"],
+.gcr-coach [style*="color: rgb(189, 189, 189)"],
+.gcr-coach [style*="color: rgb(187, 187, 187)"],
+.gcr-coach [style*="color: rgb(170, 170, 170)"],
+.gcr-coach [style*="color: rgb(153, 153, 153)"],
+.gcr-coach [style*="color: rgb(119, 119, 119)"],
+.gcr-coach [style*="color: rgb(102, 102, 102)"],
+.gcr-member [style*="color: rgb(255, 255, 255)"],
+.gcr-member [style*="color: rgb(244, 194, 13)"],
+.gcr-member [style*="color: rgb(221, 221, 221)"],
+.gcr-member [style*="color: rgb(189, 189, 189)"],
+.gcr-member [style*="color: rgb(187, 187, 187)"],
+.gcr-member [style*="color: rgb(170, 170, 170)"],
+.gcr-member [style*="color: rgb(153, 153, 153)"],
+.gcr-member [style*="color: rgb(119, 119, 119)"],
+.gcr-member [style*="color: rgb(102, 102, 102)"] {
+  color: var(--gcr-text) !important;
+}
+.gcr-coach .gcr-coach-header,
+.gcr-coach .gcr-coach-sidebar,
+.gcr-member .gcr-member-header,
+.gcr-member .gcr-member-sidebar {
+  background: #fff !important;
+  color: var(--gcr-text) !important;
+  border-color: var(--gcr-border) !important;
+}

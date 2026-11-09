@@ -7,6 +7,7 @@ export default function ClientList({
   selectedClientId,
   onSelectClient,
   onReviewClient,
+  onRemoveClient,
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -133,6 +134,7 @@ export default function ClientList({
               selected={selectedClientId === client.id}
               onClick={() => onSelectClient(client.id)}
               onReviewClick={() => onReviewClient?.(client)}
+              onRemoveClick={() => onRemoveClient?.(client)}
             />
           ))}
         </div>
@@ -146,7 +148,23 @@ function ClientCard({
   selected,
   onClick,
   onReviewClick,
+  onRemoveClick,
 }) {
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState("");
+  async function handleRemove() {
+    const name = client.full_name || client.email || "this client";
+    if (!window.confirm(`Remove ${name} from your coaching workspace? Their account and training history will be preserved, but they will lose access to your coaching workspace.`)) return;
+    setRemoving(true);
+    setRemoveError("");
+    try {
+      await onRemoveClick?.();
+    } catch (error) {
+      setRemoveError(error?.message || "Unable to remove client.");
+    } finally {
+      setRemoving(false);
+    }
+  }
   return (
     <article
       style={{
@@ -183,9 +201,9 @@ function ClientCard({
           )}
 
           {client.needs_attention && (
-            <span style={styles.reviewBadge}>
+            <button type="button" onClick={onReviewClick} style={styles.reviewBadgeButton} aria-label={`Review ${client.full_name || "client"}`}>
               REVIEW
-            </span>
+            </button>
           )}
         </div>
       </div>
@@ -249,7 +267,11 @@ function ClientCard({
             REVIEW NOW →
           </button>
         )}
+        <button type="button" onClick={handleRemove} disabled={removing} style={styles.removeAction}>
+          {removing ? "REMOVING…" : "REMOVE CLIENT"}
+        </button>
       </div>
+      {removeError && <p role="alert" style={{color:"#ff9b91",fontSize:12,margin:"10px 0 0"}}>{removeError}</p>}
     </article>
   );
 }
@@ -509,13 +531,18 @@ const styles = {
     fontWeight: "900",
   },
 
-  reviewBadge: {
+  reviewBadgeButton: {
+    appearance: "none",
     background: "#F4C20D",
     color: "#050505",
+    border: "1px solid #F4C20D",
     borderRadius: "20px",
-    padding: "5px 8px",
-    fontSize: "8px",
+    padding: "7px 11px",
+    minHeight: "36px",
+    fontSize: "10px",
     fontWeight: "900",
+    cursor: "pointer",
+    touchAction: "manipulation",
   },
 
   clientStats: {
@@ -576,6 +603,8 @@ const styles = {
   },
 
   openClient: {
+    minHeight: "44px",
+    touchAction: "manipulation",
     color: "#F4C20D",
     background: "transparent",
     border: "1px solid #F4C20D",
@@ -587,9 +616,24 @@ const styles = {
   },
 
   reviewAction: {
+    minHeight: "44px",
+    touchAction: "manipulation",
     color: "#080808",
     background: "#F4C20D",
     border: "1px solid #F4C20D",
+    borderRadius: "8px",
+    padding: "10px 13px",
+    fontWeight: "900",
+    fontSize: "10px",
+    cursor: "pointer",
+  },
+
+  removeAction: {
+    minHeight: "44px",
+    touchAction: "manipulation",
+    color: "#ffaaa0",
+    background: "transparent",
+    border: "1px solid #8d4039",
     borderRadius: "8px",
     padding: "10px 13px",
     fontWeight: "900",

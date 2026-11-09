@@ -840,7 +840,8 @@ export default function CoachPage() {
   async function handleNutritionUpdated(
     plan
   ) {
-    setNutritionPlan(plan);
+    if (plan) setNutritionPlan(plan);
+    await refreshClientList();
   }
 
   async function handleCheckInUpdated(
@@ -1235,6 +1236,7 @@ export default function CoachPage() {
                       nutritionPlan={
                         nutritionPlan
                       }
+                      pendingReviewId={selectedClient?.pending_review_id || null}
                       onNutritionUpdated={
                         handleNutritionUpdated
                       }

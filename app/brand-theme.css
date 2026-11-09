@@ -166,3 +166,81 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   .gcr-member .gcr-member-nav { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 8px !important; }
   .gcr-member .gcr-member-nav button { min-height: 48px !important; font-size: 13px !important; }
 }
+
+
+/* Final legacy-inline-style normalization for authenticated workspaces.
+   These selectors intentionally cover the hex values used by older inline styles. */
+.gcr-coach,
+.gcr-member {
+  background: var(--gcr-bg) !important;
+  color: var(--gcr-text) !important;
+}
+.gcr-coach [style*="background: #050505"],
+.gcr-coach [style*="background:#050505"],
+.gcr-coach [style*="background: #0B0B0B"],
+.gcr-coach [style*="background:#0B0B0B"],
+.gcr-coach [style*="background: #111111"],
+.gcr-coach [style*="background:#111111"],
+.gcr-coach [style*="background: #151515"],
+.gcr-coach [style*="background:#151515"],
+.gcr-coach [style*="background: #191919"],
+.gcr-coach [style*="background:#191919"],
+.gcr-coach [style*="background: #1A1A1A"],
+.gcr-coach [style*="background:#1A1A1A"],
+.gcr-member [style*="background: #050505"],
+.gcr-member [style*="background:#050505"],
+.gcr-member [style*="background: #0B0B0B"],
+.gcr-member [style*="background:#0B0B0B"],
+.gcr-member [style*="background: #111111"],
+.gcr-member [style*="background:#111111"],
+.gcr-member [style*="background: #151515"],
+.gcr-member [style*="background:#151515"],
+.gcr-member [style*="background: #191919"],
+.gcr-member [style*="background:#191919"],
+.gcr-member [style*="background: #1A1A1A"],
+.gcr-member [style*="background:#1A1A1A"] {
+  background: #fff !important;
+  color: var(--gcr-text) !important;
+  border-color: var(--gcr-border) !important;
+  box-shadow: var(--gcr-shadow);
+}
+.gcr-coach [style*="color: #FFFFFF"],
+.gcr-coach [style*="color:#FFFFFF"],
+.gcr-coach [style*="color: #F4C20D"],
+.gcr-coach [style*="color:#F4C20D"],
+.gcr-coach [style*="color: #BDBDBD"],
+.gcr-coach [style*="color:#BDBDBD"],
+.gcr-coach [style*="color: #999999"],
+.gcr-coach [style*="color:#999999"],
+.gcr-coach [style*="color: #777777"],
+.gcr-coach [style*="color:#777777"],
+.gcr-member [style*="color: #FFFFFF"],
+.gcr-member [style*="color:#FFFFFF"],
+.gcr-member [style*="color: #F4C20D"],
+.gcr-member [style*="color:#F4C20D"],
+.gcr-member [style*="color: #BDBDBD"],
+.gcr-member [style*="color:#BDBDBD"],
+.gcr-member [style*="color: #999999"],
+.gcr-member [style*="color:#999999"],
+.gcr-member [style*="color: #777777"],
+.gcr-member [style*="color:#777777"] {
+  color: var(--gcr-text) !important;
+}
+.gcr-coach button,
+.gcr-member button {
+  border-radius: 10px;
+}
+.gcr-coach [style*="border: 1px solid #2A2A2A"],
+.gcr-member [style*="border: 1px solid #2A2A2A"],
+.gcr-coach [style*="border-bottom: 1px solid #2A2A2A"],
+.gcr-member [style*="border-bottom: 1px solid #2A2A2A"],
+.gcr-coach [style*="border-right: 1px solid #2A2A2A"],
+.gcr-member [style*="border-right: 1px solid #2A2A2A"] {
+  border-color: var(--gcr-border) !important;
+}
+.gcr-coach .gcr-coach-header,
+.gcr-member .gcr-member-header {
+  background: #fff !important;
+  color: var(--gcr-text) !important;
+  border-color: var(--gcr-border) !important;
+}

@@ -46,16 +46,16 @@ export default function ClientList({
 
   return (
     <section>
-      <p style={styles.goldLabel}>CLIENTS</p>
+      <p style={styles.goldLabel}>COACHING WORKSPACE</p>
 
       <h2 style={styles.title}>
-        COACHING ROSTER
+        CLIENTS &amp; MY TRAINING
       </h2>
 
       <p style={styles.description}>
-        Select a client to review their training,
-        nutrition, progress, check-ins, corrective work,
-        and coaching notes.
+        Review client accounts or open your own training profile.
+        Your coach login stays the same, and your personal workouts,
+        nutrition, progress, and check-ins remain tied to your account.
       </p>
 
       <div style={styles.summaryGrid}>
@@ -189,7 +189,7 @@ function ClientCard({
         <div style={styles.clientIdentity}>
           <strong style={styles.clientName}>
             {client.full_name ||
-              "Get Cha Right Client"}
+              "Get Cha Right Client"}{client.is_self_client ? " (YOU)" : ""}
           </strong>
 
           <span style={styles.email}>
@@ -198,7 +198,10 @@ function ClientCard({
         </div>
 
         <div style={styles.badges}>
-          {client.membership_status ===
+          {client.is_self_client && (
+            <span style={styles.activeBadge}>MY TRAINING</span>
+          )}
+          {!client.is_self_client && client.membership_status ===
             "active" && (
             <span style={styles.activeBadge}>
               ACTIVE
@@ -272,9 +275,11 @@ function ClientCard({
             REVIEW NOW →
           </button>
         )}
-        <button type="button" onClick={handleRemove} disabled={removing} style={styles.removeAction}>
-          {removing ? "REMOVING…" : "REMOVE CLIENT"}
-        </button>
+        {!client.is_self_client && (
+          <button type="button" onClick={handleRemove} disabled={removing} style={styles.removeAction}>
+            {removing ? "REMOVING…" : "REMOVE CLIENT"}
+          </button>
+        )}
       </div>
       {removeError && <p role="alert" style={{color:"#ff9b91",fontSize:12,margin:"10px 0 0"}}>{removeError}</p>}
     </article>

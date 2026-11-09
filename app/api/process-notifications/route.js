@@ -2,6 +2,12 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[character]);
+}
+
 function admin() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -32,7 +38,7 @@ export async function GET(request) {
   const results = [];
   for (const row of rows || []) {
     try {
-      const html = `<div style="font-family:Arial,sans-serif;background:#0b0b0b;color:#fff;padding:28px"><div style="max-width:620px;margin:auto;background:#151515;border:1px solid #333;border-radius:14px;padding:26px"><div style="color:#F4C20D;font-weight:900;letter-spacing:1px">GET CHA RIGHT FITNESS</div><h2 style="margin:12px 0 18px">${row.subject}</h2><p style="white-space:pre-line;line-height:1.6;color:#ddd">${row.body}</p><p style="font-size:12px;color:#888;margin-top:24px">Automated platform notification</p></div></div>`;
+      const html = `<div style="font-family:Arial,sans-serif;background:#0b0b0b;color:#fff;padding:28px"><div style="max-width:620px;margin:auto;background:#151515;border:1px solid #333;border-radius:14px;padding:26px"><div style="color:#F4C20D;font-weight:900;letter-spacing:1px">GET CHA RIGHT FITNESS</div><h2 style="margin:12px 0 18px">${escapeHtml(row.subject)}</h2><p style="white-space:pre-line;line-height:1.6;color:#ddd">${escapeHtml(row.body)}</p><p style="font-size:12px;color:#888;margin-top:24px">Automated platform notification</p></div></div>`;
       const res = await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",
         headers: {

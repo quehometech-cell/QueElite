@@ -133,7 +133,12 @@ export default function ClientList({
               client={client}
               selected={selectedClientId === client.id}
               onClick={() => onSelectClient(client.id)}
-              onReviewClick={() => onReviewClient?.(client)}
+              onReviewClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onSelectClient?.(client.id);
+                onReviewClient?.(client);
+              }}
               onRemoveClick={() => onRemoveClient?.(client)}
             />
           ))}

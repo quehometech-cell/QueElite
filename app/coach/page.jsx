@@ -1047,15 +1047,17 @@ export default function CoachPage() {
               setActiveSection("overview");
             }}
             onReviewClient={(client) => {
+              if (!client?.id) return;
               setSelectedClientId(client.id);
-              const reasons = client.attention_reasons || [];
-              setActiveSection(
-                reasons.includes("No training program assigned")
-                  ? "workouts"
-                  : reasons.includes("Check-in needs response")
-                    ? "checkins"
-                    : "overview"
-              );
+              // Always open the client's overview first so the action has a
+              // predictable destination; the coach can choose the flagged tab.
+              setActiveSection("overview");
+              window.requestAnimationFrame(() => {
+                document.querySelector(".gcr-coach-content")?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                });
+              });
             }}
             onRemoveClient={handleRemoveClient}
           />

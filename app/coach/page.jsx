@@ -660,7 +660,12 @@ export default function CoachPage() {
           profileRows = data || [];
         }
 
-        const memberProfiles = profileRows;
+        // Include the signed-in coach as a self-training profile.
+        // Reuses the coach's existing user ID and training records.
+        const memberProfiles = [
+          ...profileRows,
+          { ...profile, is_self_client: true },
+        ];
 
         /*
          * Build the client-list summary.
@@ -779,7 +784,7 @@ export default function CoachPage() {
         setSelectedClientId((current) =>
           enrichedClients.some((client) => client.id === current)
             ? current
-            : (enrichedClients[0]?.id || null)
+            : (enrichedClients.find((client) => client.is_self_client)?.id || enrichedClients[0]?.id || null)
         );
       } catch (error) {
         console.error(

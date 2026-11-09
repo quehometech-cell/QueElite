@@ -975,6 +975,31 @@ export default function CoachPage() {
           .gcr-coach .gcr-coach-nav button { width: 100% !important; min-width: 0 !important; min-height: 48px !important; font-size: 11px !important; touch-action: manipulation; }
           .gcr-coach input, .gcr-coach select, .gcr-coach textarea { font-size: 16px !important; }
         }
+
+        /* Premium light workspace: high contrast without the all-black treatment. */
+        .gcr-coach { background:#f4f6f8 !important; color:#182230 !important; }
+        .gcr-coach .gcr-coach-header { background:#ffffff !important; border-bottom:1px solid #e4e7ec !important; box-shadow:0 2px 10px rgba(16,24,40,.04); }
+        .gcr-coach .gcr-coach-sidebar { background:#ffffff !important; border-color:#e4e7ec !important; }
+        .gcr-coach .gcr-coach-content { background:#f4f6f8 !important; color:#182230 !important; }
+        .gcr-coach .gcr-coach-shell { background:#f4f6f8 !important; }
+        .gcr-coach .gcr-coach-nav { border-color:#e4e7ec !important; }
+        .gcr-coach .gcr-coach-nav button { background:#ffffff !important; color:#344054 !important; border:1px solid #d0d5dd !important; border-radius:10px !important; font-size:12px !important; font-weight:700 !important; }
+        .gcr-coach .gcr-coach-nav button[aria-current="page"], .gcr-coach .gcr-coach-nav button:focus-visible { outline:2px solid #c79a28 !important; outline-offset:2px; }
+        .gcr-coach [style*="background: rgb(8, 8, 8)"], .gcr-coach [style*="background: rgb(17, 17, 17)"], .gcr-coach [style*="background: rgb(25, 25, 25)"], .gcr-coach [style*="background: rgb(26, 26, 26)"], .gcr-coach [style*="background: rgb(5, 5, 5)"] { background:#ffffff !important; border-color:#e4e7ec !important; box-shadow:0 2px 10px rgba(16,24,40,.035); }
+        .gcr-coach [style*="color: rgb(255, 255, 255)"], .gcr-coach [style*="color: rgb(221, 221, 221)"], .gcr-coach [style*="color: rgb(187, 187, 187)"], .gcr-coach [style*="color: rgb(170, 170, 170)"], .gcr-coach [style*="color: rgb(189, 189, 189)"] { color:#344054 !important; }
+        .gcr-coach [style*="color: rgb(119, 119, 119)"], .gcr-coach [style*="color: rgb(102, 102, 102)"] { color:#667085 !important; }
+        .gcr-coach [style*="color: rgb(244, 194, 13)"] { color:#9a7418 !important; }
+        .gcr-coach input, .gcr-coach select, .gcr-coach textarea { background:#ffffff !important; color:#182230 !important; border:1px solid #cfd5dd !important; border-radius:9px !important; }
+        .gcr-coach button { min-height:42px; }
+        .gcr-coach .gcr-review-queue { background:#ffffff !important; }
+        @media (max-width:820px) {
+          .gcr-coach .gcr-coach-header { padding:18px 16px !important; }
+          .gcr-coach .gcr-coach-content { padding:16px 12px 28px !important; }
+          .gcr-coach .gcr-coach-sidebar { padding:14px !important; }
+          .gcr-coach .gcr-coach-nav { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+          .gcr-coach .gcr-review-queue { padding:16px !important; margin:12px 0 !important; }
+          .gcr-coach .gcr-review-queue button { width:100%; }
+        }
       `}</style>
       <header className="gcr-coach-header" style={styles.header}>
         <div>

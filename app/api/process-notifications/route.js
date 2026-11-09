@@ -41,7 +41,7 @@ export async function GET(request) {
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          sender: { name: "Get Cha Right Fitness", email: "getcharighttransformations22@gmail.com" },
+          sender: { name: "Get Cha Right Fitness", email: "que@getcharightfitness.com" },
           to: [{ email: row.recipient_email, name: "Coach Que" }],
           subject: row.subject,
           htmlContent: html,

@@ -1028,11 +1028,18 @@ export default function CoachPage() {
               selectedClientId
             }
             onSelectClient={(clientId) => {
-              setSelectedClientId(
-                clientId
-              );
+              setSelectedClientId(clientId);
+              setActiveSection("overview");
+            }}
+            onReviewClient={(client) => {
+              setSelectedClientId(client.id);
+              const reasons = client.attention_reasons || [];
               setActiveSection(
-                "overview"
+                reasons.includes("No training program assigned")
+                  ? "workouts"
+                  : reasons.includes("Check-in needs response")
+                    ? "checkins"
+                    : "overview"
               );
             }}
           />

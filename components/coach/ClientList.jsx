@@ -6,6 +6,7 @@ export default function ClientList({
   clients = [],
   selectedClientId,
   onSelectClient,
+  onReviewClient,
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -129,12 +130,9 @@ export default function ClientList({
             <ClientCard
               key={client.id}
               client={client}
-              selected={
-                selectedClientId === client.id
-              }
-              onClick={() =>
-                onSelectClient(client.id)
-              }
+              selected={selectedClientId === client.id}
+              onClick={() => onSelectClient(client.id)}
+              onReviewClick={() => onReviewClient?.(client)}
             />
           ))}
         </div>
@@ -147,16 +145,13 @@ function ClientCard({
   client,
   selected,
   onClick,
+  onReviewClick,
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <article
       style={{
         ...styles.clientCard,
-        ...(selected
-          ? styles.clientCardSelected
-          : {}),
+        ...(selected ? styles.clientCardSelected : {}),
       }}
     >
       <div style={styles.clientTop}>
@@ -245,10 +240,17 @@ function ClientCard({
         </div>
       )}
 
-      <div style={styles.openClient}>
-        OPEN CLIENT →
+      <div style={styles.cardActions}>
+        <button type="button" onClick={onClick} style={styles.openClient}>
+          OPEN CLIENT →
+        </button>
+        {client.needs_attention && (
+          <button type="button" onClick={onReviewClick} style={styles.reviewAction}>
+            REVIEW NOW →
+          </button>
+        )}
       </div>
-    </button>
+    </article>
   );
 }
 
@@ -438,13 +440,13 @@ const styles = {
 
   clientCard: {
     width: "100%",
+    boxSizing: "border-box",
     background: "#111111",
     color: "#FFFFFF",
     border: "1px solid #2A2A2A",
     borderRadius: "15px",
     padding: "20px",
     textAlign: "left",
-    cursor: "pointer",
   },
 
   clientCardSelected: {
@@ -565,11 +567,34 @@ const styles = {
     lineHeight: 1.5,
   },
 
+  cardActions: {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "10px",
+    marginTop: "15px",
+  },
+
   openClient: {
     color: "#F4C20D",
+    background: "transparent",
+    border: "1px solid #F4C20D",
+    borderRadius: "8px",
+    padding: "10px 13px",
     fontWeight: "900",
     fontSize: "10px",
-    marginTop: "15px",
+    cursor: "pointer",
+  },
+
+  reviewAction: {
+    color: "#080808",
+    background: "#F4C20D",
+    border: "1px solid #F4C20D",
+    borderRadius: "8px",
+    padding: "10px 13px",
+    fontWeight: "900",
+    fontSize: "10px",
+    cursor: "pointer",
   },
 
   emptyCard: {

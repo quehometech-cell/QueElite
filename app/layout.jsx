@@ -1,6 +1,7 @@
 import MarketingChrome from "../components/MarketingChrome";
 import PWARegister from "../components/PWARegister";
 import LeadAssistant from "../components/LeadAssistant";
+import "./brand-theme.css";
 
 export const metadata = {
   metadataBase: new URL("https://www.getcharightfitness.com"),

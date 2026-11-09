@@ -24,6 +24,7 @@ export default function ClientNutrition({
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [declining, setDeclining] = useState(false);
   const [loadingMealPlan, setLoadingMealPlan] = useState(false);
 
   const [mealPlan, setMealPlan] = useState(null);
@@ -149,8 +150,10 @@ export default function ClientNutrition({
         })
         .limit(1);
 
-      // When opened from Needs Review, load the exact queued plan
-      // instead of whichever plan happens to be newest.
+      if (planError) throw planError;
+      let availablePlans = plans || [];
+
+      // A review queue action must open the exact item selected by the coach.
       if (pendingReviewId) {
         const { data: requestedPlan, error: requestedPlanError } = await supabase
           .from("meal_plans")
@@ -166,16 +169,10 @@ export default function ClientNutrition({
           .eq("status", "pending_review")
           .maybeSingle();
         if (requestedPlanError) throw requestedPlanError;
-        if (requestedPlan) {
-          plans.splice(0, plans.length, requestedPlan);
-        }
+        availablePlans = requestedPlan ? [requestedPlan] : [];
       }
 
-      if (planError) {
-        throw planError;
-      }
-
-      const latestPlan = plans?.[0] || null;
+      const latestPlan = availablePlans[0] || null;
 
       setMealPlan(latestPlan);
       setSelectedDay(1);
@@ -404,6 +401,33 @@ export default function ClientNutrition({
       );
     } finally {
       setApproving(false);
+    }
+  }
+
+  async function declineMealPlan() {
+    if (!mealPlan?.id || declining || approving) return;
+    const confirmed = window.confirm("Decline this meal plan? It will be archived and removed from the pending review queue. The client will not see it.");
+    if (!confirmed) return;
+    setDeclining(true);
+    setMessage("");
+    setErrorMessage("");
+    try {
+      const token = await getAccessToken();
+      const response = await fetch("/api/decline-meal-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ meal_plan_id: mealPlan.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error || "Meal plan could not be declined.");
+      setMessage("Meal plan declined and archived. It has been removed from Needs Review.");
+      setMealPlan(result.meal_plan || null);
+      setMealPlanMeals([]);
+      if (onNutritionUpdated) await onNutritionUpdated(result.meal_plan);
+    } catch (error) {
+      setErrorMessage(error?.message || "Unable to decline this meal plan.");
+    } finally {
+      setDeclining(false);
     }
   }
 
@@ -788,24 +812,24 @@ export default function ClientNutrition({
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={approveMealPlan}
-                disabled={approving || generating}
-                style={{
-                  ...styles.approveButton,
-                  opacity:
-                    approving || generating ? 0.55 : 1,
-                  cursor:
-                    approving || generating
-                      ? "not-allowed"
-                      : "pointer",
-                }}
-              >
-                {approving
-                  ? "PUBLISHING..."
-                  : "APPROVE & PUBLISH"}
-              </button>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={approveMealPlan}
+                  disabled={approving || declining || generating}
+                  style={{ ...styles.approveButton, opacity: approving || declining || generating ? 0.55 : 1 }}
+                >
+                  {approving ? "PUBLISHING..." : "APPROVE & PUBLISH"}
+                </button>
+                <button
+                  type="button"
+                  onClick={declineMealPlan}
+                  disabled={approving || declining || generating}
+                  style={{ width: "100%", background: "#fff", color: "#9f2d24", border: "1px solid #d9a6a2", borderRadius: 9, padding: 15, fontWeight: 800, cursor: declining ? "wait" : "pointer" }}
+                >
+                  {declining ? "DECLINING..." : "DECLINE & ARCHIVE"}
+                </button>
+              </div>
             </div>
           )}
 

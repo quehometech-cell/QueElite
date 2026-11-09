@@ -208,63 +208,8 @@ export default function Workouts({
 
   async function loadCurrentWeekPlan() {
     if (!program?.id) {
-      setLoadingWorkoutPlan(true);
-      setWorkoutDays([]);
       setLiveExercises([]);
-      if (!user?.id) { setLoadingWorkoutPlan(false); return; }
-      try {
-        const { data: standalone, error: sessionError } = await supabase
-          .from("workout_sessions")
-          .select("id, workout_name, workout_notes, started_at, status, duration_minutes")
-          .eq("user_id", user.id)
-          .is("member_program_id", null)
-          .in("status", ["scheduled", "in_progress", "completed"])
-          .order("started_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (sessionError) throw sessionError;
-        if (!standalone) return;
-        const { data: logs, error: logsError } = await supabase
-          .from("workout_exercise_logs")
-          .select("id, exercise_id, exercise_name, exercise_order, prescribed_sets, prescribed_reps, prescribed_rest_seconds, prescribed_rir, prescribed_tempo, duration_seconds, distance, distance_unit, pace, notes")
-          .eq("workout_session_id", standalone.id)
-          .order("exercise_order", { ascending: true });
-        if (logsError) throw logsError;
-        const ids = [...new Set((logs || []).map(row => row.exercise_id).filter(Boolean))];
-        const { data: libraryRows, error: libraryError } = ids.length
-          ? await supabase.from("exercises").select("id, name, category, equipment, difficulty, instructions, instructions_short, coaching_cues, common_mistakes, video_url, muscle_group, movement_pattern, secondary_muscles, exercise_type, unilateral, tracking_type").in("id", ids)
-          : { data: [], error: null };
-        if (libraryError) throw libraryError;
-        const libraryMap = new Map((libraryRows || []).map(row => [String(row.id), row]));
-        const merged = (logs || []).map(row => ({
-          ...(libraryMap.get(String(row.exercise_id)) || {}),
-          id: row.exercise_id,
-          exercise_id: row.exercise_id,
-          standalone_log_id: row.id,
-          exercise_order: row.exercise_order,
-          workout_day: 1,
-          workout_name: standalone.workout_name,
-          workout_type: "mixed",
-          workout_description: standalone.workout_notes,
-          sets: row.prescribed_sets,
-          reps: row.prescribed_reps,
-          rest_seconds: row.prescribed_rest_seconds,
-          rir: row.prescribed_rir,
-          tempo: row.prescribed_tempo,
-          duration_seconds: row.duration_seconds,
-          distance_target: row.distance,
-          distance_unit: row.distance_unit,
-          pace_target: row.pace,
-          notes: row.notes,
-        }));
-        setWorkoutDays([{ id: null, workout_day: 1, name: standalone.workout_name, workout_type: "mixed", description: standalone.workout_notes, coach_notes: standalone.workout_notes, estimated_minutes: standalone.duration_minutes, is_rest_day: false }]);
-        setLiveExercises(merged);
-      } catch (error) {
-        console.error("One-on-one session load error:", error);
-        setMessage(error.message || "Unable to load your one-on-one session.");
-      } finally {
-        setLoadingWorkoutPlan(false);
-      }
+      setLoadingWorkoutPlan(false);
       return;
     }
 
@@ -409,7 +354,7 @@ export default function Workouts({
   }, [user?.id, program?.member_program_id, currentWeek]);
 
   async function loadSessions() {
-    if (!user?.id) {
+    if (!user?.id || !program?.member_program_id) {
       setSessions([]);
       setLoadingSessions(false);
       return;
@@ -418,14 +363,15 @@ export default function Workouts({
     setLoadingSessions(true);
     setMessage("");
 
-    let query = supabase
+    const { data, error } = await supabase
       .from("workout_sessions")
-      .select("id, member_program_id, program_workout_id, week_number, workout_day, workout_name, status, started_at, completed_at, duration_minutes, workout_notes")
-      .eq("user_id", user.id);
-    query = program?.member_program_id
-      ? query.eq("member_program_id", program.member_program_id).eq("week_number", currentWeek)
-      : query.is("member_program_id", null);
-    const { data, error } = await query.order("workout_day", { ascending: true });
+      .select(
+        "id, program_workout_id, week_number, workout_day, workout_name, status, started_at, completed_at, duration_minutes, workout_notes"
+      )
+      .eq("user_id", user.id)
+      .eq("member_program_id", program.member_program_id)
+      .eq("week_number", currentWeek)
+      .order("workout_day", { ascending: true });
 
     if (error) {
       console.error("Workout session load error:", error);
@@ -441,21 +387,21 @@ export default function Workouts({
   }
 
   async function loadHistoryAndPreviousPerformance() {
-    if (!user?.id) {
+    if (!user?.id || !program?.member_program_id) {
       setWorkoutHistory([]);
       setPreviousPerformance({});
       return;
     }
 
-    let historyQuery = supabase
+    const { data: completedSessions, error: sessionError } = await supabase
       .from("workout_sessions")
-      .select("id, member_program_id, program_workout_id, week_number, workout_day, workout_name, status, started_at, completed_at, duration_minutes, workout_notes")
+      .select(
+        "id, program_workout_id, week_number, workout_day, workout_name, status, started_at, completed_at, duration_minutes, workout_notes"
+      )
       .eq("user_id", user.id)
-      .eq("status", "completed");
-    historyQuery = program?.member_program_id
-      ? historyQuery.eq("member_program_id", program.member_program_id)
-      : historyQuery.is("member_program_id", null);
-    const { data: completedSessions, error: sessionError } = await historyQuery.order("completed_at", { ascending: false });
+      .eq("member_program_id", program.member_program_id)
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false });
 
     if (sessionError) {
       console.error("Workout history load error:", sessionError);
@@ -898,11 +844,10 @@ export default function Workouts({
 
   function getExerciseLog(item) {
     if (!selectedSession) return null;
-    return exerciseLogs.find((row) =>
-      Number(row.workout_session_id) === Number(selectedSession.id) &&
-      (item.standalone_log_id
-        ? Number(row.id) === Number(item.standalone_log_id)
-        : String(row.program_workout_exercise_id) === String(item.program_workout_exercise_id))
+    return exerciseLogs.find(
+      (row) =>
+        Number(row.workout_session_id) === Number(selectedSession.id) &&
+        String(row.program_workout_exercise_id) === String(item.program_workout_exercise_id)
     );
   }
 
@@ -1169,14 +1114,14 @@ export default function Workouts({
     ? Math.min(100, Math.round((completedCount / trainingDays) * 100))
     : 0;
 
-  if (!program && (loadingSessions || !sessions.some(session => !session.member_program_id))) {
+  if (!program) {
     return (
       <section style={styles.panel}>
         <div style={styles.emptyState}>
           <div style={styles.emptyIcon}>🏋️</div>
-          <h2 style={styles.emptyTitle}>{loadingSessions ? "Loading your training…" : "No active program yet"}</h2>
+          <h2 style={styles.emptyTitle}>No active program yet</h2>
           <p style={styles.muted}>
-            {loadingSessions ? "Checking for a one-on-one session from your coach." : "Your coach has not assigned a training program or one-on-one session to this account."}
+            Your coach has not assigned an active training program to this account.
           </p>
         </div>
       </section>
@@ -1205,9 +1150,9 @@ export default function Workouts({
       <section className="gcr-workout-hero" style={styles.hero}>
         <div>
           <div style={styles.eyebrow}>YOUR TRAINING PROGRAM</div>
-          <h1 style={styles.title}>{program?.name || sessions.find(session => !session.member_program_id)?.workout_name || "One-on-One Session"}</h1>
+          <h1 style={styles.title}>{program.name}</h1>
           <p style={styles.subtitle}>
-            {program ? `Week ${currentWeek} of ${durationWeeks}` : "A single session assigned by your coach"}
+            Week {currentWeek} of {durationWeeks}
             {selectedMeta.phaseName ? ` • ${selectedMeta.phaseName}` : ""}
           </p>
         </div>

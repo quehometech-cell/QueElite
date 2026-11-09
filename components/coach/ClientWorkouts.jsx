@@ -275,7 +275,7 @@ export default function ClientWorkouts({
 
   return (
     <div style={styles.page}>
-      <OneOnOneSessionBuilder client={client} />
+      {!program && <OneOnOneSessionBuilder client={client} />}
       <div style={styles.card}>
         <h2 style={styles.title}>Client Workouts</h2>
 

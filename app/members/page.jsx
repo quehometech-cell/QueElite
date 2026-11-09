@@ -1170,7 +1170,7 @@ export default function MembersPage() {
 
   if (loading) {
     return (
-      <main style={styles.loadingPage}>
+      <main className="gcr-member" style={styles.loadingPage}>
         <div style={styles.loadingLogo}>
           GCR
         </div>
@@ -1221,7 +1221,7 @@ export default function MembersPage() {
   // =========================================================
 
   return (
-    <main style={styles.page}>
+    <main className="gcr-member" style={styles.page}>
       {sectionWarnings.length > 0 && <p role="status" style={{padding:16,color:"#F4C20D"}}>Your training is available. Temporarily unable to load: {sectionWarnings.join(", ")}. Please refresh to retry those sections.</p>}
       <style jsx global>{`
         * {

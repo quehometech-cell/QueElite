@@ -105,7 +105,9 @@ export default function WorkoutBuilder() {
   }
 
   return <>
-    <p style={{ color: "#bbb", lineHeight: 1.6 }}>Choose a program, week, and day. Add exercises from your library or create your own. Shared template changes apply to everyone assigned that template. Client copies only affect their assigned client. Each save updates the selected week and day.</p>
+    <p style={{ color: "#667085", lineHeight: 1.6 }}>Build complete multi-week training programs from your exercise library. Create a fresh program below, then add its weekly schedule and prescriptions.</p>
+    <CreateProgramForm onCreated={(created) => { setPrograms(current => [...current, created].sort((a,b) => a.name.localeCompare(b.name))); setProgramId(created.id); setWeek(1); setDay(1); setMessage("New program created. Add its workouts and exercises below."); }} />
+
     <fieldset disabled={saving || loading} style={{ ...grid, border: 0, padding: 0 }}>
       <Field label="Program"><select style={input} value={programId} onChange={e => navigate(value => { setProgramId(value); setWeek(1); }, e.target.value)}>{programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
       <Field label="Week"><select style={input} value={week} onChange={e => navigate(setWeek, Number(e.target.value))}>{Array.from({ length: selectedProgram?.duration_weeks || 12 }, (_, i) => <option key={i + 1} value={i + 1}>Week {i + 1}</option>)}</select></Field>
@@ -137,6 +139,56 @@ export default function WorkoutBuilder() {
       </form>
     </>}
   </>;
+}
+
+
+function CreateProgramForm({ onCreated }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ name: "", goal: "", experience_level: "beginner", equipment: "Full gym", days_per_week: "3", session_minutes: "45", duration_weeks: "4", location: "gym", description: "" });
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
+  async function create(event) {
+    event.preventDefault(); setSaving(true); setNotice("");
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error("Sign in again before creating a program.");
+      if (!form.name.trim()) throw new Error("Program name is required.");
+      const { data, error } = await supabase.from("programs").insert({
+        name: form.name.trim(), goal: form.goal.trim() || "General fitness",
+        experience_level: form.experience_level, equipment: form.equipment.trim() || "Bodyweight",
+        days_per_week: Number(form.days_per_week), session_minutes: Number(form.session_minutes),
+        duration_weeks: Number(form.duration_weeks), location: form.location,
+        description: form.description.trim() || null, is_active: true, program_type: "coaching",
+        client_id: null,
+      }).select("*").single();
+      if (error) throw error;
+      onCreated?.(data); setOpen(false);
+      setForm({ name: "", goal: "", experience_level: "beginner", equipment: "Full gym", days_per_week: "3", session_minutes: "45", duration_weeks: "4", location: "gym", description: "" });
+    } catch (error) { setNotice(error?.message || "Unable to create program."); }
+    finally { setSaving(false); }
+  }
+  const label = { display: "grid", gap: 6, color: "#344054", fontWeight: 700 };
+  return <section style={{ ...card, background: "#fff", borderColor: "#e4e7ec" }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      <div><strong style={{ color: "#17212f" }}>Start a program from scratch</strong><p style={{ color: "#667085", margin: "5px 0 0", fontSize: 13 }}>Create a reusable 4-, 6-, 8-, or 12-week program, then build each workout day.</p></div>
+      <button type="button" style={button} onClick={() => setOpen(value => !value)}>{open ? "Close" : "+ New program"}</button>
+    </div>
+    {open && <form onSubmit={create} style={{ display: "grid", gap: 12, marginTop: 16 }}>
+      <div style={grid}>
+        <Field label="Program name"><input style={input} required maxLength={150} value={form.name} onChange={e => setForm(f => ({...f,name:e.target.value}))} placeholder="e.g. 8-Week Strength Foundation" /></Field>
+        <Field label="Primary goal"><input style={input} value={form.goal} onChange={e => setForm(f => ({...f,goal:e.target.value}))} placeholder="Strength, fat loss, muscle gain…" /></Field>
+        <Field label="Experience level"><select style={input} value={form.experience_level} onChange={e => setForm(f => ({...f,experience_level:e.target.value}))}>{["beginner","intermediate","advanced","all levels"].map(x=><option key={x}>{x}</option>)}</select></Field>
+        <Field label="Equipment"><input style={input} value={form.equipment} onChange={e => setForm(f => ({...f,equipment:e.target.value}))} /></Field>
+        <Field label="Program length"><select style={input} value={form.duration_weeks} onChange={e => setForm(f => ({...f,duration_weeks:e.target.value}))}>{[4,6,8,12].map(x=><option key={x} value={x}>{x} weeks</option>)}</select></Field>
+        <Field label="Training days per week"><select style={input} value={form.days_per_week} onChange={e => setForm(f => ({...f,days_per_week:e.target.value}))}>{[1,2,3,4,5,6,7].map(x=><option key={x}>{x}</option>)}</select></Field>
+        <Field label="Session length (minutes)"><input style={input} type="number" min="10" max="240" value={form.session_minutes} onChange={e => setForm(f => ({...f,session_minutes:e.target.value}))} /></Field>
+        <Field label="Training location"><select style={input} value={form.location} onChange={e => setForm(f => ({...f,location:e.target.value}))}>{["gym","home","hybrid","outdoors","anywhere"].map(x=><option key={x}>{x}</option>)}</select></Field>
+      </div>
+      <Field label="Program description"><textarea style={input} value={form.description} onChange={e => setForm(f => ({...f,description:e.target.value}))} /></Field>
+      <button type="submit" disabled={saving} style={button}>{saving ? "Creating…" : "Create program and start building"}</button>
+    </form>}
+    {notice && <p role="alert" style={{ color: "#b42318" }}>{notice}</p>}
+  </section>;
 }
 
 function ProgramDetails({ program, onSaved }) {

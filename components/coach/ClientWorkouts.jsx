@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import OneOnOneSessionBuilder from "./OneOnOneSessionBuilder";
 
 export default function ClientWorkouts({
   client,
@@ -274,6 +275,7 @@ export default function ClientWorkouts({
 
   return (
     <div style={styles.page}>
+      {!program && <OneOnOneSessionBuilder client={client} />}
       <div style={styles.card}>
         <h2 style={styles.title}>Client Workouts</h2>
 

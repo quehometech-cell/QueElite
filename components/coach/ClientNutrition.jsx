@@ -6,6 +6,7 @@ import { supabase } from "../../lib/supabase";
 export default function ClientNutrition({
   client,
   nutritionPlan,
+  pendingReviewId = null,
   onNutritionUpdated,
 }) {
   const [form, setForm] = useState({
@@ -60,7 +61,7 @@ export default function ClientNutrition({
 
     loadMealPlan();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client?.id]);
+  }, [client?.id, pendingReviewId]);
 
   function updateField(field, value) {
     setForm((current) => ({
@@ -147,6 +148,28 @@ export default function ClientNutrition({
           ascending: false,
         })
         .limit(1);
+
+      // When opened from Needs Review, load the exact queued plan
+      // instead of whichever plan happens to be newest.
+      if (pendingReviewId) {
+        const { data: requestedPlan, error: requestedPlanError } = await supabase
+          .from("meal_plans")
+          .select(`
+            id, user_id, nutrition_plan_id, name, description,
+            calorie_target, protein_grams, carb_grams, fat_grams,
+            days_per_week, is_active, start_date, end_date, coach_notes,
+            status, generated_from_assessment_id, generated_at,
+            approved_by, approved_at, generation_notes, created_at, updated_at
+          `)
+          .eq("id", pendingReviewId)
+          .eq("user_id", client.id)
+          .eq("status", "pending_review")
+          .maybeSingle();
+        if (requestedPlanError) throw requestedPlanError;
+        if (requestedPlan) {
+          plans.splice(0, plans.length, requestedPlan);
+        }
+      }
 
       if (planError) {
         throw planError;

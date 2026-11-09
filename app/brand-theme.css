@@ -322,3 +322,66 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   color: var(--gcr-text) !important;
   border-color: var(--gcr-border) !important;
 }
+
+
+/* High-contrast controls across both authenticated portals.
+   Older component styles set dark backgrounds inline; normalize the controls
+   themselves so labels never disappear against a dark fill. */
+.gcr-coach button,
+.gcr-member button,
+.gcr-coach [role="button"],
+.gcr-member [role="button"] {
+  background: #ffffff !important;
+  color: #253247 !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+  text-shadow: none !important;
+  box-shadow: 0 1px 2px rgba(16,24,40,.06) !important;
+  opacity: 1 !important;
+}
+.gcr-coach button:hover:not(:disabled),
+.gcr-member button:hover:not(:disabled),
+.gcr-coach [role="button"]:hover,
+.gcr-member [role="button"]:hover {
+  background: #f1f5f9 !important;
+  color: #17212f !important;
+  border-color: #98a2b3 !important;
+}
+.gcr-coach button:disabled,
+.gcr-member button:disabled,
+.gcr-coach [role="button"][aria-disabled="true"],
+.gcr-member [role="button"][aria-disabled="true"] {
+  opacity: .55 !important;
+  color: #667085 !important;
+  background: #f2f4f7 !important;
+  cursor: not-allowed !important;
+}
+/* Keep primary gold actions visually distinct, with dark readable lettering. */
+.gcr-coach button[style*="rgb(244, 194, 13)"],
+.gcr-member button[style*="rgb(244, 194, 13)"],
+.gcr-coach button[style*="#F4C20D"],
+.gcr-member button[style*="#F4C20D"],
+.gcr-coach button[style*="rgb(199, 154, 40)"],
+.gcr-member button[style*="rgb(199, 154, 40)"],
+.gcr-coach button[style*="#c79a28"],
+.gcr-member button[style*="#c79a28"],
+.gcr-coach button[style*="rgb(184, 135, 24)"],
+.gcr-member button[style*="rgb(184, 135, 24)"] {
+  background: #f4c20d !important;
+  color: #17212f !important;
+  border-color: #d5a900 !important;
+}
+.gcr-coach button[style*="rgb(244, 194, 13)"]:hover:not(:disabled),
+.gcr-member button[style*="rgb(244, 194, 13)"]:hover:not(:disabled),
+.gcr-coach button[style*="#F4C20D"]:hover:not(:disabled),
+.gcr-member button[style*="#F4C20D"]:hover:not(:disabled),
+.gcr-coach button[style*="rgb(199, 154, 40)"]:hover:not(:disabled),
+.gcr-member button[style*="rgb(199, 154, 40)"]:hover:not(:disabled),
+.gcr-coach button[style*="#c79a28"]:hover:not(:disabled),
+.gcr-member button[style*="#c79a28"]:hover:not(:disabled) {
+  background: #e5b400 !important;
+  color: #17212f !important;
+}
+.gcr-coach button svg,
+.gcr-member button svg { color: currentColor !important; }

@@ -1,4 +1,9 @@
-"use client";
+export const metadata = {
+  title: "Personal Trainer in Villa Rica, GA | Get Cha Right Fitness",
+  description: "Build strength, improve mobility, and stay consistent with personalized online, hybrid, and in-person coaching from Coach Que in Villa Rica and west Atlanta.",
+  alternates: { canonical: "/" },
+  openGraph: { title: "Get Cha Right Fitness | Personal Training & Online Coaching", description: "Personalized strength, mobility, and fitness coaching in Villa Rica and west Atlanta.", url: "https://www.getcharightfitness.com", siteName: "Get Cha Right Fitness", type: "website" }
+};
 
 const businessSchema = {
   "@context": "https://schema.org",

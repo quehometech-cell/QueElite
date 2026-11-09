@@ -28,9 +28,7 @@ const SECTIONS = [
 ];
 
 function getReviewSection(client) {
-  const reasons = client?.attention_reasons || [];
-  if (reasons.includes("Check-in needs response")) return "checkins";
-  if (reasons.includes("No active training program assigned") || reasons.includes("No training program assigned") || reasons.includes("No workouts completed this week")) return "workouts";
+  if (client?.pending_review_type === "meal_plan") return "nutrition";
   return "overview";
 }
 
@@ -676,6 +674,7 @@ export default function CoachPage() {
                   completionResult,
                   progressResult,
                   checkInResult,
+                  pendingMealPlanResult,
                 ] = await Promise.all([
                   supabase
                     .from("member_programs")
@@ -719,6 +718,14 @@ export default function CoachPage() {
                       ascending: false,
                     })
                     .limit(1),
+
+                  supabase
+                    .from("meal_plans")
+                    .select("id, status, created_at")
+                    .eq("user_id", client.id)
+                    .eq("status", "pending_review")
+                    .order("created_at", { ascending: false })
+                    .limit(1),
                 ]);
 
                 const activeAssignment = programResult.data?.[0] || null;
@@ -734,23 +741,10 @@ export default function CoachPage() {
                   checkInResult.data?.[0] ||
                   null;
 
-                const attentionReasons = [];
-
-                const isActiveClient = client.membership_status === "active";
-                if (isActiveClient && !programId) {
-                  attentionReasons.push("No active training program assigned");
-                }
-
-                if (latestCheck && !String(latestCheck.coach_response || "").trim()) {
-                  attentionReasons.push("Check-in needs response");
-                }
-
-                const assignmentAgeDays = activeAssignment?.assigned_at
-                  ? (Date.now() - new Date(activeAssignment.assigned_at).getTime()) / 86400000
-                  : 0;
-                if (isActiveClient && programId && assignmentAgeDays >= 7 && (completionResult.data || []).length === 0) {
-                  attentionReasons.push("No workouts completed this week");
-                }
+                const pendingMealPlan = pendingMealPlanResult.data?.[0] || null;
+                const attentionReasons = pendingMealPlan
+                  ? ["Meal plan is awaiting your approval"]
+                  : [];
 
                 return {
                   ...client,
@@ -771,12 +765,10 @@ export default function CoachPage() {
                     latestCheck
                       ?.submitted_at || null,
 
-                  needs_attention:
-                    attentionReasons.length >
-                    0,
-
-                  attention_reasons:
-                    attentionReasons,
+                  needs_attention: Boolean(pendingMealPlan),
+                  pending_review_type: pendingMealPlan ? "meal_plan" : null,
+                  pending_review_id: pendingMealPlan?.id || null,
+                  attention_reasons: attentionReasons,
                 };
               }
             )
@@ -1023,13 +1015,16 @@ export default function CoachPage() {
       </header>
 
       {coachUser?.id === "31f26f66-f9be-47a4-aed9-bb3013755f51" && <OwnerNotifications />}
-      {clients.length > 0 && <section aria-label="Coach action center" style={{background:"#111",border:"1px solid #343434",borderRadius:14,padding:20,margin:"18px 0"}}>
-        <h2 style={{margin:"0 0 6px",color:"#F4C20D"}}>Coach Action Center</h2>
-        <p style={{color:"#aaa",margin:"0 0 14px",fontSize:14}}>Client follow-ups based on current workout assignments, weekly activity, and submitted check-ins. Review each situation before contacting clients.</p>
-        {clients.filter(c=>c.needs_attention).length===0 ? <p style={{color:"#a9d5a9"}}>No clients currently flagged for follow-up.</p> :
-        <div style={{display:"grid",gap:9}}>{clients.filter(c=>c.needs_attention).map(c=><div key={c.id} style={{display:"flex",gap:12,justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",background:"#1a1a1a",border:"1px solid #303030",padding:12,borderRadius:10}}>
-          <div><strong>{c.full_name||c.email||"Client"}</strong><div style={{color:"#bbb",fontSize:13,marginTop:4}}>{(c.attention_reasons||[]).join(" · ")}</div></div>
-          <button type="button" onClick={()=>{setSelectedClientId(c.id);setActiveSection(getReviewSection(c));scrollToCoachContent();}} style={{background:"#F4C20D",color:"#111",border:0,padding:"10px 14px",borderRadius:9,cursor:"pointer",fontWeight:900}}>REVIEW CLIENT →</button>
+      {clients.length > 0 && <section aria-label="Needs review" className="gcr-review-queue" style={{background:"#fff",border:"1px solid #e4e7ec",borderRadius:16,padding:20,margin:"18px 0",boxShadow:"0 4px 18px rgba(16,24,40,.04)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+          <div><p style={{margin:"0 0 5px",fontSize:11,fontWeight:800,letterSpacing:1.2,color:"#9b7410"}}>COACH WORKSPACE</p><h2 style={{margin:0,color:"#17212f",fontSize:22}}>Needs review</h2></div>
+          <span style={{background:"#fff6db",color:"#805d00",padding:"6px 10px",borderRadius:20,fontSize:12,fontWeight:800}}>{clients.filter(c=>c.needs_attention).length} pending</span>
+        </div>
+        <p style={{color:"#667085",margin:"8px 0 14px",fontSize:14,lineHeight:1.5}}>Only items that are waiting for your approval appear here. Routine activity and coaching reminders stay out of this queue.</p>
+        {clients.filter(c=>c.needs_attention).length===0 ? <p style={{color:"#667085",margin:"12px 0 0"}}>You're all caught up. No client requests or plans are waiting for review.</p> :
+        <div style={{display:"grid",gap:10,marginTop:14}}>{clients.filter(c=>c.needs_attention).map(c=><div key={c.id} style={{display:"flex",gap:12,justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",background:"#f8fafc",border:"1px solid #e4e7ec",padding:14,borderRadius:12}}>
+          <div><strong style={{color:"#17212f"}}>{c.full_name||c.email||"Client"}</strong><div style={{color:"#667085",fontSize:13,marginTop:4}}>{(c.attention_reasons||[]).join(" · ")}</div></div>
+          <button type="button" onClick={()=>{setSelectedClientId(c.id);setActiveSection(getReviewSection(c));scrollToCoachContent();}} style={{background:"#c79a28",color:"#fff",border:0,padding:"11px 16px",borderRadius:9,cursor:"pointer",fontWeight:800,minHeight:44}}>Review plan →</button>
         </div>)}</div>}
       </section>}
       <div className="gcr-coach-shell" style={styles.shell}>

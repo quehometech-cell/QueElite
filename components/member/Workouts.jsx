@@ -590,7 +590,7 @@ export default function Workouts({
   }
 
   async function startWorkout() {
-    if (!user?.id || !program?.member_program_id || !selectedMeta?.id) return;
+    if (!user?.id || (!program?.member_program_id && !selectedSession) || (!selectedMeta?.id && !selectedSession)) return;
 
     const scheduleState = scheduleStateFor(selectedDay);
     const requiredDay = firstRequiredIncompleteDay();
@@ -619,6 +619,17 @@ export default function Workouts({
 
     try {
       let session = selectedSession;
+
+      if (session?.status === "scheduled") {
+        const { data: started, error: startError } = await supabase
+          .from("workout_sessions")
+          .update({ status: "in_progress", updated_at: new Date().toISOString() })
+          .eq("id", session.id).eq("user_id", user.id)
+          .select("*").single();
+        if (startError) throw startError;
+        session = started;
+        setSessions(current => current.map(row => row.id === started.id ? started : row));
+      }
 
       if (!session) {
         const { data, error } = await supabase
@@ -1268,6 +1279,19 @@ export default function Workouts({
           ) : null}
         </div>
       </section>
+
+      {selectedSession?.status === "scheduled" ? (
+        <section style={styles.startCard}>
+          <div>
+            <div style={styles.eyebrow}>SESSION READY</div>
+            <h3 style={styles.nextTitle}>Your coach has assigned this session</h3>
+            <p style={styles.muted}>Start when you are ready. Your prescribed exercises and set-by-set log are already prepared.</p>
+          </div>
+          <button type="button" onClick={startWorkout} disabled={Boolean(savingKey)} style={styles.primaryButton}>
+            {savingKey === "start" ? "Starting…" : "Start Session"}
+          </button>
+        </section>
+      ) : null}
 
       {selectedMeta.coachNotes ? (
         <section style={styles.coachNote}>

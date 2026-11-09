@@ -657,8 +657,10 @@ export default function Workouts({
         existingForSession.map((row) => String(row.program_workout_exercise_id))
       );
 
-      const missing = selectedExercises.filter(
-        (item) => !existingPrescriptionIds.has(String(item.program_workout_exercise_id))
+      const missing = selectedExercises.filter((item) =>
+        item.standalone_log_id
+          ? !existingForSession.some(log => Number(log.id) === Number(item.standalone_log_id))
+          : !existingPrescriptionIds.has(String(item.program_workout_exercise_id))
       );
 
       let createdExerciseLogs = [];

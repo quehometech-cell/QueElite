@@ -27,6 +27,19 @@ const SECTIONS = [
   { id: "notes", label: "Private Notes" },
 ];
 
+function getReviewSection(client) {
+  const reasons = client?.attention_reasons || [];
+  if (reasons.includes("Check-in needs response")) return "checkins";
+  if (reasons.includes("No active training program assigned") || reasons.includes("No training program assigned") || reasons.includes("No workouts completed this week")) return "workouts";
+  return "overview";
+}
+
+function scrollToCoachContent() {
+  window.requestAnimationFrame(() => {
+    document.querySelector(".gcr-coach-content")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
 export default function CoachPage() {
   const router = useRouter();
 
@@ -666,8 +679,9 @@ export default function CoachPage() {
                 ] = await Promise.all([
                   supabase
                     .from("member_programs")
-                    .select("program_id")
+                    .select("program_id, status, assigned_at")
                     .eq("user_id", client.id)
+                    .eq("status", "active")
                     .order("assigned_at", {
                       ascending: false,
                     })
@@ -707,9 +721,8 @@ export default function CoachPage() {
                     .limit(1),
                 ]);
 
-                const programId =
-                  programResult.data?.[0]
-                    ?.program_id;
+                const activeAssignment = programResult.data?.[0] || null;
+                const programId = activeAssignment?.program_id || null;
 
                 const clientProgram =
                   (programRows || []).find(
@@ -723,36 +736,20 @@ export default function CoachPage() {
 
                 const attentionReasons = [];
 
-                if (
-                  client.membership_status ===
-                  "active" &&
-                  !programId
-                ) {
-                  attentionReasons.push(
-                    "No training program assigned"
-                  );
+                const isActiveClient = client.membership_status === "active";
+                if (isActiveClient && !programId) {
+                  attentionReasons.push("No active training program assigned");
                 }
 
-                if (
-                  latestCheck &&
-                  !latestCheck.coach_response &&
-                  (latestCheck.questions ||
-                    latestCheck.challenges)
-                ) {
-                  attentionReasons.push(
-                    "Check-in needs response"
-                  );
+                if (latestCheck && !String(latestCheck.coach_response || "").trim()) {
+                  attentionReasons.push("Check-in needs response");
                 }
 
-                if (
-                  client.membership_status ===
-                    "active" &&
-                  (completionResult.data || [])
-                    .length === 0
-                ) {
-                  attentionReasons.push(
-                    "No workouts completed this week"
-                  );
+                const assignmentAgeDays = activeAssignment?.assigned_at
+                  ? (Date.now() - new Date(activeAssignment.assigned_at).getTime()) / 86400000
+                  : 0;
+                if (isActiveClient && programId && assignmentAgeDays >= 7 && (completionResult.data || []).length === 0) {
+                  attentionReasons.push("No workouts completed this week");
                 }
 
                 return {
@@ -1032,7 +1029,7 @@ export default function CoachPage() {
         {clients.filter(c=>c.needs_attention).length===0 ? <p style={{color:"#a9d5a9"}}>No clients currently flagged for follow-up.</p> :
         <div style={{display:"grid",gap:9}}>{clients.filter(c=>c.needs_attention).map(c=><div key={c.id} style={{display:"flex",gap:12,justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",background:"#1a1a1a",border:"1px solid #303030",padding:12,borderRadius:10}}>
           <div><strong>{c.full_name||c.email||"Client"}</strong><div style={{color:"#bbb",fontSize:13,marginTop:4}}>{(c.attention_reasons||[]).join(" · ")}</div></div>
-          <button type="button" onClick={()=>{setSelectedClientId(c.id);setActiveSection((c.attention_reasons||[]).includes("No training program assigned")?"workouts":(c.attention_reasons||[]).includes("Check-in needs response")?"checkins":"messages");}} style={{background:"#F4C20D",color:"#111",border:0,padding:"10px 14px",borderRadius:9,cursor:"pointer",fontWeight:900}}>REVIEW CLIENT →</button>
+          <button type="button" onClick={()=>{setSelectedClientId(c.id);setActiveSection(getReviewSection(c));scrollToCoachContent();}} style={{background:"#F4C20D",color:"#111",border:0,padding:"10px 14px",borderRadius:9,cursor:"pointer",fontWeight:900}}>REVIEW CLIENT →</button>
         </div>)}</div>}
       </section>}
       <div className="gcr-coach-shell" style={styles.shell}>
@@ -1049,15 +1046,8 @@ export default function CoachPage() {
             onReviewClient={(client) => {
               if (!client?.id) return;
               setSelectedClientId(client.id);
-              // Always open the client's overview first so the action has a
-              // predictable destination; the coach can choose the flagged tab.
-              setActiveSection("overview");
-              window.requestAnimationFrame(() => {
-                document.querySelector(".gcr-coach-content")?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "start",
-                });
-              });
+              setActiveSection(getReviewSection(client));
+              scrollToCoachContent();
             }}
             onRemoveClient={handleRemoveClient}
           />

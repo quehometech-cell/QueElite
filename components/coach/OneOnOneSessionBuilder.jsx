@@ -82,10 +82,26 @@ export default function OneOnOneSessionBuilder({ client }) {
       if (sessionError) throw sessionError;
       sessionId = session.id;
 
-      const { error: logError } = await supabase.from("workout_exercise_logs").insert(
+      const { data: createdLogs, error: logError } = await supabase.from("workout_exercise_logs").insert(
         payload.map(row => ({ ...row, workout_session_id: session.id, completed: false }))
-      );
+      ).select("id, exercise_id, prescribed_sets");
       if (logError) throw logError;
+
+      const setRows = [];
+      (createdLogs || []).forEach(log => {
+        const source = payload.find(row => Number(row.exercise_id) === Number(log.exercise_id));
+        const exercise = library.find(item => Number(item.id) === Number(log.exercise_id));
+        const tracking = String(exercise?.tracking_type || "").toLowerCase();
+        const setBased = !(tracking.includes("duration") || tracking.includes("distance") || tracking.includes("pace") || tracking.includes("completion"));
+        if (!setBased) return;
+        for (let setNumber = 1; setNumber <= Math.max(1, Number(source?.prescribed_sets || 1)); setNumber += 1) {
+          setRows.push({ workout_exercise_log_id: log.id, set_number: setNumber, weight: null, weight_unit: "lb", reps: null, rir: null, completed: false });
+        }
+      });
+      if (setRows.length) {
+        const { error: setError } = await supabase.from("workout_set_logs").insert(setRows);
+        if (setError) throw setError;
+      }
 
       setNotice("One-on-one session assigned. The client will see only this session in their workout area; no multi-week program was created.");
       setName("One-on-One Training Session");

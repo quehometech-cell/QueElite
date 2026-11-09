@@ -385,3 +385,132 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 }
 .gcr-coach button svg,
 .gcr-member button svg { color: currentColor !important; }
+
+
+/* =========================================================
+   GLOBAL BRAND SYSTEM
+   One consistent Get Cha Right look across public pages,
+   account pages, coach/member dashboards, and every tab.
+   ========================================================= */
+:root {
+  color-scheme: light;
+  --gcr-bg: #f5f7fa;
+  --gcr-surface: #ffffff;
+  --gcr-surface-soft: #f8fafc;
+  --gcr-text: #17212f;
+  --gcr-muted: #667085;
+  --gcr-border: #e4e7ec;
+  --gcr-accent: #b88718;
+  --gcr-accent-strong: #9b6d0c;
+  --gcr-accent-soft: #fff6df;
+  --gcr-radius: 16px;
+  --gcr-shadow: 0 8px 28px rgba(16,24,40,.06);
+}
+html, body {
+  background: var(--gcr-bg) !important;
+  color: var(--gcr-text);
+}
+body {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+main, [role="main"] {
+  color: var(--gcr-text);
+}
+
+/* Normalize legacy dark cards and panels regardless of page or component. */
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: #050505"],
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background:#050505"],
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: #0B0B0B"],
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background:#0B0B0B"],
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: #111111"],
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background:#111111"],
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: #151515"],
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background:#151515"],
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: #191919"],
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background:#191919"],
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: #1A1A1A"],
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background:#1A1A1A"],
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(5, 5, 5)"],
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(8, 8, 8)"],
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(17, 17, 17)"],
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(25, 25, 25)"],
+body :is(div,section,article,aside,header,nav,main,footer,form)[style*="background: rgb(26, 26, 26)"] {
+  background: var(--gcr-surface) !important;
+  color: var(--gcr-text) !important;
+  border-color: var(--gcr-border) !important;
+  box-shadow: var(--gcr-shadow);
+}
+
+/* Bring legacy white/gray inline typography onto the same readable scale. */
+body [style*="color: #FFFFFF"],
+body [style*="color:#FFFFFF"],
+body [style*="color: #ffffff"],
+body [style*="color:#ffffff"],
+body [style*="color: rgb(255, 255, 255)"],
+body [style*="color: #BDBDBD"],
+body [style*="color:#BDBDBD"],
+body [style*="color: rgb(189, 189, 189)"],
+body [style*="color: #BBBBBB"],
+body [style*="color:#BBBBBB"],
+body [style*="color: rgb(187, 187, 187)"],
+body [style*="color: #999999"],
+body [style*="color:#999999"],
+body [style*="color: rgb(153, 153, 153)"],
+body [style*="color: #777777"],
+body [style*="color:#777777"],
+body [style*="color: rgb(119, 119, 119)"] {
+  color: var(--gcr-muted) !important;
+}
+body :is(h1,h2,h3,h4,h5,h6,strong,b,th) {
+  color: var(--gcr-text);
+}
+body :is(p,small,label,li,td,figcaption) {
+  color: var(--gcr-muted);
+}
+
+/* Shared fields, buttons, and focus behavior on every route. */
+body :is(input,select,textarea) {
+  background: #fff !important;
+  color: var(--gcr-text) !important;
+  border: 1px solid #cfd5dd !important;
+  border-radius: 10px !important;
+}
+body :is(input,select,textarea)::placeholder {
+  color: #98a2b3 !important;
+}
+body :is(button,[role="button"]) {
+  border-radius: 10px;
+  font-family: inherit;
+}
+body :is(button,a,input,select,textarea) {
+  -webkit-tap-highlight-color: transparent;
+}
+body :is(button,a):focus-visible,
+body :is(input,select,textarea):focus-visible {
+  outline: 3px solid rgba(184,135,24,.42) !important;
+  outline-offset: 2px;
+}
+
+/* Consistent shared navigation and selected-tab treatment. */
+body :is(nav,[role="tablist"]) button[aria-current="page"],
+body :is(nav,[role="tablist"]) button[aria-selected="true"],
+body :is(nav,[role="tablist"]) button[aria-pressed="true"] {
+  background: var(--gcr-accent-soft) !important;
+  color: #684b0b !important;
+  border-color: #d9b45d !important;
+}
+
+/* Branded gold action controls stay gold with accessible dark lettering. */
+body button[style*="#F4C20D"],
+body button[style*="#f4c20d"],
+body button[style*="rgb(244, 194, 13)"],
+body a[style*="#F4C20D"],
+body a[style*="#f4c20d"],
+body a[style*="rgb(244, 194, 13)"] {
+  background: #f4c20d !important;
+  color: #17212f !important;
+  border-color: #d5a900 !important;
+}
+@media (max-width: 820px) {
+  body :is(input,select,textarea) { font-size: 16px !important; }
+}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import ManualMealPlanBuilder from "./ManualMealPlanBuilder";
 
 export default function ClientNutrition({
   client,
@@ -571,6 +572,7 @@ export default function ClientNutrition({
       <h2 style={styles.title}>
         {client.full_name || "Client"}'s Nutrition
       </h2>
+      <ManualMealPlanBuilder client={client} onSaved={onNutritionUpdated} />
 
       <p style={styles.description}>
         Manage nutrition targets and generate a

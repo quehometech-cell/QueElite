@@ -34,7 +34,7 @@ Ship official iOS and Android apps that use the existing Get Cha Right Fitness a
 ## Current known blockers / inputs
 - iOS builds require Xcode on macOS (local or hosted Mac build environment); Android builds require Android Studio/SDK.
 - Apple Developer and Google Play Console accounts are required for store submission.
-- Store billing requirements must be resolved before app purchase functionality is exposed.
+- Store billing requirements must be resolved before app purchase functionality is exposed. Apple's current rules require in-app purchase for many digital features/subscriptions; its person-to-person exception is specifically for real-time services between two individuals, so asynchronous coaching plans and digital access need a separate policy review. Apple also requires meaningful app utility beyond a repackaged website (Guideline 4.2).
 - Native app builds, real-device testing, and store approvals cannot be truthfully marked complete until performed.
 
 ## Acceptance criteria

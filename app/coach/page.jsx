@@ -1035,8 +1035,19 @@ export default function CoachPage() {
               selectedClientId
             }
             onSelectClient={(clientId) => {
+              if (!clientId) return;
               setSelectedClientId(clientId);
               setActiveSection("overview");
+              // On phones the client roster sits above the detail panel.
+              // Move the newly opened profile into view after React renders it.
+              window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                  document.querySelector(".gcr-coach-content")?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                });
+              });
             }}
             onReviewClient={(client) => {
               if (!client?.id) return;

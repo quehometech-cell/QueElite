@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { supabase } from "../../lib/supabase";
 
 export default function ClientList({
   clients = [],
@@ -157,6 +158,33 @@ function ClientCard({
 }) {
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState("");
+  const [onboardingBusy, setOnboardingBusy] = useState(false);
+  const [onboardingMessage, setOnboardingMessage] = useState("");
+  const [onboardingError, setOnboardingError] = useState("");
+  async function sendOnboarding() {
+    if (!client.email || onboardingBusy) return;
+    setOnboardingBusy(true);
+    setOnboardingMessage("");
+    setOnboardingError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Your session expired. Sign in again and retry.");
+      const response = await fetch("/api/coach/invite-client", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+        body: JSON.stringify({ fullName: client.full_name || "", email: client.email }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success || !data.emailSent) {
+        throw new Error(data.error || "The onboarding email could not be sent.");
+      }
+      setOnboardingMessage("Onboarding link emailed to " + client.email + ".");
+    } catch (error) {
+      setOnboardingError(error?.message || "Unable to send onboarding email.");
+    } finally {
+      setOnboardingBusy(false);
+    }
+  }
   async function handleRemove() {
     const name = client.full_name || client.email || "this client";
     if (!window.confirm(`Remove ${name} from your coaching workspace? Their account and training history will be preserved, but they will lose access to your coaching workspace.`)) return;
@@ -275,12 +303,19 @@ function ClientCard({
             REVIEW NOW →
           </button>
         )}
+        {!client.is_self_client && client.email && (
+          <button type="button" onClick={sendOnboarding} disabled={onboardingBusy} style={styles.onboardingAction}>
+            {onboardingBusy ? "SENDING LINK…" : "SEND ONBOARDING LINK"}
+          </button>
+        )}
         {!client.is_self_client && (
           <button type="button" onClick={handleRemove} disabled={removing} style={styles.removeAction}>
             {removing ? "REMOVING…" : "REMOVE CLIENT"}
           </button>
         )}
       </div>
+      {onboardingMessage && <p role="status" style={{color:"#17633a",background:"#effaf3",border:"1px solid #b9e5c8",borderRadius:8,padding:10,fontSize:12,margin:"10px 0 0"}}>{onboardingMessage}</p>}
+      {onboardingError && <p role="alert" style={{color:"#8f2424",background:"#fff1f1",border:"1px solid #f2caca",borderRadius:8,padding:10,fontSize:12,margin:"10px 0 0"}}>{onboardingError}</p>}
       {removeError && <p role="alert" style={{color:"#ff9b91",fontSize:12,margin:"10px 0 0"}}>{removeError}</p>}
     </article>
   );
@@ -633,6 +668,19 @@ const styles = {
     color: "#080808",
     background: "#F4C20D",
     border: "1px solid #F4C20D",
+    borderRadius: "8px",
+    padding: "10px 13px",
+    fontWeight: "900",
+    fontSize: "10px",
+    cursor: "pointer",
+  },
+
+  onboardingAction: {
+    minHeight: "44px",
+    touchAction: "manipulation",
+    color: "#17633a",
+    background: "#effaf3",
+    border: "1px solid #b9e5c8",
     borderRadius: "8px",
     padding: "10px 13px",
     fontWeight: "900",

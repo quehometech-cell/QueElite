@@ -55,7 +55,7 @@ export async function POST(req) {
     const email = String(body.email || "").trim().toLowerCase();
     const fullName = String(body.fullName || "").trim();
 
-    if (!fullName) return Response.json({ error: "Enter the client's name." }, { status: 400 });
+    const inviteName = fullName || "New Client";
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return Response.json({ error: "Enter a valid client email." }, { status: 400 });
     }
@@ -96,7 +96,7 @@ export async function POST(req) {
     const { error: emailError } = await admin.auth.admin.inviteUserByEmail(email, {
       redirectTo: setupUrl,
       data: {
-        full_name: fullName || undefined,
+        full_name: inviteName,
         invited_to_workspace: workspace.id,
         business_name: workspace.brand_name || workspace.name || "Get Cha Right Fitness",
       },

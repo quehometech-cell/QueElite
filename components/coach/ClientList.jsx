@@ -532,13 +532,15 @@ const styles = {
   },
 
   activeBadge: {
-    background: "#202020",
-    color: "#F4C20D",
-    border: "1px solid #F4C20D",
+    background: "#fff6df",
+    color: "#684b0b",
+    border: "1px solid #d9b45d",
     borderRadius: "20px",
-    padding: "5px 8px",
+    padding: "6px 9px",
     fontSize: "8px",
     fontWeight: "900",
+    letterSpacing: ".4px",
+    whiteSpace: "nowrap",
   },
 
   reviewBadgeButton: {

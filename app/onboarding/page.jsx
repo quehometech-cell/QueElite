@@ -15,7 +15,8 @@ export default function OnboardingPage() {
   const [form, setForm] = useState({
     goal: "",
     age: "",
-    height_inches: "",
+    height_feet: "",
+    height_extra_inches: "",
     weight_lbs: "",
     experience_level: "",
     equipment: "",
@@ -207,7 +208,8 @@ export default function OnboardingPage() {
       if (
         !form.goal ||
         !form.age ||
-        !form.height_inches ||
+        !form.height_feet ||
+        form.height_extra_inches === "" ||
         !form.weight_lbs ||
         !form.experience_level ||
         !form.equipment ||
@@ -222,7 +224,9 @@ export default function OnboardingPage() {
       }
 
       const age = Number(form.age);
-      const height = Number(form.height_inches);
+      const feet = Number(form.height_feet);
+      const extraInches = Number(form.height_extra_inches);
+      const height = feet * 12 + extraInches;
       const weight = Number(form.weight_lbs);
       const days = Number(form.days_per_week);
       const minutes = Number(form.session_minutes);
@@ -239,13 +243,11 @@ export default function OnboardingPage() {
       }
 
       if (
-        !Number.isFinite(height) ||
-        height < 48 ||
-        height > 96
+        !Number.isInteger(feet) || feet < 4 || feet > 8 ||
+        !Number.isInteger(extraInches) || extraInches < 0 || extraInches > 11 ||
+        height < 48 || height > 96
       ) {
-        throw new Error(
-          "Enter a valid height in inches."
-        );
+        throw new Error("Enter a valid height in feet and inches.");
       }
 
       if (
@@ -467,18 +469,33 @@ export default function OnboardingPage() {
               />
             </Field>
 
-            <Field label="Height (inches)">
-              <input
-                type="number"
-                name="height_inches"
-                value={form.height_inches}
-                onChange={updateField}
-                min="48"
-                max="96"
-                placeholder="Example: 74"
-                style={styles.input}
-                required
-              />
+            <Field label="Height (ft / in)">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <select
+                  name="height_feet"
+                  value={form.height_feet}
+                  onChange={updateField}
+                  style={styles.input}
+                  required
+                >
+                  <option value="">Feet</option>
+                  {[4, 5, 6, 7, 8].map((feet) => (
+                    <option key={feet} value={feet}>{feet} ft</option>
+                  ))}
+                </select>
+                <select
+                  name="height_extra_inches"
+                  value={form.height_extra_inches}
+                  onChange={updateField}
+                  style={styles.input}
+                  required
+                >
+                  <option value="">Inches</option>
+                  {Array.from({ length: 12 }, (_, inch) => (
+                    <option key={inch} value={inch}>{inch} in</option>
+                  ))}
+                </select>
+              </div>
             </Field>
           </div>
 
